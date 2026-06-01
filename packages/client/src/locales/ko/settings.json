@@ -686,7 +686,69 @@
                 "envRefMarker": "환경 변수 참조"
             }
         },
+        "contextBuilder": {
+            "nav": { "title": "컨텍스트 빌더" },
+            "title": "컨텍스트 빌더",
+            "subtitle": "SessionStart 훅으로 참조 파일과 동적 변수를 매 새 세션마다 컨텍스트에 주입합니다.",
+            "enable": "활성화",
+            "registeredNote": ".claude/settings.json 에 SessionStart 훅이 등록되며 변경 시마다 재생성됩니다.",
+            "loading": "컨텍스트 빌더를 불러오는 중…",
+            "saving": "저장 중…",
+            "externalChange": {
+                "banner": "context-builder.json 이 디스크에서 변경되었습니다.",
+                "reload": "다시 불러오기"
+            },
+            "stale": {
+                "modalTitle": "파일이 디스크에서 변경됨",
+                "body": "매니페스트가 Hammoc 외부에서 수정되었습니다. 최신본을 다시 불러올까요, 아니면 내 버전으로 덮어쓸까요?",
+                "reload": "다시 불러오기",
+                "overwrite": "덮어쓰기"
+            },
+            "size": {
+                "warn": "조립된 컨텍스트가 {{total}} 로, SessionStart 훅 출력 {{cap}}자 상한에 근접했습니다. 초과 시 직접 주입 대신 파일+미리보기로 분리됩니다.",
+                "over": "조립된 컨텍스트가 {{total}} 로 SessionStart 훅 출력 {{cap}}자 상한을 초과했습니다 — 직접 주입 대신 파일+미리보기로 분리됩니다. 참조 파일을 줄이세요."
+            },
+            "files": {
+                "title": "참조 파일",
+                "add": "파일 추가",
+                "help": "매 세션 시작마다 파일을 새로 읽어 컨텍스트로 주입합니다.",
+                "empty": "선언된 참조 파일이 없습니다.",
+                "missing": "디스크에서 파일을 찾을 수 없습니다 — 복구 전까지 placeholder 가 주입됩니다.",
+                "missingShort": "없음",
+                "tokens": "토큰",
+                "tokenApproxNote": "근사치 (정밀 토큰은 관측성 기능 완료 후).",
+                "remove": "파일 제거"
+            },
+            "variables": {
+                "title": "동적 변수",
+                "help": "매 세션 시작마다 최신 값으로 재계산됩니다."
+            },
+            "variable": {
+                "gitBranch": { "label": "현재 브랜치", "description": "현재 git 브랜치 이름." },
+                "activeBmadStory": { "label": "활성 BMad 스토리", "description": "가장 최근 수정된 스토리 파일의 제목 + 상태." },
+                "recentCommits": { "label": "최근 커밋", "description": "최근 N개 커밋 제목." },
+                "today": { "label": "오늘", "description": "오늘 날짜 (YYYY-MM-DD)." },
+                "uncommittedCount": { "label": "미커밋 파일", "description": "커밋되지 않은 변경 파일 개수." }
+            },
+            "commands": {
+                "title": "사용자 정의 명령",
+                "warning": "사용자 정의 명령은 매 세션 시작에 자동 실행됩니다. 신뢰하는 명령만 추가하세요.",
+                "placeholder": "예: npm run status",
+                "acknowledge": "이 명령이 매 세션 시작마다 자동 실행됨을 이해합니다.",
+                "acknowledgeExisting": "확인",
+                "add": "명령 추가",
+                "remove": "명령 제거",
+                "secretWarning": "이 명령에 시크릿이 포함되었을 수 있습니다.",
+                "secretBadge": "시크릿 의심",
+                "secretNotice": "사용자 정의 명령 {{count}}개에 시크릿이 포함되었을 수 있습니다 — 프로젝트 공유 전에 확인하세요."
+            }
+        },
         "hook": {
+            "managedBadge": {
+                "contextBuilder": "Hammoc 컨텍스트 빌더",
+                "contextBuilderTooltip": "Hammoc 컨텍스트 빌더가 관리합니다 — 컨텍스트 빌더 패널에서 편집하세요.",
+                "editWarning": "이 항목은 Hammoc 컨텍스트 빌더가 관리합니다 — 직접 편집하면 동기화가 끊깁니다. 컨텍스트 빌더 패널에서 편집하세요."
+            },
             "empty": {
                 "title": "등록된 훅이 없습니다.",
                 "description": "<projectRoot>/.claude/settings.json 또는 ~/.claude/settings.json 의 hooks 필드에 훅을 추가하거나, 훅을 등록하는 플러그인 번들을 설치하세요.",

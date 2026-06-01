@@ -14,7 +14,7 @@
  * hooks auto-save through updateHook.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import type {
@@ -47,6 +47,8 @@ interface ExistingProps {
   card: HarnessHookCard;
   createForEvent?: never;
   projectSlug: string;
+  /** Story 31.2 (AC3.b): true when this entry is managed by the context builder. */
+  managedByContextBuilder?: boolean;
   onClose(): void;
 }
 
@@ -79,6 +81,7 @@ export function HookEditor(props: Props) {
 
   const isCreateMode = !props.card;
   const card = props.card;
+  const managedByContextBuilder = !isCreateMode && (props as ExistingProps).managedByContextBuilder === true;
 
   const [event, setEvent] = useState<HarnessHookEvent>(
     isCreateMode ? props.createForEvent : card!.event,
@@ -658,6 +661,18 @@ export function HookEditor(props: Props) {
         </div>
 
         <div className="px-5 py-4 overflow-y-auto flex-1 space-y-4">
+          {managedByContextBuilder && (
+            <div
+              role="alert"
+              className="rounded-md border border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30 px-3 py-2 text-sm text-blue-900 dark:text-blue-100"
+              data-testid="hook-editor-context-builder-warning"
+            >
+              {t('harness.hook.managedBadge.editWarning', {
+                defaultValue:
+                  'This entry is managed by the Hammoc context builder — editing it directly will break sync. Edit it from the Context Builder panel instead.',
+              })}
+            </div>
+          )}
           {staleBanner && (
             <div
               role="alert"

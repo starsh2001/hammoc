@@ -685,7 +685,69 @@
                 "envRefMarker": "環境変数参照"
             }
         },
+        "contextBuilder": {
+            "nav": { "title": "コンテキストビルダー" },
+            "title": "コンテキストビルダー",
+            "subtitle": "SessionStart フックで参照ファイルと動的変数を新しいセッションごとにコンテキストへ注入します。",
+            "enable": "有効化",
+            "registeredNote": ".claude/settings.json に SessionStart フックが登録され、変更のたびに再生成されます。",
+            "loading": "コンテキストビルダーを読み込み中…",
+            "saving": "保存中…",
+            "externalChange": {
+                "banner": "context-builder.json がディスク上で変更されました。",
+                "reload": "再読み込み"
+            },
+            "stale": {
+                "modalTitle": "ファイルがディスク上で変更されました",
+                "body": "マニフェストが Hammoc の外部で変更されました。最新を再読み込みしますか、それともご自身のバージョンで上書きしますか？",
+                "reload": "再読み込み",
+                "overwrite": "上書き"
+            },
+            "size": {
+                "warn": "組み立てられたコンテキストは {{total}} で、SessionStart フック出力の {{cap}} 文字上限に近づいています。超えると直接注入されずファイル＋プレビューに分離されます。",
+                "over": "組み立てられたコンテキストは {{total}} で、SessionStart フック出力の {{cap}} 文字上限を超えています — 直接注入されずファイル＋プレビューに分離されます。参照ファイルを減らしてください。"
+            },
+            "files": {
+                "title": "参照ファイル",
+                "add": "ファイルを追加",
+                "help": "セッション開始ごとにファイルを新しく読み込みコンテキストに注入します。",
+                "empty": "宣言された参照ファイルがありません。",
+                "missing": "ディスク上にファイルが見つかりません — 復元するまでプレースホルダーが注入されます。",
+                "missingShort": "なし",
+                "tokens": "トークン",
+                "tokenApproxNote": "概算（正確なトークンは可観測性機能の完了後）。",
+                "remove": "ファイルを削除"
+            },
+            "variables": {
+                "title": "動的変数",
+                "help": "セッション開始ごとに最新の値で再計算されます。"
+            },
+            "variable": {
+                "gitBranch": { "label": "現在のブランチ", "description": "現在の git ブランチ名。" },
+                "activeBmadStory": { "label": "アクティブな BMad ストーリー", "description": "最後に変更されたストーリーファイルのタイトル＋ステータス。" },
+                "recentCommits": { "label": "最近のコミット", "description": "直近 N 件のコミット件名。" },
+                "today": { "label": "今日", "description": "今日の日付（YYYY-MM-DD）。" },
+                "uncommittedCount": { "label": "未コミットファイル", "description": "未コミットの変更があるファイル数。" }
+            },
+            "commands": {
+                "title": "カスタムコマンド",
+                "warning": "カスタムコマンドはセッション開始ごとに自動実行されます。信頼できるコマンドのみ追加してください。",
+                "placeholder": "例: npm run status",
+                "acknowledge": "このコマンドがセッション開始ごとに自動実行されることを理解しました。",
+                "acknowledgeExisting": "確認",
+                "add": "コマンドを追加",
+                "remove": "コマンドを削除",
+                "secretWarning": "このコマンドにシークレットが含まれている可能性があります。",
+                "secretBadge": "シークレットの疑い",
+                "secretNotice": "{{count}} 件のカスタムコマンドにシークレットが含まれている可能性があります — プロジェクトを共有する前に確認してください。"
+            }
+        },
         "hook": {
+            "managedBadge": {
+                "contextBuilder": "Hammoc コンテキストビルダー",
+                "contextBuilderTooltip": "Hammoc コンテキストビルダーが管理しています — コンテキストビルダーパネルから編集してください。",
+                "editWarning": "この項目は Hammoc コンテキストビルダーが管理しています — 直接編集すると同期が壊れます。コンテキストビルダーパネルから編集してください。"
+            },
             "empty": {
                 "title": "登録されているフックがありません。",
                 "description": "<projectRoot>/.claude/settings.json または ~/.claude/settings.json の hooks フィールドにフックを追加するか、フックを登録するプラグインバンドルをインストールしてください。",

@@ -1219,3 +1219,75 @@
 - 같은 키 저장 시도 시 `HARNESS_STALE_WRITE` → reload/overwrite 모달 분기
 - reload → 디스크 최신값 재로드 / overwrite → 사용자 버전으로 강제 저장 (Story 28.4 훅 에디터 stale 패턴 답습)
 
+## B18. SessionStart 컨텍스트 빌더 (Story 31.2) `[SDK]` `[EDGE]`
+
+**대상 동작**: 프로젝트 설정 탭 좌측 nav 에 **모든 프로젝트에서** 노출되는 *"컨텍스트 빌더"* 항목 (BMad 게이트 없음) 으로 진입해 `ContextBuilderPanel` 에서 (1) 참조 파일 목록 · 빌트인 동적 변수 on/off · (옵션) 사용자 정의 명령을 선언하면 `.hammoc/context-builder.json` 매니페스트에 저장되고, (2) Hammoc 이 `.hammoc/hooks/context-builder.mjs` 스크립트 + `.claude/settings.json` 의 `hooks.SessionStart` entry 를 자동 생성·등록, (3) Epic 28 훅 섹션에서 같은 entry 가 *"Hammoc 컨텍스트 빌더"* 배지 + 직접 편집 경고로 보호, (4) 참조 파일 크기/토큰 근사 + 10,000자 상한 threshold 경고, (5) 사용자 명령 보안 경고 + 확인 체크박스, (6) 외부 변경 감지 → 패널 재로드 배너 / settings.json STALE_WRITE 모달을 검증. **선행 spike** (sdk-upstream-issues.md §12·§13): SessionStart 가 startup/resume 에서 발화(문서 확정) + `additionalContext` 10,000자 하드 캡(초과 시 파일 spill). **신규 세션 실주입 확인은 수동 `[SDK]` 분기** (AC6 결과 — 라이브 풀 루프 환경 부재).
+
+### B-18-01: 컨텍스트 빌더 nav 진입 + 파일/변수 선언 → 스크립트 + settings.json entry 생성 (AC1) `[EDGE]`
+
+**시나리오**:
+1. 임의 프로젝트(비-BMad 포함) 설정 탭 진입 → 좌측 nav 에 `[data-testid="project-settings-nav-contextBuilder"]` 노출 확인 (게이팅 없음)
+2. 클릭 → `[data-testid="context-builder-panel"]` 마운트
+3. `[data-testid="context-builder-enable-toggle"]` 활성화 → `[data-testid="context-builder-file-add"]` 로 파일 picker(`bmad-path-picker-*` 재사용) 열어 `README.md` 선택
+4. `[data-testid="context-builder-variable-toggle-gitBranch"]` · `-today` 토글 on
+5. 300ms debounce 뒤 디스크 확인 — `.hammoc/context-builder.json` 매니페스트에 `files: ["README.md"]` + `variables.gitBranch/today: true` 기록
+6. `.hammoc/hooks/context-builder.mjs` 스크립트 생성 확인 + `.claude/settings.json` 의 `hooks.SessionStart` 에 `command: node "<abs>/.hammoc/hooks/context-builder.mjs"` entry 등록 확인
+7. `[data-testid="context-builder-registered-note"]` 노출 확인
+8. (스크립트 직접 실행) `node .hammoc/hooks/context-builder.mjs` → stdout JSON 의 `hookSpecificOutput.additionalContext` 에 README 내용 + 현재 브랜치 + 오늘 날짜 블록 포함 확인
+
+**기대 결과**:
+- 모든 프로젝트에서 nav 노출 (BMad 게이트 없음 — 비-BMad 프로젝트도 진입 가능)
+- 매니페스트(SSoT) → 스크립트 + settings.json entry 자동 생성 (JSONC round-trip, 기존 키 보존)
+- 생성 스크립트가 런타임에 파일/변수를 재계산해 `additionalContext` JSON 출력
+
+### B-18-02: 훅 섹션의 "Hammoc 관리" 배지 + 편집 경고 (AC3) `[SDK]`
+
+**시나리오**:
+1. B-18-01 로 SessionStart entry 가 등록된 상태에서 하네스 훅 섹션(`HookPanel`) 진입
+2. SessionStart 이벤트의 해당 카드에 `[data-testid="hook-managed-context-builder-badge"]` (*"Hammoc 컨텍스트 빌더"*) 배지 노출 확인 — command 경로 패턴(`.hammoc/hooks/context-builder.*`)만으로 식별(별도 메타데이터 0)
+3. 카드 클릭 → `HookEditor` 열림 → `[data-testid="hook-editor-context-builder-warning"]` 동기화 경고 배너 노출 확인 (차단 아님 — 편집 자체는 가능)
+4. 유저 수동 작성 SessionStart entry(다른 command)가 함께 있으면 그 카드에는 배지·경고 **부재** 확인
+
+**기대 결과**:
+- 경로 기반 소유권 식별로 Hammoc 관리 entry 에만 배지 + 편집 경고
+- 타인(유저 수동) entry 는 영향 0 (배지/경고 부재)
+- 훅 섹션은 *"읽기 + 배지 + 경고"* 만 — 정상 편집 경로는 컨텍스트 빌더 패널(단방향 동기화)
+
+### B-18-03: 사용자 명령 보안 경고 + 확인 체크박스 흐름 (AC5) `[EDGE]`
+
+**시나리오**:
+1. 컨텍스트 빌더 패널의 `[data-testid="context-builder-custom-commands"]` 영역에서 `[data-testid="context-builder-command-input"]` 에 명령 입력
+2. `[data-testid="context-builder-command-acknowledge"]` 체크 전에는 `[data-testid="context-builder-command-add"]` 버튼 **비활성** 확인 (강한 경고 문구 동반 노출)
+3. 체크박스 체크 → Add 버튼 활성 → 추가 → 매니페스트에 `acknowledged: true` 로 기록 + 스크립트에 포함
+4. 시크릿 패턴(예: `Bearer sk-...`) 포함 명령 추가 → 저장 응답의 `secretWarningCommandIndices` 에 해당 인덱스 포함 → `[data-testid="context-builder-command-secret-0"]` 배지 + `[data-testid="context-builder-secret-notice"]` 고지 노출 확인 (저장은 성공 — 차단 아님)
+
+**기대 결과**:
+- 확인 체크박스 전 저장(추가) 비활성 — acknowledged 아닌 명령은 스크립트에서 제외
+- 시크릿 휴리스틱 매칭 시 비차단 고지(경고 배지 + 패널 notice), 저장은 진행
+
+### B-18-04: 외부 변경 → 패널 재로드 배너 / settings.json STALE_WRITE 모달 (AC1.b·1.e) `[EDGE]`
+
+**시나리오**:
+1. 컨텍스트 빌더 패널 열린 상태에서 Hammoc UI 밖으로 `.hammoc/context-builder.json` 직접 수정
+2. fileWatcher 외부 변경 감지 → `harness:external-change` (`path: '../.hammoc/context-builder.json'`) emit → `[data-testid="context-builder-external-change-banner"]` 노출 확인
+3. 배너의 재로드 클릭 → 디스크 최신 매니페스트 재로드 확인
+4. (별도 회차) settings.json 을 외부에서 동시 수정 후 패널에서 저장 시도 → mtime 충돌 → `[data-testid="context-builder-stale-modal"]` 발화 → `[data-testid="context-builder-stale-reload"]`/`-overwrite` 분기 확인
+5. 참조 파일 총합이 8,000자(soft limit) 초과하도록 큰 파일 선언 → `[data-testid="context-builder-size-warning"]` 경고 노출 확인 (10,000자 하드 캡 안내)
+
+**기대 결과**:
+- `.hammoc/context-builder.json` 카논 watch 등록 확인 (감시 루트 `.claude/` 의 형제 — `'..'` 가드 우회 전용 emit 분기)
+- 외부 매니페스트 변경 → 재로드 배너 / settings.json 외부 동시 수정 → STALE_WRITE reload/overwrite 모달
+- threshold 경고가 토큰 근사 가용 여부와 무관하게 바이트 기준으로 동작
+
+### (수동 `[SDK]`) 신규 세션 `additionalContext` 실주입 확인
+
+**시나리오** (릴리즈 직전 수동 회귀 — sdk-upstream-issues.md §12 결과 분기):
+1. B-18-01 로 entry 등록된 프로젝트에서 Hammoc 신규 채팅 세션 시작
+2. *"방금 세션 시작 시 주입된 컨텍스트를 요약해줘"* 프롬프트 → 선언한 참조 파일 내용/변수 값이 컨텍스트에 포함되어 있었는지 간접 확인
+3. (결정적 fallback) 생성 스크립트를 직접 `node` 실행해 stdout `additionalContext` 직접 검사
+
+**기대 결과**:
+- 신규 세션(SessionStart=startup)에서 선언 파일·변수가 시스템 프롬프트 앞쪽에 주입 (문서상 보장 — 라이브 최종 확인은 본 수동 시나리오)
+- resume 세션에서도 발화(매 메시지 재계산) — 단 중복 주입 가능성은 운영 신호로 관찰
+
+

@@ -685,7 +685,69 @@
                 "envRefMarker": "环境变量引用"
             }
         },
+        "contextBuilder": {
+            "nav": { "title": "上下文构建器" },
+            "title": "上下文构建器",
+            "subtitle": "通过 SessionStart 钩子在每个新会话中注入参考文件和动态变量。",
+            "enable": "启用",
+            "registeredNote": "已在 .claude/settings.json 中注册 SessionStart 钩子，并在每次更改时重新生成。",
+            "loading": "正在加载上下文构建器…",
+            "saving": "正在保存…",
+            "externalChange": {
+                "banner": "context-builder.json 在磁盘上已更改。",
+                "reload": "重新加载"
+            },
+            "stale": {
+                "modalTitle": "文件在磁盘上已更改",
+                "body": "清单已在 Hammoc 之外被修改。重新加载最新版本，还是用您的版本覆盖？",
+                "reload": "重新加载",
+                "overwrite": "覆盖"
+            },
+            "size": {
+                "warn": "组装的上下文为 {{total}}，接近 SessionStart 钩子输出 {{cap}} 字符上限。超出后将不再直接注入，而是分离为文件 + 预览。",
+                "over": "组装的上下文为 {{total}}，已超过 SessionStart 钩子输出 {{cap}} 字符上限 — 将不再直接注入，而是分离为文件 + 预览。请精简参考文件。"
+            },
+            "files": {
+                "title": "参考文件",
+                "add": "添加文件",
+                "help": "每次会话开始时重新读取文件并作为上下文注入。",
+                "empty": "尚未声明参考文件。",
+                "missing": "磁盘上找不到该文件 — 恢复前将注入占位符。",
+                "missingShort": "缺失",
+                "tokens": "令牌",
+                "tokenApproxNote": "近似值（精确令牌将在可观测性功能上线后提供）。",
+                "remove": "移除文件"
+            },
+            "variables": {
+                "title": "动态变量",
+                "help": "每次会话开始时以最新值重新计算。"
+            },
+            "variable": {
+                "gitBranch": { "label": "当前分支", "description": "当前 git 分支名称。" },
+                "activeBmadStory": { "label": "活动 BMad 故事", "description": "最近修改的故事文件的标题 + 状态。" },
+                "recentCommits": { "label": "最近提交", "description": "最近 N 条提交的标题。" },
+                "today": { "label": "今天", "description": "今天的日期（YYYY-MM-DD）。" },
+                "uncommittedCount": { "label": "未提交文件", "description": "存在未提交更改的文件数量。" }
+            },
+            "commands": {
+                "title": "自定义命令",
+                "warning": "自定义命令会在每次会话开始时自动执行。请仅添加您信任的命令。",
+                "placeholder": "例如：npm run status",
+                "acknowledge": "我了解此命令会在每次会话开始时自动执行。",
+                "acknowledgeExisting": "确认",
+                "add": "添加命令",
+                "remove": "移除命令",
+                "secretWarning": "此命令可能包含机密信息。",
+                "secretBadge": "疑似机密",
+                "secretNotice": "{{count}} 条自定义命令可能包含机密信息 — 共享此项目前请检查。"
+            }
+        },
         "hook": {
+            "managedBadge": {
+                "contextBuilder": "Hammoc 上下文构建器",
+                "contextBuilderTooltip": "由 Hammoc 上下文构建器管理 — 请在上下文构建器面板中编辑。",
+                "editWarning": "此条目由 Hammoc 上下文构建器管理 — 直接编辑会破坏同步。请在上下文构建器面板中编辑。"
+            },
             "empty": {
                 "title": "尚未配置任何钩子。",
                 "description": "请在 <projectRoot>/.claude/settings.json 或 ~/.claude/settings.json 的 hooks 字段下添加钩子，或安装包含钩子的插件包。",

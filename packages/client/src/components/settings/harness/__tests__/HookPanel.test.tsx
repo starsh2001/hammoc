@@ -216,6 +216,19 @@ describe('HookPanel', () => {
     });
   });
 
+  // Story 31.2 (AC3.a): a SessionStart entry pointing at the context-builder
+  // script shows the "Hammoc Context Builder" managed badge.
+  it('shows the context-builder managed badge for a SessionStart entry', async () => {
+    const managed = sampleCard({
+      event: 'SessionStart',
+      matcher: undefined,
+      config: { type: 'command', command: 'node "/proj/.hammoc/hooks/context-builder.mjs"' },
+    });
+    mockedList.mockResolvedValue(sampleResponse([managed]));
+    await renderPanel();
+    expect(screen.getByTestId('hook-managed-context-builder-badge')).toBeTruthy();
+  });
+
   it('plugin source card shows read-only marker and no toggle', async () => {
     const pluginCard = sampleCard({
       scope: 'plugin',

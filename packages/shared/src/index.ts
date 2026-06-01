@@ -151,3 +151,6 @@ export * from './types/harnessBundle.js';
 
 // Story 31.1: BMad core-config.yaml editor DTOs (Epic 31)
 export * from './types/bmadCoreConfig.js';
+
+// Story 31.2: SessionStart context-builder DTOs (Epic 31)
+export * from './types/contextBuilder.js';

@@ -18,6 +18,7 @@ import { harnessShareScopeController } from '../controllers/harnessShareScopeCon
 import { harnessLintController } from '../controllers/harnessLintController.js';
 import { harnessBundleController, handleBundleUpload } from '../controllers/harnessBundleController.js';
 import { bmadCoreConfigController } from '../controllers/bmadCoreConfigController.js';
+import { contextBuilderController } from '../controllers/contextBuilderController.js';
 
 const router = Router();
 
@@ -143,5 +144,14 @@ router.get('/bundle/plugin-deps', harnessBundleController.pluginDeps);
 router.get('/bmad-config/:projectSlug', bmadCoreConfigController.read);
 router.put('/bmad-config/:projectSlug/raw', largeBodyParser, bmadCoreConfigController.writeRaw);
 router.patch('/bmad-config/:projectSlug', largeBodyParser, bmadCoreConfigController.patch);
+
+// Story 31.2 — SessionStart context-builder: read / save+generate / disable the
+// `.hammoc/context-builder.json` manifest and its generated `.mjs` + settings
+// entry. Available on ALL projects (no BMad gate). The `/disable` segment lives
+// above the bare `:projectSlug` PUT so Express does not treat `disable` as a
+// slug value.
+router.get('/context-builder/:projectSlug', contextBuilderController.read);
+router.post('/context-builder/:projectSlug/disable', largeBodyParser, contextBuilderController.disable);
+router.put('/context-builder/:projectSlug', largeBodyParser, contextBuilderController.write);
 
 export default router;

@@ -35,6 +35,9 @@ vi.mock('../../components/settings/HarnessWorkbenchSection', () => ({
 vi.mock('../../components/settings/BmadConfigPanel', () => ({
   BmadConfigPanel: () => <div data-testid="bmad-config-panel-mock" />,
 }));
+vi.mock('../../components/settings/ContextBuilderPanel', () => ({
+  ContextBuilderPanel: () => <div data-testid="context-builder-panel-mock" />,
+}));
 
 const mockUseProjectStore = useProjectStore as unknown as Mock;
 
@@ -70,5 +73,15 @@ describe('ProjectSettingsPage — BMad nav gate', () => {
     render(<ProjectSettingsPage />);
     fireEvent.click(screen.getByTestId('project-settings-nav-bmad'));
     expect(screen.getByTestId('bmad-config-panel-mock')).toBeInTheDocument();
+  });
+
+  // Story 31.2 (AC1.a): the context-builder nav is NOT gated — it appears for
+  // every project, including non-BMad ones, and routes to its panel.
+  it('renders the context-builder nav item for a non-BMad project and routes to it', () => {
+    seedProjects(false);
+    render(<ProjectSettingsPage />);
+    expect(screen.getByTestId('project-settings-nav-contextBuilder')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('project-settings-nav-contextBuilder'));
+    expect(screen.getByTestId('context-builder-panel-mock')).toBeInTheDocument();
   });
 });

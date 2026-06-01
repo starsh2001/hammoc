@@ -22,7 +22,7 @@ import type {
   HarnessHookEvent,
   HarnessHookSourceScope,
 } from '@hammoc/shared';
-import { HARNESS_HOOK_EVENTS } from '@hammoc/shared';
+import { HARNESS_HOOK_EVENTS, CONTEXT_BUILDER_SCRIPT_MARKER } from '@hammoc/shared';
 import { useHarnessHookStore } from '../../../stores/harnessHookStore';
 import { getSocket } from '../../../services/socket';
 import { ApiError } from '../../../services/api/client';
@@ -42,6 +42,18 @@ import type { LintIssue } from '@hammoc/shared';
  * Without the truncation parity the marker never resolves and AC2.a fails
  * silently for long-body hooks.
  */
+/**
+ * Story 31.2 (AC3.a): a SessionStart entry is identified as Hammoc-managed
+ * purely by its command path containing the context-builder script marker — no
+ * extra metadata key. Backslashes are normalized so the marker matches on
+ * Windows-style command strings too.
+ */
+function isContextBuilderManaged(card: HarnessHookCard): boolean {
+  if (card.event !== 'SessionStart') return false;
+  const command = card.config.command ?? '';
+  return command.replace(/\\/g, '/').includes(CONTEXT_BUILDER_SCRIPT_MARKER);
+}
+
 function hookLintName(card: HarnessHookCard): string {
   const body =
     card.config.type === 'command'
@@ -545,6 +557,17 @@ export function HookPanel({ projectSlug, onOpenLintPreferences }: Props) {
                             />
                             <HookLintMarker name={hookLintName(card)} onActivate={handleActivateLintIssue} />
                             <TypeBadge type={card.config.type} />
+                            {isContextBuilderManaged(card) && (
+                              <span
+                                className="rounded bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 text-[10px] font-medium text-blue-800 dark:text-blue-200"
+                                title={t('harness.hook.managedBadge.contextBuilderTooltip', {
+                                  defaultValue: 'Managed by the Hammoc context builder — edit it from the Context Builder panel.',
+                                })}
+                                data-testid="hook-managed-context-builder-badge"
+                              >
+                                {t('harness.hook.managedBadge.contextBuilder', { defaultValue: 'Hammoc Context Builder' })}
+                              </span>
+                            )}
                             {card.disabledByBackup && (
                               <span className="text-[10px] text-gray-500 dark:text-gray-400 italic">
                                 {t('harness.hook.toggle.disabledByBackup')}
@@ -591,6 +614,7 @@ export function HookPanel({ projectSlug, onOpenLintPreferences }: Props) {
         <HookEditor
           card={openCard}
           projectSlug={projectSlug}
+          managedByContextBuilder={isContextBuilderManaged(openCard)}
           onClose={() => setOpenCard(null)}
         />
       )}

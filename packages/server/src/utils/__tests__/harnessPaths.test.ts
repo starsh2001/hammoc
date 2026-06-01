@@ -15,6 +15,8 @@ import {
   resolveProjectClaudeMdPath,
   resolveProjectGitignorePath,
   resolveBmadCoreConfigPath,
+  resolveContextBuilderManifestPath,
+  resolveContextBuilderScriptPath,
 } from '../harnessPaths.js';
 import { projectService } from '../../services/projectService.js';
 
@@ -245,6 +247,41 @@ describe('resolveBmadCoreConfigPath (Story 31.1)', () => {
   it('rejects projectSlug containing "..", path separators, or null byte with HARNESS_PATH_DENIED', async () => {
     for (const evil of ['', '..', '../escape', 'a/b', 'a\\b', 'a\0b']) {
       await expect(resolveBmadCoreConfigPath(evil)).rejects.toMatchObject({
+        code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
+      });
+    }
+  });
+});
+
+describe('resolveContextBuilderManifestPath / resolveContextBuilderScriptPath (Story 31.2)', () => {
+  let tmpProject: string;
+
+  beforeEach(async () => {
+    tmpProject = await fs.mkdtemp(path.join(os.tmpdir(), 'ctxbuilder-proj-'));
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tmpProject, { recursive: true, force: true });
+  });
+
+  it('resolves <projectRoot>/.hammoc/context-builder.json and .hammoc/hooks/context-builder.mjs', async () => {
+    vi.spyOn(projectService, 'resolveOriginalPath').mockResolvedValue(tmpProject);
+    const manifest = await resolveContextBuilderManifestPath('my-slug');
+    expect(manifest.resolvedRoot).toBe(path.resolve(tmpProject));
+    expect(manifest.absolutePath).toBe(path.join(path.resolve(tmpProject), '.hammoc', 'context-builder.json'));
+    const script = await resolveContextBuilderScriptPath('my-slug');
+    expect(script.absolutePath).toBe(path.join(path.resolve(tmpProject), '.hammoc', 'hooks', 'context-builder.mjs'));
+  });
+
+  it('rejects traversal-bearing slugs with HARNESS_PATH_DENIED', async () => {
+    const backslash = String.fromCharCode(92);
+    const nul = String.fromCharCode(0);
+    for (const evil of ['', '..', '../escape', 'a/b', `a${backslash}b`, `a${nul}b`]) {
+      await expect(resolveContextBuilderManifestPath(evil)).rejects.toMatchObject({
+        code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
+      });
+      await expect(resolveContextBuilderScriptPath(evil)).rejects.toMatchObject({
         code: HARNESS_ERRORS.HARNESS_PATH_DENIED.code,
       });
     }

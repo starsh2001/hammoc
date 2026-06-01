@@ -374,4 +374,82 @@ AC6.c 의 *"필수 키 빈 값 저장 직전 인라인 경고"* 용 클라이언
 
 ---
 
+## 12. Story 31.2 선행 spike #1 — SessionStart 훅 세션 트리거 시맨틱 (2026-06-01)
+
+**확인 방법**: 공식 Hooks 문서 (https://code.claude.com/docs/en/hooks) 직접 fetch
+(2026-06-01) + Hammoc `chatService` 코드 실측. Story 31.1/§11 의 *"정적 증거 +
+실측 미수행 분기 명시"* 노선을 답습하되, 본 spike 는 공식 문서가 질문(발화 조건)에
+**직접 답**하므로 정적 증거의 결정성이 §6/§11 보다 높다.
+
+### 확인된 사실 (공식 문서 인용)
+
+| 항목 | 결과 | 근거 인용 |
+|---|---|---|
+| SessionStart 발화 조건 | **startup(신규) · resume(`--resume`/`--continue`/`/resume`) · clear(`/clear`) · compact** 4개 source 모두에서 발화 | *"Runs when Claude Code starts a new session **or resumes an existing session**"* + matcher 표 (startup/resume/clear/compact) |
+| `additionalContext` 전달 | 대화 시작 시점, 첫 프롬프트 앞쪽에 문자열로 주입 | *"String added to Claude's context at the start of the conversation, before the first prompt"* |
+| `source` 필드 | startup / resume / clear / compact 로 케이스 구분 | hook input 의 `source` 필드 |
+
+### Hammoc query() 매핑 (코드 실측)
+
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| 세션당 query() 횟수 | **매 메시지마다 1회** `query()` 호출 (단일 프롬프트 모드) | [`chatService.ts:289-298`](../../packages/server/src/services/chatService.ts#L289-L298) |
+| 신규 vs resume 분기 | 첫 메시지 = `resume` 없음 → CLI startup → **SessionStart(source=startup)**; 이후 메시지 = `resume` 동봉 → CLI resume → **SessionStart(source=resume)** | [`chatService.ts:234`](../../packages/server/src/services/chatService.ts#L234) `resume: options.resume` |
+| 프로젝트 hooks 로드 경로 | `settingSources: ['user','project','local']` 가 프로젝트 `.claude/settings.json` 의 hooks 를 query() 에 로드 | [`chatService.ts:237`](../../packages/server/src/services/chatService.ts#L237) |
+
+### 결론 — AC2 검증 방식 확정
+
+- **(1차) 신규 세션 간접 프롬프트**: SessionStart 가 startup 에서 발화함이 문서상 보장 →
+  신규 Hammoc 채팅에서 `additionalContext` 주입이 일어난다. 생성 스크립트가 고정
+  마커 문자열을 `additionalContext` 에 포함시키고, 신규 세션에서 *"방금 주입된 컨텍스트를
+  요약해줘"* 프롬프트로 마커를 회수하는 방식을 AC2.a 의 1차 검증으로 채택.
+- **AC2.b 자연 충족**: resume 에서도 발화하므로 Hammoc 의 per-message resume 흐름에서
+  매 메시지 스크립트가 재실행되어 동적 변수가 최신값으로 재계산된다 (생성 시점 스냅샷 아님).
+- **(결정적 fallback) 스크립트 직접 실행**: 생성된 `.mjs` 를 `node` 로 수동 실행해
+  stdout JSON 의 `additionalContext` 를 직접 검사하는 방식을 B-18 의 `[SDK]` 수동
+  시나리오에 보존 — CLI 다운그레이드나 *"SDK 가 resume 에서 hook 을 생략"* 회귀 대비.
+
+### 잔여 불확실성 + 실측 미수행 분기 (정직 고지)
+
+- **Hammoc 특이 리스크**: 위 문서는 대화형 CLI 기준이다. SDK `query()`(프로그래매틱)가
+  대화형 CLI 와 동일하게 SessionStart hook 을 발화하는지는 *"settingSources 로 설정을
+  로드한다"* 와 미세하게 다른 주장 — 라이브 풀 루프(더미 SessionStart entry 등록 →
+  신규/resume 세션에서 마커 회수 관찰)는 본 작업 환경에서 §6/§11 선례와 동일하게 미수행.
+  **B-18 의 `[SDK]` 수동 시나리오에서 최종 확인** (AC2.a·AC6.a 가 설계상 이 수동 분기를 의도).
+- **per-message 재발화 부작용**: resume 마다 재주입되면 토큰 중복 가능 — 운영 신호로
+  관찰하고, 중복 낭비가 보고되면 후행 스토리에서 *"matcher 를 startup 한정"* 옵션 검토.
+
+---
+
+## 13. Story 31.2 선행 spike #2 — `additionalContext` 문자열 크기 상한 (2026-06-01)
+
+**확인 방법**: 공식 Hooks 문서 (https://code.claude.com/docs/en/hooks) *"Add context
+for Claude"* 섹션 직접 fetch (2026-06-01).
+
+### 확인된 사실 (공식 문서 인용)
+
+| 항목 | 결과 | 근거 인용 |
+|---|---|---|
+| 크기 상한 | **10,000자 하드 캡** (`additionalContext` · `systemMessage` · plain stdout 공통) | *"Hook output strings, including `additionalContext`, `systemMessage`, and plain stdout, are capped at 10,000 characters."* |
+| 초과 시 동작 | 전체 텍스트를 세션 디렉토리 파일로 저장하고 미리보기 + 파일 경로로 대체 (대용량 tool result 와 동일 처리) | *"Output that exceeds this limit is saved to a file and replaced with a preview and file path, the same way large tool results are handled."* |
+
+### 결론 — AC4.c threshold 확정 (잠정 "윈도우 25%" 폐기)
+
+- 초안의 *"컨텍스트 윈도우의 25%"* soft limit 은 **폐기**한다. 실제 제약은 윈도우 비율이
+  아니라 **훅 출력 10,000자 하드 캡**. 10,000자 초과 시 직접 주입이 아니라 파일 spill +
+  미리보기로 대체되어, *"선언 파일/변수를 시스템 프롬프트 앞쪽에 직접 주입"* 의도가 깨진다.
+- **AC4.c soft limit = 8,000자 (10,000 의 80%)** 에서 경고 배지. 메시지 톤: *"조립된
+  컨텍스트가 SessionStart 훅 출력 10,000자 상한에 근접 — 초과 시 직접 주입 대신 파일로
+  분리되어 미리보기+경로만 주입됩니다."*
+- **바이트 vs 문자 주의**: 캡은 **문자(char)** 기준이나 AC4.a 파일 크기 표시는 **바이트**.
+  UTF-8 에서 CJK 는 char 당 3바이트라 바이트 합계는 문자 수의 상한(보수적 과대평가) —
+  바이트 합계를 threshold 프록시로 쓰면 **과경고(보수적)** 쪽이라 안전. 경고 카피에
+  *"문자 기준 10,000 상한 / 표시는 바이트"* 를 i18n 으로 고지해 혼동 방지.
+- 이 결과로 AC4.c 의 threshold 가 토큰 근사(AC4.b) 가용 여부와 무관하게 바이트/문자
+  기준으로 **항상 계산 가능**함이 재확인됨 (AC4.c 본문 정합). soft limit 상수
+  `CONTEXT_BUILDER_SOFT_LIMIT_CHARS = 8000` · `..._HARD_CAP_CHARS = 10000` 으로
+  `contextBuilderStore.ts` 에 단일 출처화.
+
+---
+
 <!-- Add new upstream issues above this line as they are discovered. -->

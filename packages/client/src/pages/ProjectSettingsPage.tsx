@@ -14,9 +14,10 @@ import { useTranslation } from 'react-i18next';
 import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSection';
 import { HarnessWorkbenchSection } from '../components/settings/HarnessWorkbenchSection';
 import { BmadConfigPanel } from '../components/settings/BmadConfigPanel';
+import { ContextBuilderPanel } from '../components/settings/ContextBuilderPanel';
 import { useProjectStore } from '../stores/projectStore';
 
-type TopSection = 'general' | 'harness' | 'bmad';
+type TopSection = 'general' | 'harness' | 'bmad' | 'contextBuilder';
 
 export function ProjectSettingsPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -41,6 +42,9 @@ export function ProjectSettingsPage() {
     ...(isBmadProject
       ? [{ key: 'bmad' as const, label: t('settings:harness.bmad.nav.title', 'BMad 설정') }]
       : []),
+    // Story 31.2 (AC1.a): the context-builder nav is NOT gated — it is available
+    // on all projects (unlike the BMad gate above).
+    { key: 'contextBuilder', label: t('settings:harness.contextBuilder.nav.title', '컨텍스트 빌더') },
   ];
 
   // AC1.a: if BMad was removed mid-session while this tab was active, fall back
@@ -78,6 +82,7 @@ export function ProjectSettingsPage() {
           {activeSection === 'general' && <ProjectSettingsSection projectSlug={projectSlug} />}
           {activeSection === 'harness' && <HarnessWorkbenchSection projectSlug={projectSlug} />}
           {activeSection === 'bmad' && <BmadConfigPanel projectSlug={projectSlug} />}
+          {activeSection === 'contextBuilder' && <ContextBuilderPanel projectSlug={projectSlug} />}
         </div>
       </div>
     </div>

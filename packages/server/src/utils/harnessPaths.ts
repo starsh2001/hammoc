@@ -211,3 +211,66 @@ export async function resolveBmadCoreConfigPath(projectSlug: string): Promise<Re
   const absolutePath = path.join(resolvedRoot, '.bmad-core', 'core-config.yaml');
   return { resolvedRoot, absolutePath };
 }
+
+/**
+ * Story 31.2 (Task A.1): resolve the context-builder manifest path
+ * `<projectRoot>/.hammoc/context-builder.json`. Like the `.bmad-core/`
+ * resolver, the `.hammoc/` tree sits OUTSIDE the project's `.claude/` subtree,
+ * so `resolveHarnessPath` would reject it as a traversal. Accepts only
+ * `projectSlug` (no caller-supplied relative path), so traversal is impossible
+ * by construction. Used by `contextBuilderService` as the single manifest R/W
+ * chokepoint (no other module touches this path via `fs`).
+ */
+export async function resolveContextBuilderManifestPath(
+  projectSlug: string,
+): Promise<ResolvedHarnessPath> {
+  const { resolvedRoot } = await resolveHammocRootForProject(projectSlug);
+  const absolutePath = path.join(resolvedRoot, '.hammoc', 'context-builder.json');
+  return { resolvedRoot, absolutePath };
+}
+
+/**
+ * Story 31.2 (Task A.1): resolve the generated script path
+ * `<projectRoot>/.hammoc/hooks/context-builder.mjs`. Same traversal-proof
+ * construction as `resolveContextBuilderManifestPath`. The generated `.mjs`
+ * runs standalone at every session start, assembling the `additionalContext`
+ * JSON the SessionStart hook emits.
+ */
+export async function resolveContextBuilderScriptPath(
+  projectSlug: string,
+): Promise<ResolvedHarnessPath> {
+  const { resolvedRoot } = await resolveHammocRootForProject(projectSlug);
+  const absolutePath = path.join(resolvedRoot, '.hammoc', 'hooks', 'context-builder.mjs');
+  return { resolvedRoot, absolutePath };
+}
+
+/**
+ * Shared resolver tail for the two `.hammoc/` helpers above — validates the
+ * slug (no null byte / path separators) and resolves the project root. Returns
+ * `resolvedRoot` = the project root (NOT `.hammoc/`), so each caller appends its
+ * own suffix; this keeps the traversal guard in one place.
+ */
+async function resolveHammocRootForProject(projectSlug: string): Promise<ResolvedHarnessPath> {
+  if (!projectSlug || projectSlug.includes('\0')) {
+    const err = new Error('invalid projectSlug') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  if (projectSlug.includes('..') || projectSlug.includes('/') || projectSlug.includes('\\')) {
+    const err = new Error('projectSlug must not contain path separators') as NodeJS.ErrnoException;
+    err.code = HARNESS_ERRORS.HARNESS_PATH_DENIED.code;
+    throw err;
+  }
+  let projectRoot: string;
+  try {
+    projectRoot = await projectService.resolveOriginalPath(projectSlug);
+  } catch (error) {
+    const wrapped = new Error(
+      `Unable to resolve project root for "${projectSlug}": ${(error as Error).message}`,
+    ) as NodeJS.ErrnoException;
+    wrapped.code = HARNESS_ERRORS.HARNESS_ROOT_MISSING.code;
+    throw wrapped;
+  }
+  const resolvedRoot = path.resolve(projectRoot);
+  return { resolvedRoot, absolutePath: resolvedRoot };
+}

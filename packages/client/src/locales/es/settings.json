@@ -685,7 +685,69 @@
                 "envRefMarker": "Referencia a variable de entorno"
             }
         },
+        "contextBuilder": {
+            "nav": { "title": "Constructor de contexto" },
+            "title": "Constructor de contexto",
+            "subtitle": "Inyecta archivos de referencia y variables dinámicas en cada nueva sesión mediante un hook SessionStart.",
+            "enable": "Activar",
+            "registeredNote": "Se registra un hook SessionStart en .claude/settings.json y se regenera con cada cambio.",
+            "loading": "Cargando el constructor de contexto…",
+            "saving": "Guardando…",
+            "externalChange": {
+                "banner": "context-builder.json cambió en el disco.",
+                "reload": "Recargar"
+            },
+            "stale": {
+                "modalTitle": "El archivo cambió en el disco",
+                "body": "El manifiesto se modificó fuera de Hammoc. ¿Recargar la última versión o sobrescribir con la tuya?",
+                "reload": "Recargar",
+                "overwrite": "Sobrescribir"
+            },
+            "size": {
+                "warn": "El contexto ensamblado es {{total}}, cerca del límite de {{cap}} caracteres de salida del hook SessionStart. Por encima, el contenido se vuelca a un archivo + vista previa en lugar de inyectarse directamente.",
+                "over": "El contexto ensamblado es {{total}}, supera el límite de {{cap}} caracteres de salida del hook SessionStart: se volcará a un archivo + vista previa en lugar de inyectarse directamente. Reduce los archivos de referencia."
+            },
+            "files": {
+                "title": "Archivos de referencia",
+                "add": "Añadir archivo",
+                "help": "Los archivos se leen de nuevo al inicio de cada sesión y se inyectan como contexto.",
+                "empty": "No hay archivos de referencia declarados.",
+                "missing": "Archivo no encontrado en el disco: se inyectará un marcador de posición hasta que se restaure.",
+                "missingShort": "ausente",
+                "tokens": "tokens",
+                "tokenApproxNote": "Aproximado (tokens precisos tras el lanzamiento de la función de observabilidad).",
+                "remove": "Quitar archivo"
+            },
+            "variables": {
+                "title": "Variables dinámicas",
+                "help": "Se recalculan al inicio de cada sesión con sus valores más recientes."
+            },
+            "variable": {
+                "gitBranch": { "label": "Rama actual", "description": "Nombre de la rama git actual." },
+                "activeBmadStory": { "label": "Historia BMad activa", "description": "Título + estado del archivo de historia modificado más recientemente." },
+                "recentCommits": { "label": "Commits recientes", "description": "Los N asuntos de commit más recientes." },
+                "today": { "label": "Hoy", "description": "Fecha de hoy (AAAA-MM-DD)." },
+                "uncommittedCount": { "label": "Archivos sin confirmar", "description": "Número de archivos con cambios sin confirmar." }
+            },
+            "commands": {
+                "title": "Comandos personalizados",
+                "warning": "Los comandos personalizados se ejecutan automáticamente al inicio de cada sesión. Añade solo comandos en los que confíes.",
+                "placeholder": "p. ej. npm run status",
+                "acknowledge": "Entiendo que este comando se ejecuta automáticamente al inicio de cada sesión.",
+                "acknowledgeExisting": "Reconocer",
+                "add": "Añadir comando",
+                "remove": "Quitar comando",
+                "secretWarning": "Este comando podría contener un secreto.",
+                "secretBadge": "Posible secreto",
+                "secretNotice": "{{count}} comando(s) personalizado(s) podrían contener un secreto: revísalos antes de compartir este proyecto."
+            }
+        },
         "hook": {
+            "managedBadge": {
+                "contextBuilder": "Constructor de contexto de Hammoc",
+                "contextBuilderTooltip": "Gestionado por el constructor de contexto de Hammoc: edítalo desde el panel del constructor de contexto.",
+                "editWarning": "Esta entrada está gestionada por el constructor de contexto de Hammoc: editarla directamente romperá la sincronización. Edítala desde el panel del constructor de contexto."
+            },
             "empty": {
                 "title": "No hay hooks configurados.",
                 "description": "Añade una entrada de hook al campo hooks de <projectRoot>/.claude/settings.json o tu ~/.claude/settings.json global, o instala un paquete de plugin que registre hooks.",

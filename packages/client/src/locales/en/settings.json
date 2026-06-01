@@ -686,7 +686,69 @@
                 "envRefMarker": "Environment variable reference"
             }
         },
+        "contextBuilder": {
+            "nav": { "title": "Context Builder" },
+            "title": "Context Builder",
+            "subtitle": "Inject reference files and dynamic variables into every new session via a SessionStart hook.",
+            "enable": "Enable",
+            "registeredNote": "A SessionStart hook is registered in .claude/settings.json and regenerated on every change.",
+            "loading": "Loading context builder…",
+            "saving": "Saving…",
+            "externalChange": {
+                "banner": "context-builder.json changed on disk.",
+                "reload": "Reload"
+            },
+            "stale": {
+                "modalTitle": "File changed on disk",
+                "body": "The manifest was modified outside Hammoc. Reload the latest, or overwrite with your version?",
+                "reload": "Reload",
+                "overwrite": "Overwrite"
+            },
+            "size": {
+                "warn": "Assembled context is {{total}}, nearing the {{cap}}-character SessionStart hook output cap. Beyond it the content spills to a file + preview instead of being injected directly.",
+                "over": "Assembled context is {{total}}, over the {{cap}}-character SessionStart hook output cap — it will spill to a file + preview instead of being injected directly. Trim the reference files."
+            },
+            "files": {
+                "title": "Reference files",
+                "add": "Add file",
+                "help": "Files are read fresh at every session start and injected as context.",
+                "empty": "No reference files declared.",
+                "missing": "File not found on disk — it will inject a placeholder until restored.",
+                "missingShort": "missing",
+                "tokens": "tokens",
+                "tokenApproxNote": "Approximate (precise tokens after the observability feature ships).",
+                "remove": "Remove file"
+            },
+            "variables": {
+                "title": "Dynamic variables",
+                "help": "Recomputed at every session start with their latest values."
+            },
+            "variable": {
+                "gitBranch": { "label": "Current branch", "description": "The current git branch name." },
+                "activeBmadStory": { "label": "Active BMad story", "description": "Title + status of the most recently modified story file." },
+                "recentCommits": { "label": "Recent commits", "description": "The N most recent commit subjects." },
+                "today": { "label": "Today", "description": "Today's date (YYYY-MM-DD)." },
+                "uncommittedCount": { "label": "Uncommitted files", "description": "Count of files with uncommitted changes." }
+            },
+            "commands": {
+                "title": "Custom commands",
+                "warning": "Custom commands run automatically at every session start. Only add commands you trust.",
+                "placeholder": "e.g. npm run status",
+                "acknowledge": "I understand this command runs automatically at every session start.",
+                "acknowledgeExisting": "Acknowledge",
+                "add": "Add command",
+                "remove": "Remove command",
+                "secretWarning": "This command may contain a secret.",
+                "secretBadge": "Possible secret",
+                "secretNotice": "{{count}} custom command(s) may contain a secret — review before sharing this project."
+            }
+        },
         "hook": {
+            "managedBadge": {
+                "contextBuilder": "Hammoc Context Builder",
+                "contextBuilderTooltip": "Managed by the Hammoc context builder — edit it from the Context Builder panel.",
+                "editWarning": "This entry is managed by the Hammoc context builder — editing it directly will break sync. Edit it from the Context Builder panel instead."
+            },
             "empty": {
                 "title": "No hooks configured.",
                 "description": "Add a hook entry to <projectRoot>/.claude/settings.json or your global ~/.claude/settings.json under the hooks field, or install a plugin bundle that registers hooks.",

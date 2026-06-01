@@ -222,6 +222,15 @@ class FileWatcherService {
     const projectBmadConfigPath = ref.scope === 'project'
       ? path.join(path.dirname(resolvedRoot), '.bmad-core', 'core-config.yaml')
       : null;
+    // Story 31.2 (Task A.4): the context-builder manifest lives at
+    // `<projectRoot>/.hammoc/context-builder.json`, outside `.claude/` (a
+    // sibling, exactly like `.bmad-core/`). Watched on the same chokidar
+    // instance; emits a discriminated path (`'../.hammoc/context-builder.json'`)
+    // so the client routes the event to the context-builder store without a new
+    // socket event.
+    const projectContextBuilderManifestPath = ref.scope === 'project'
+      ? path.join(path.dirname(resolvedRoot), '.hammoc', 'context-builder.json')
+      : null;
     const watchTargets: string | string[] = ref.scope === 'project'
       ? [
           resolvedRoot,
@@ -229,6 +238,7 @@ class FileWatcherService {
           projectClaudeMdPath as string,
           projectGitignorePath as string,
           projectBmadConfigPath as string,
+          projectContextBuilderManifestPath as string,
         ]
       : resolvedRoot;
 
@@ -248,6 +258,10 @@ class FileWatcherService {
           return false;
         }
         if (projectBmadConfigPath && path.resolve(target) === path.resolve(projectBmadConfigPath)) {
+          return false;
+        }
+        if (projectContextBuilderManifestPath
+          && path.resolve(target) === path.resolve(projectContextBuilderManifestPath)) {
           return false;
         }
         const rel = path.relative(resolvedRoot, target).replace(/\\/g, '/');
@@ -298,6 +312,12 @@ class FileWatcherService {
             // discriminated path the BMad config store keys on to surface the
             // external-change → STALE_WRITE reload/overwrite modal (AC3.d/e).
             rel = '../.bmad-core/core-config.yaml';
+          } else if (projectContextBuilderManifestPath
+            && path.resolve(absolutePath) === path.resolve(projectContextBuilderManifestPath)) {
+            // Story 31.2 (Task A.4): `'../.hammoc/context-builder.json'` is the
+            // discriminated path the context-builder store keys on to surface
+            // the external-change reload banner / STALE_WRITE modal (AC1.b).
+            rel = '../.hammoc/context-builder.json';
           } else {
             rel = path.relative(resolvedRoot, absolutePath).replace(/\\/g, '/');
             if (!rel || rel === '.' || rel.startsWith('..')) return;
