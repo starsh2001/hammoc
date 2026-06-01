@@ -51,6 +51,7 @@ const DEFAULT_BADGE_TO_COLUMN: Record<string, string> = {
   'qa-concerns': 'Doing',
   'qa-passed': 'Review',
   'qa-waived': 'Review',
+  'qa-fixed': 'Review',
   'ready-for-done': 'Review',
   'done': 'Close',
   'closed': 'Close',
@@ -147,6 +148,12 @@ export interface BoardItem {
   externalRef?: string;
   /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
   gateResult?: string;
+  /**
+   * True when the story carries a Hammoc qa-fix marker matching the CURRENT
+   * gate identifier — Dev applied fixes against this gate and QA re-review is
+   * the next step. Derived from an explicit marker comment, never file mtime.
+   */
+  gateFixApplied?: boolean;
   /** Project-relative path to the source file (story/epic markdown) */
   filePath?: string;
   attachments?: IssueAttachment[];

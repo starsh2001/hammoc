@@ -365,34 +365,38 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     });
   }
 
-  // Priority 2: QA gate is FAIL/CONCERNS. We cannot reliably tell from disk
-  // whether Dev has already applied fixes — BMad keeps Status=Ready for Review
-  // and the gate value unchanged in both cases. So we surface BOTH next steps
-  // and let the user choose: apply QA fixes (primary — the common step right
-  // after a review) and request QA re-review (secondary — once fixes are done).
+  // Priority 2: QA gate is FAIL/CONCERNS. Whether the next step is "apply fixes"
+  // or "request re-review" depends on whether Dev has already addressed THIS
+  // gate. apply-qa-fixes leaves an explicit marker in the story (gateFixApplied,
+  // matched server-side against the current gate's identifier), so we show
+  // exactly one action instead of guessing. No marker => not yet applied =>
+  // apply fixes. This also covers external BMad projects with no marker.
   if (qaGatedStory) {
     const num = storyNum(qaGatedStory.file);
     const label = qaGatedStory.title ? `${num}. ${qaGatedStory.title}` : qaGatedStory.file;
     const hasPrior = recs.length > 0;
 
-    recs.push({
-      id: 'review-apply-fixes',
-      title: i18n.t('common:rec.applyQaFixes'),
-      description: label,
-      taskCommand: `%apply-qa-fixes ${num}`,
-      variant: hasPrior ? 'secondary' : 'primary',
-      iconKey: 'wrench',
-      storyFile: qaGatedStory.file,
-    });
-    recs.push({
-      id: 'review-fixed',
-      title: i18n.t('common:rec.qaReview'),
-      description: i18n.t('common:rec.qaReviewDesc', { label }),
-      taskCommand: `%qa-review ${num}`,
-      variant: 'secondary',
-      iconKey: 'check-circle',
-      storyFile: qaGatedStory.file,
-    });
+    if (qaGatedStory.gateFixApplied) {
+      recs.push({
+        id: 'review-fixed',
+        title: i18n.t('common:rec.qaReview'),
+        description: i18n.t('common:rec.qaReviewDesc', { label }),
+        taskCommand: `%qa-review ${num}`,
+        variant: hasPrior ? 'secondary' : 'primary',
+        iconKey: 'check-circle',
+        storyFile: qaGatedStory.file,
+      });
+    } else {
+      recs.push({
+        id: 'review-apply-fixes',
+        title: i18n.t('common:rec.applyQaFixes'),
+        description: label,
+        taskCommand: `%apply-qa-fixes ${num}`,
+        variant: hasPrior ? 'secondary' : 'primary',
+        iconKey: 'wrench',
+        storyFile: qaGatedStory.file,
+      });
+    }
   }
 
   // Priority 4: Ready for Review (no gate) — request QA

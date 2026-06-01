@@ -285,6 +285,10 @@ class BmadStatusService {
 
     // Scan story files
     const storyMap = new Map<number | string, BmadStoryStatus[]>();
+    // Per-story qa-fix marker: maps story file → the gate identifier the marker
+    // references (the gate's `updated` value). Compared against the current gate
+    // below to derive gateFixApplied without any mtime guesswork.
+    const qaFixMarkerByFile = new Map<string, string>();
     if (config.devStoryLocation) {
       const storiesDir = path.join(projectRoot, config.devStoryLocation);
       try {
@@ -307,6 +311,8 @@ class BmadStatusService {
           }
           const storyPath = path.join(storiesDir, file);
           const meta = await this.extractStoryMeta(storyPath);
+          const markerGate = await this.extractQaFixMarker(storyPath);
+          if (markerGate !== undefined) qaFixMarkerByFile.set(file, markerGate);
           const stories = storyMap.get(epicKey) || [];
           stories.push({ file, status: meta.status, ...(meta.title && { title: meta.title }) });
           storyMap.set(epicKey, stories);
@@ -320,7 +326,7 @@ class BmadStatusService {
     // Gate files: qaLocation/gates/{epic}.{story}-{slug}.yml
     // Parse YAML to read the `gate` field (PASS|CONCERNS|FAIL|WAIVED)
     // When multiple gate files exist for the same story, use the newest one (by file mtime)
-    const gateResults = new Map<string, string>();
+    const gateResults = new Map<string, { gate: string; updated?: string }>();
     if (config.qaLocation) {
       const gatesDir = path.join(projectRoot, config.qaLocation, 'gates');
       try {
@@ -349,8 +355,12 @@ class BmadStatusService {
             const content = await fs.readFile(path.join(gatesDir, file), 'utf-8');
             const parsed = yaml.load(content) as Record<string, unknown> | null;
             const gate = (typeof parsed?.gate === 'string') ? parsed.gate.trim().toUpperCase() : '';
+            // `updated` is the gate's identity for marker matching. Stored as-is
+            // (string compare); when QA re-reviews it changes, invalidating any
+            // stale qa-fix marker that pointed at the previous gate.
+            const updated = (typeof parsed?.updated === 'string') ? parsed.updated.trim() : undefined;
             if (gate) {
-              gateResults.set(storyId, gate);
+              gateResults.set(storyId, { gate, updated });
             }
           } catch (err) {
             // Skip unparseable gate files but warn so the operator can spot
@@ -368,20 +378,26 @@ class BmadStatusService {
       }
     }
 
-    // Apply gate results to stories. The recommendation engine and board no
-    // longer infer "Dev applied fixes" from file mtime — that heuristic produced
-    // false positives because review-story itself writes the story (QA Results)
-    // after the gate, making a freshly-reviewed story look stale. Instead the UI
-    // surfaces both "apply fixes" and "re-review" actions and lets the user pick.
+    // Apply gate results to stories. We do NOT infer "Dev applied fixes" from
+    // file mtime — that heuristic mis-fired because review-story writes the story
+    // (QA Results) after the gate, making a freshly-reviewed story look stale.
+    // Instead, apply-qa-fixes leaves an explicit marker in the story recording
+    // which gate it addressed (the gate's `updated` value). gateFixApplied is
+    // true only when that marker matches the CURRENT gate's identifier — so a
+    // later re-review (new `updated`) automatically invalidates a stale marker.
     for (const stories of storyMap.values()) {
       for (const story of stories) {
         // Match regular (1.1), patch-versioned (28.0.5), or standalone (BS-1) story IDs
         const num = story.file.match(/^(\d+\.\d+(?:\.\d+)?)/)?.[1]
           ?? story.file.match(/^(BS-\d+)/)?.[1];
         if (!num) continue;
-        const gate = gateResults.get(num);
-        if (!gate) continue;
-        story.gateResult = gate;
+        const gateInfo = gateResults.get(num);
+        if (!gateInfo) continue;
+        story.gateResult = gateInfo.gate;
+        const markerGate = qaFixMarkerByFile.get(story.file);
+        if (markerGate !== undefined && gateInfo.updated !== undefined && markerGate === gateInfo.updated) {
+          story.gateFixApplied = true;
+        }
       }
     }
 
@@ -539,6 +555,23 @@ class BmadStatusService {
     }
 
     return { status, ...(title && { title }) };
+  }
+
+  /**
+   * Scan a story file for the Hammoc qa-fix marker left by apply-qa-fixes:
+   *   <!-- hammoc:qa-fix-applied gate="<gate updated value>" -->
+   * Returns the captured gate identifier, or undefined if absent. Reads the
+   * whole file because the marker lives in the Dev-owned Completion Notes, which
+   * can sit well past the head region scanned by extractStoryMeta.
+   */
+  private async extractQaFixMarker(filePath: string): Promise<string | undefined> {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const m = content.match(/<!--\s*hammoc:qa-fix-applied\s+gate="([^"]*)"\s*-->/);
+      return m ? m[1].trim() : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /**

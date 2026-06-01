@@ -20,8 +20,34 @@ export interface BadgeDefinition {
 }
 
 // Ordered list — first match wins. More specific conditions (more entries) come first.
+//
+// qa-fixed badge: derived from an explicit qa-fix marker (gateFixApplied) that
+// matches the CURRENT gate — Dev ran apply-qa-fixes against this gate and QA
+// re-review is pending. It shares gateResult with qa-failed/qa-concerns, so its
+// two entries MUST precede those so first-match-wins picks qa-fixed when the
+// marker is present. (Marker-based, never file mtime.)
 export const BADGE_DEFINITIONS: BadgeDefinition[] = [
-  // QA gate compound badges (status + gateResult)
+  // QA gate compound badges (status + gateResult [+ gateFixApplied])
+  {
+    id: 'qa-fixed',
+    label: 'QA Fixed',
+    colorClass: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
+    conditions: [
+      { field: 'status', value: 'Ready for Review' },
+      { field: 'gateResult', value: 'FAIL' },
+      { field: 'gateFixApplied', value: 'true' },
+    ],
+  },
+  {
+    id: 'qa-fixed',
+    label: 'QA Fixed',
+    colorClass: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
+    conditions: [
+      { field: 'status', value: 'Ready for Review' },
+      { field: 'gateResult', value: 'CONCERNS' },
+      { field: 'gateFixApplied', value: 'true' },
+    ],
+  },
   // Ready for Review variants
   {
     id: 'qa-failed',

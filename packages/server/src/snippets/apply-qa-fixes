@@ -1,3 +1,6 @@
 /BMad:agents:dev
 ---
 *review-qa {arg1}
+
+After the fixes are applied and you update the story's Dev Agent Record, record which QA gate you addressed so Hammoc can track it. Read the `updated:` value from this story's QA gate YAML, then append this exact line inside the Completion Notes — replace the placeholder with that value. Do NOT change Status and do NOT edit the gate file:
+<!-- hammoc:qa-fix-applied gate="<paste the gate's updated value>" -->

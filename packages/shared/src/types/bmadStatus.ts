@@ -57,6 +57,14 @@ export interface BmadStoryStatus {
   title?: string; // Story title extracted from the file header
   /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
   gateResult?: string;
+  /**
+   * True when the story carries a Hammoc qa-fix marker whose gate identifier
+   * matches the CURRENT gate — i.e. Dev ran apply-qa-fixes against this exact
+   * gate, so QA re-review is the next step. False/absent means fixes have not
+   * been applied to the current gate yet (next step = apply-qa-fixes).
+   * Derived from an explicit marker comment in the story, never from file mtime.
+   */
+  gateFixApplied?: boolean;
 }
 
 /** Epic with its stories */
