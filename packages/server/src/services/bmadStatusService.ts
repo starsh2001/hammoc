@@ -285,10 +285,6 @@ class BmadStatusService {
 
     // Scan story files
     const storyMap = new Map<number | string, BmadStoryStatus[]>();
-    // Track each story file's mtime so we can compare against gate file mtime
-    // and derive whether the gate verdict is stale (i.e. Dev edited the story
-    // after QA wrote the gate, implying apply-qa-fixes ran and re-review is due).
-    const storyMtimeByFile = new Map<string, number>();
     if (config.devStoryLocation) {
       const storiesDir = path.join(projectRoot, config.devStoryLocation);
       try {
@@ -311,12 +307,6 @@ class BmadStatusService {
           }
           const storyPath = path.join(storiesDir, file);
           const meta = await this.extractStoryMeta(storyPath);
-          try {
-            const stat = await fs.stat(storyPath);
-            storyMtimeByFile.set(file, stat.mtimeMs);
-          } catch {
-            // mtime unavailable; gateStale will be left undefined for this story
-          }
           const stories = storyMap.get(epicKey) || [];
           stories.push({ file, status: meta.status, ...(meta.title && { title: meta.title }) });
           storyMap.set(epicKey, stories);
@@ -330,7 +320,7 @@ class BmadStatusService {
     // Gate files: qaLocation/gates/{epic}.{story}-{slug}.yml
     // Parse YAML to read the `gate` field (PASS|CONCERNS|FAIL|WAIVED)
     // When multiple gate files exist for the same story, use the newest one (by file mtime)
-    const gateResults = new Map<string, { gate: string; mtime: number }>();
+    const gateResults = new Map<string, string>();
     if (config.qaLocation) {
       const gatesDir = path.join(projectRoot, config.qaLocation, 'gates');
       try {
@@ -354,13 +344,13 @@ class BmadStatusService {
           }
         }
         // Read each latest gate file and store decision
-        for (const [storyId, { file, mtime }] of latestGatePerStory) {
+        for (const [storyId, { file }] of latestGatePerStory) {
           try {
             const content = await fs.readFile(path.join(gatesDir, file), 'utf-8');
             const parsed = yaml.load(content) as Record<string, unknown> | null;
             const gate = (typeof parsed?.gate === 'string') ? parsed.gate.trim().toUpperCase() : '';
             if (gate) {
-              gateResults.set(storyId, { gate, mtime });
+              gateResults.set(storyId, gate);
             }
           } catch (err) {
             // Skip unparseable gate files but warn so the operator can spot
@@ -378,23 +368,20 @@ class BmadStatusService {
       }
     }
 
-    // Apply gate results to stories, deriving gateStale from mtime comparison.
-    // gateStale=true means the story file was modified after the gate was last
-    // written — the BMad-standard signal that Dev applied apply-qa-fixes and
-    // QA must re-run *review to issue an updated gate.
+    // Apply gate results to stories. The recommendation engine and board no
+    // longer infer "Dev applied fixes" from file mtime — that heuristic produced
+    // false positives because review-story itself writes the story (QA Results)
+    // after the gate, making a freshly-reviewed story look stale. Instead the UI
+    // surfaces both "apply fixes" and "re-review" actions and lets the user pick.
     for (const stories of storyMap.values()) {
       for (const story of stories) {
         // Match regular (1.1), patch-versioned (28.0.5), or standalone (BS-1) story IDs
         const num = story.file.match(/^(\d+\.\d+(?:\.\d+)?)/)?.[1]
           ?? story.file.match(/^(BS-\d+)/)?.[1];
         if (!num) continue;
-        const gateInfo = gateResults.get(num);
-        if (!gateInfo) continue;
-        story.gateResult = gateInfo.gate;
-        const storyMtime = storyMtimeByFile.get(story.file);
-        if (storyMtime !== undefined) {
-          story.gateStale = storyMtime > gateInfo.mtime;
-        }
+        const gate = gateResults.get(num);
+        if (!gate) continue;
+        story.gateResult = gate;
       }
     }
 

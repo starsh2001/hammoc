@@ -20,38 +20,8 @@ export interface BadgeDefinition {
 }
 
 // Ordered list — first match wins. More specific conditions (more entries) come first.
-//
-// qa-fixed badge note: it has no dedicated gate value (BMad standard gate vocabulary
-// is PASS|CONCERNS|FAIL|WAIVED only). Instead it's derived from a compound condition
-// — gate is FAIL/CONCERNS AND the story file has been modified after the gate was
-// written (gateStale=true), indicating Dev ran apply-qa-fixes and QA re-review is
-// pending. Because qa-fixed shares gateResult with qa-failed/qa-concerns, its two
-// stale-variant entries MUST be listed before those so first-match-wins picks
-// qa-fixed when the staleness signal is present.
 export const BADGE_DEFINITIONS: BadgeDefinition[] = [
-  // QA gate compound badges (status + gateResult [+ gateStale])
-  // qa-fixed (stale FAIL/CONCERNS) — listed first so it takes precedence over
-  // the bare qa-failed/qa-concerns definitions below.
-  {
-    id: 'qa-fixed',
-    label: 'QA Fixed',
-    colorClass: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
-    conditions: [
-      { field: 'status', value: 'Ready for Review' },
-      { field: 'gateResult', value: 'FAIL' },
-      { field: 'gateStale', value: 'true' },
-    ],
-  },
-  {
-    id: 'qa-fixed',
-    label: 'QA Fixed',
-    colorClass: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
-    conditions: [
-      { field: 'status', value: 'Ready for Review' },
-      { field: 'gateResult', value: 'CONCERNS' },
-      { field: 'gateStale', value: 'true' },
-    ],
-  },
+  // QA gate compound badges (status + gateResult)
   // Ready for Review variants
   {
     id: 'qa-failed',

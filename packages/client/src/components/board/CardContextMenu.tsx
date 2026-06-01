@@ -43,6 +43,7 @@ function getStoryWorkflowActions(
   onValidateAndFixAction: ((item: BoardItem) => void) | undefined,
   onValidateOnlyAction: ((item: BoardItem) => void) | undefined,
   onCommitAndComplete: ((item: BoardItem) => void) | undefined,
+  onRequestQAReview: ((item: BoardItem) => void) | undefined,
   t: (key: string) => string,
 ): MenuItem[] {
   // Draft — validate+fix and validate-only
@@ -84,11 +85,17 @@ function getStoryWorkflowActions(
     items.push({ label: t('workflow.completeStory'), action: () => onWorkflowAction(item) });
     return items;
   }
+  // FAIL/CONCERNS gate: we can't tell from disk whether Dev already applied
+  // fixes (BMad keeps Status and the gate value identical either way), so offer
+  // both — apply QA fixes (primary) and request QA re-review (when fixes done).
   if (badgeId === 'qa-failed' || badgeId === 'qa-concerns') {
-    return [{ label: t('workflow.applyQAFix'), action: () => onWorkflowAction(item) }];
-  }
-  if (badgeId === 'qa-fixed') {
-    return [{ label: t('workflow.reviewStory'), action: () => onWorkflowAction(item) }];
+    const items: MenuItem[] = [
+      { label: t('workflow.applyQAFix'), action: () => onWorkflowAction(item) },
+    ];
+    if (onRequestQAReview) {
+      items.push({ label: t('workflow.reviewStory'), action: () => onRequestQAReview(item) });
+    }
+    return items;
   }
 
   // No gate — request QA review
@@ -177,7 +184,7 @@ export function CardContextMenu({
       });
     }
   } else if (item.type === 'story') {
-    const workflowItems = getStoryWorkflowActions(item, badge.id, onWorkflowAction, onValidateAndFixAction, onValidateOnlyAction, onCommitAndComplete, t);
+    const workflowItems = getStoryWorkflowActions(item, badge.id, onWorkflowAction, onValidateAndFixAction, onValidateOnlyAction, onCommitAndComplete, onRequestQAReview, t);
     for (const wi of workflowItems) {
       menuItems.push(wi);
     }

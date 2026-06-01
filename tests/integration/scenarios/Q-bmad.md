@@ -196,7 +196,7 @@
 **절차**:
 1. OS `Write` 또는 파일 탐색기로 `docs/stories/1.1.login.md` 의 `## Status` 값을 `Ready for Review` 로 수동 수정 (Dev 세션 완료 결과를 재현하는 가장 빠른 경로). 절차 5 의 `aria-label="새로고침"` 버튼으로 보드 반영
 2. 보드 새로고침 → 카드 badge `Ready for Review`(노란색/주황 계열) + Review 컬럼 이동 확인
-3. 카드의 `button[aria-haspopup]` 클릭 → 열리는 `[role="menu"]` 안에서 `[role="menuitem"]` 의 텍스트가 `"QA 리뷰 요청"` 하나만 노출되는지 확인 ([CardContextMenu.tsx:95-97](../../packages/client/src/components/board/CardContextMenu.tsx#L95-L97) — `workflow.reviewStory` 라벨, `ready-for-review` / `ready-for-done` / `qa-fixed` 상태에서 노출)
+3. 카드의 `button[aria-haspopup]` 클릭 → 열리는 `[role="menu"]` 안에서 `[role="menuitem"]` 의 텍스트가 `"QA 리뷰 요청"` 하나만 노출되는지 확인 ([CardContextMenu.tsx](../../packages/client/src/components/board/CardContextMenu.tsx) — `workflow.reviewStory` 라벨, gate 가 없는 순수 `ready-for-review` / `ready-for-done` 상태에서 단일 메뉴로 노출)
 4. "QA 리뷰 요청" 메뉴 클릭 → URL 이 `/project/:slug/session/<newId>` 로 이동 (query `task=%25qa-review%201.1` 은 mount 직후 클리어됨)
 5. 3초 대기 → (a) 배지 `"🧪 QA"` (b) 첫 user 메시지 텍스트에 `/BMad:agents:qa` 또는 `*review 1.1` 포함 을 검증. 서버 스니펫 [qa-review](../../packages/server/src/snippets/qa-review) 가 `/BMad:agents:qa` 활성 + `*review 1.1` 메시지로 확장해 QA 에이전트가 즉시 리뷰 실행 중
 6. 배지 + 태스크 메시지 확인 후 **`browser_press_key("Escape")`** 로 SDK 실행 중단 (Opus 비용 방지)
@@ -231,8 +231,8 @@
 **절차 (CONCERNS / FAIL 경로)**:
 1. Q-04-03 PASS 검증 직후, 같은 gate 파일을 `gate: CONCERNS` (또는 `FAIL`) 로 덮어쓴다 (Write 로 재기록)
 2. 보드 새로고침 → 카드 badge 가 `QA Concerns` (또는 `QA Failed`) 로 전환되는지 확인
-3. 카드 메뉴 재오픈 → menuitem 1개 `"QA 반영"` 만 노출되는지 확인 (PASS 경로의 3개 메뉴가 사라졌는지가 핵심 분기 증거)
-4. (옵션) "QA 반영" 클릭 → 새 세션 배지 `"💻 Dev"` + 첫 user 메시지에 `*review-qa 1.1` 또는 `apply-qa-fixes` 관련 텍스트 주입 확인 후 abort. 서버 스니펫 [apply-qa-fixes](../../packages/server/src/snippets/apply-qa-fixes) 가 Dev 에이전트 + `*review-qa 1.1` 으로 확장된다. (이전에는 Dev 가 gate YAML 의 `gate` 필드를 비표준 값 `FIXED` 로 갱신하도록 지시했으나, BMad 표준상 Dev 는 gate 파일을 건드리지 않는다 — Dev `*review-qa` 가 끝난 후의 "수정 완료, QA 재검토 대기" 상태는 서버가 스토리 파일과 gate 파일의 mtime 비교로 `gateStale=true` 를 파생해 카드의 `QA Fixed` 뱃지로 표시한다)
+3. 카드 메뉴 재오픈 → menuitem 2개 `"QA 반영"` + `"QA 리뷰 요청"` 이 노출되는지 확인 (PASS 경로의 3개 메뉴가 사라지고, FAIL/CONCERNS 의 두 다음 단계가 함께 노출되는 것이 핵심 분기 증거)
+4. (옵션) "QA 반영" 클릭 → 새 세션 배지 `"💻 Dev"` + 첫 user 메시지에 `*review-qa 1.1` 또는 `apply-qa-fixes` 관련 텍스트 주입 확인 후 abort. 서버 스니펫 [apply-qa-fixes](../../packages/server/src/snippets/apply-qa-fixes) 가 Dev 에이전트 + `*review-qa 1.1` 으로 확장된다. (BMad 표준상 Dev 는 gate 파일을 건드리지 않고 스토리 Status 도 `Ready for Review` 로 유지하므로, "수정 완료, QA 재검토 대기" 상태와 "방금 QA 가 verdict 를 낸" 상태는 디스크에서 구분되지 않는다. 과거엔 스토리·gate 파일 mtime 비교로 `gateStale` 을 파생해 `QA Fixed` 뱃지/단일 메뉴로 추측했으나 오탐이 잦아 제거했다 — 이제 Hammoc 은 추측하지 않고 `"QA 반영"`·`"QA 리뷰 요청"` 두 액션을 함께 노출해 사용자가 고르게 한다)
 
 **기대 결과**:
 - PASS → Done 이동 가능 (Dev 에이전트가 파일 status `Done`으로 업데이트, `%mark-done` 태스크로 처리됨)

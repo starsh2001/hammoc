@@ -238,7 +238,7 @@ export function ProjectBoardPage() {
       task = `%mark-done ${storyNum}`;
     } else if (badge.id === 'qa-failed' || badge.id === 'qa-concerns') {
       task = `%apply-qa-fixes ${storyNum}`;
-    } else if (badge.id === 'qa-fixed' || badge.id === 'ready-for-review' || badge.id === 'ready-for-done') {
+    } else if (badge.id === 'ready-for-review' || badge.id === 'ready-for-done') {
       task = `%qa-review ${storyNum}`;
     } else {
       return;

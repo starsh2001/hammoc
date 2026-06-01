@@ -294,25 +294,17 @@ function buildPreArchitectureRecommendations(data: BmadStatusResponse): NextStep
 
 /**
  * Find the first review-status story matching specific gate results.
- *
- * The optional `stale` filter distinguishes "Dev applied apply-qa-fixes after
- * the QA verdict" (gateStale=true) from "QA verdict is fresh, Dev has not yet
- * touched the story" (gateStale!=true). This lets us derive the "QA Fixed"
- * state without a non-standard gate value: instead of looking for gate='FIXED',
- * look for gate in ['FAIL','CONCERNS'] AND gateStale=true.
  */
 function firstReviewStoryByGate(
   data: BmadStatusResponse,
-  options: { gates: (string | undefined)[]; stale?: boolean },
+  options: { gates: (string | undefined)[] },
 ): BmadStoryStatus | undefined {
   const reviewStatuses = ['Review', 'Ready for Review', 'Ready for Done'];
   for (const epic of data.epics) {
     const found = epic.stories.find((s) => {
       if (!reviewStatuses.some((rs) => statusMatches(s.status, rs))) return false;
       if (!options.gates.includes(s.gateResult)) return false;
-      if (options.stale === undefined) return true;
-      if (options.stale) return s.gateStale === true;
-      return s.gateStale !== true;
+      return true;
     });
     if (found) return found;
   }
@@ -323,13 +315,11 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
   const recs: NextStepRecommendation[] = [];
 
   // Discover stories at each workflow stage.
-  // qaFixed vs qaFailed share the same gate values (FAIL/CONCERNS); they're
-  // distinguished by gateStale — stale=true means Dev already applied fixes
-  // and the next action is QA re-review, stale!=true means Dev still needs to
-  // address QA findings.
+  // A FAIL/CONCERNS gate has two possible next steps (Dev applies fixes, or QA
+  // re-reviews after fixes). BMad keeps Status and the gate value identical in
+  // both cases, so we don't guess — Priority 2 emits both actions.
   const qaDoneStory = firstReviewStoryByGate(data, { gates: ['PASS', 'WAIVED'] });
-  const qaFixedStory = firstReviewStoryByGate(data, { gates: ['FAIL', 'CONCERNS'], stale: true });
-  const qaFailedStory = firstReviewStoryByGate(data, { gates: ['FAIL', 'CONCERNS'], stale: false });
+  const qaGatedStory = firstReviewStoryByGate(data, { gates: ['FAIL', 'CONCERNS'] });
   const reviewStory = firstReviewStoryByGate(data, { gates: [undefined] });
   const inProgressStory = firstStoryByStatus(data, 'In Progress', 'InProgress');
   const approvedStory = firstStoryByStatus(data, 'Approved');
@@ -375,27 +365,14 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     });
   }
 
-  // Priority 2: QA fixed — re-review
-  if (qaFixedStory) {
-    const num = storyNum(qaFixedStory.file);
-    const label = qaFixedStory.title ? `${num}. ${qaFixedStory.title}` : qaFixedStory.file;
-    const hasPrior = recs.length > 0;
-
-    recs.push({
-      id: 'review-fixed',
-      title: i18n.t('common:rec.qaReview'),
-      description: i18n.t('common:rec.qaReviewDesc', { label }),
-      taskCommand: `%qa-review ${num}`,
-      variant: hasPrior ? 'secondary' : 'primary',
-      iconKey: 'check-circle',
-      storyFile: qaFixedStory.file,
-    });
-  }
-
-  // Priority 3: QA failed/concerns — apply fixes
-  if (qaFailedStory) {
-    const num = storyNum(qaFailedStory.file);
-    const label = qaFailedStory.title ? `${num}. ${qaFailedStory.title}` : qaFailedStory.file;
+  // Priority 2: QA gate is FAIL/CONCERNS. We cannot reliably tell from disk
+  // whether Dev has already applied fixes — BMad keeps Status=Ready for Review
+  // and the gate value unchanged in both cases. So we surface BOTH next steps
+  // and let the user choose: apply QA fixes (primary — the common step right
+  // after a review) and request QA re-review (secondary — once fixes are done).
+  if (qaGatedStory) {
+    const num = storyNum(qaGatedStory.file);
+    const label = qaGatedStory.title ? `${num}. ${qaGatedStory.title}` : qaGatedStory.file;
     const hasPrior = recs.length > 0;
 
     recs.push({
@@ -405,7 +382,16 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
       taskCommand: `%apply-qa-fixes ${num}`,
       variant: hasPrior ? 'secondary' : 'primary',
       iconKey: 'wrench',
-      storyFile: qaFailedStory.file,
+      storyFile: qaGatedStory.file,
+    });
+    recs.push({
+      id: 'review-fixed',
+      title: i18n.t('common:rec.qaReview'),
+      description: i18n.t('common:rec.qaReviewDesc', { label }),
+      taskCommand: `%qa-review ${num}`,
+      variant: 'secondary',
+      iconKey: 'check-circle',
+      storyFile: qaGatedStory.file,
     });
   }
 

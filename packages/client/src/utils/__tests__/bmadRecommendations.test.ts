@@ -106,10 +106,9 @@ describe('computeNextSteps — Phase 1 (pre-prd)', () => {
     expect(prdRec).toBeDefined();
     expect(prdRec!.variant).toBe('primary');
 
-    // brainstorming still primary (not yet done)
-    const brainstormRec = recommendations.find((r) => r.id === 'brainstorming');
-    expect(brainstormRec).toBeDefined();
-    expect(brainstormRec!.variant).toBe('primary');
+    // brainstorming is hidden once a Brief exists — the discovery phase that
+    // precedes the brief is considered done (see the guard in bmadRecommendations).
+    expect(recommendations.find((r) => r.id === 'brainstorming')).toBeUndefined();
   });
 
   it('recommends market-research and competitor-analysis as secondary', () => {
@@ -155,12 +154,12 @@ describe('computeNextSteps — Phase 1 (pre-prd)', () => {
     expect(ids).toEqual(['brief', 'create-prd', 'market-research', 'competitor-analysis']);
   });
 
-  it('orders recommendations: brainstorming → PRD when brief exists', () => {
+  it('orders recommendations: PRD → secondary docs when brief exists (brainstorming hidden)', () => {
     const { recommendations } = computeNextSteps(
       makeData({ suppExisting: ['brief'] }),
     );
     const ids = recommendations.map((r) => r.id);
-    expect(ids).toEqual(['brainstorming', 'create-prd', 'market-research', 'competitor-analysis']);
+    expect(ids).toEqual(['create-prd', 'market-research', 'competitor-analysis']);
   });
 });
 
@@ -402,58 +401,42 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(fixRec!.variant).toBe('primary');
   });
 
-  // gateStale=true is the BMad-standard-conformant signal that Dev ran
-  // apply-qa-fixes after QA's verdict — the next action is QA re-review,
-  // not another apply-fixes pass.
-  it('recommends QA re-review when Review + FAIL gate + gateStale=true', () => {
+  // A FAIL/CONCERNS gate has two valid next steps, and BMad leaves Status and
+  // the gate value identical whether or not Dev applied fixes. The engine no
+  // longer guesses via file mtime (that produced false "already fixed"
+  // verdicts) — it surfaces BOTH: apply-fixes (primary) and re-review (secondary).
+  it('surfaces both apply-fixes (primary) and re-review (secondary) for Review + FAIL gate', () => {
     const { recommendations } = computeNextSteps(
       makeData({
         ...baseOpts,
-        epics: [{
-          number: 1,
-          name: 'E1',
-          stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL', gateStale: true }],
-        }],
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL' }] }],
       }),
     );
+    const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
+    expect(fixRec).toBeDefined();
+    expect(fixRec!.variant).toBe('primary');
+    expect(fixRec!.taskCommand).toBe('%apply-qa-fixes 1.1');
+
     const reviewRec = recommendations.find((r) => r.id === 'review-fixed');
     expect(reviewRec).toBeDefined();
-    expect(reviewRec!.variant).toBe('primary');
+    expect(reviewRec!.variant).toBe('secondary');
     expect(reviewRec!.taskCommand).toBe('%qa-review 1.1');
-    // The apply-fixes recommendation must NOT appear — Dev already fixed.
-    expect(recommendations.find((r) => r.id === 'review-apply-fixes')).toBeUndefined();
   });
 
-  it('recommends QA re-review when Review + CONCERNS gate + gateStale=true', () => {
+  it('surfaces both apply-fixes (primary) and re-review (secondary) for Review + CONCERNS gate', () => {
     const { recommendations } = computeNextSteps(
       makeData({
         ...baseOpts,
-        epics: [{
-          number: 1,
-          name: 'E1',
-          stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'CONCERNS', gateStale: true }],
-        }],
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'CONCERNS' }] }],
       }),
     );
+    const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
+    expect(fixRec).toBeDefined();
+    expect(fixRec!.variant).toBe('primary');
+
     const reviewRec = recommendations.find((r) => r.id === 'review-fixed');
     expect(reviewRec).toBeDefined();
-    expect(reviewRec!.variant).toBe('primary');
-    expect(recommendations.find((r) => r.id === 'review-apply-fixes')).toBeUndefined();
-  });
-
-  it('still recommends apply-fixes when FAIL gate and gateStale is undefined (fresh QA verdict)', () => {
-    const { recommendations } = computeNextSteps(
-      makeData({
-        ...baseOpts,
-        epics: [{
-          number: 1,
-          name: 'E1',
-          stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL' }], // no gateStale field
-        }],
-      }),
-    );
-    expect(recommendations.find((r) => r.id === 'review-apply-fixes')).toBeDefined();
-    expect(recommendations.find((r) => r.id === 'review-fixed')).toBeUndefined();
+    expect(reviewRec!.variant).toBe('secondary');
   });
 
   it('recommends creating next story when stories are Done but more are planned', () => {
