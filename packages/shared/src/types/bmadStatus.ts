@@ -58,13 +58,15 @@ export interface BmadStoryStatus {
   /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
   gateResult?: string;
   /**
-   * True when the story carries a Hammoc qa-fix marker whose gate identifier
-   * matches the CURRENT gate — i.e. Dev ran apply-qa-fixes against this exact
-   * gate, so QA re-review is the next step. False/absent means fixes have not
-   * been applied to the current gate yet (next step = apply-qa-fixes).
-   * Derived from an explicit marker comment in the story, never from file mtime.
+   * The story's qa-fix marker state relative to the CURRENT gate:
+   *  - 'applied': Dev ran apply-qa-fixes against this gate → QA re-review is next
+   *  - 'needed':  QA flagged this gate (CONCERNS/FAIL) and it is not yet
+   *               addressed → apply-qa-fixes is next
+   *  - undefined: no marker matches the current gate (legacy story or external
+   *               BMad project) → the UI shows BOTH actions and lets the user pick
+   * Derived from explicit marker comments in the story, never from file mtime.
    */
-  gateFixApplied?: boolean;
+  gateFixState?: 'needed' | 'applied';
 }
 
 /** Epic with its stories */

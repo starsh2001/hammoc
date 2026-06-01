@@ -401,9 +401,9 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(fixRec!.variant).toBe('primary');
   });
 
-  // A FAIL/CONCERNS gate without a qa-fix marker = Dev hasn't addressed the
-  // current gate yet → apply-fixes is the only next step (no re-review).
-  it('recommends apply-fixes only for Review + FAIL gate with no qa-fix marker', () => {
+  // No qa-fix marker for the current gate (legacy story / external project) →
+  // we can't tell if Dev applied fixes, so BOTH actions show (apply-fixes first).
+  it('shows both apply-fixes (primary) and re-review (secondary) for FAIL gate with no marker', () => {
     const { recommendations } = computeNextSteps(
       makeData({
         ...baseOpts,
@@ -413,18 +413,33 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
     expect(fixRec).toBeDefined();
     expect(fixRec!.variant).toBe('primary');
+    const reviewRec = recommendations.find((r) => r.id === 'review-fixed');
+    expect(reviewRec).toBeDefined();
+    expect(reviewRec!.variant).toBe('secondary');
+  });
+
+  // gateFixState='needed' = QA flagged the gate, not yet addressed → apply-fixes only.
+  it("recommends apply-fixes only for FAIL gate when gateFixState is 'needed'", () => {
+    const { recommendations } = computeNextSteps(
+      makeData({
+        ...baseOpts,
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL', gateFixState: 'needed' }] }],
+      }),
+    );
+    const fixRec = recommendations.find((r) => r.id === 'review-apply-fixes');
+    expect(fixRec).toBeDefined();
+    expect(fixRec!.variant).toBe('primary');
     expect(fixRec!.taskCommand).toBe('%apply-qa-fixes 1.1');
     expect(recommendations.find((r) => r.id === 'review-fixed')).toBeUndefined();
   });
 
-  // gateFixApplied=true means apply-qa-fixes left a marker matching the CURRENT
-  // gate (Dev addressed this gate) → QA re-review is next, not another fix pass.
-  // Marker-based, never file mtime.
-  it('recommends QA re-review only for Review + FAIL gate when gateFixApplied', () => {
+  // gateFixState='applied' = a marker matching the current gate (Dev addressed
+  // this gate) → QA re-review only. Marker-based, never file mtime.
+  it("recommends QA re-review only for FAIL gate when gateFixState is 'applied'", () => {
     const { recommendations } = computeNextSteps(
       makeData({
         ...baseOpts,
-        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL', gateFixApplied: true }] }],
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'FAIL', gateFixState: 'applied' }] }],
       }),
     );
     const reviewRec = recommendations.find((r) => r.id === 'review-fixed');
@@ -434,11 +449,11 @@ describe('computeNextSteps — Phase 3 (implementation)', () => {
     expect(recommendations.find((r) => r.id === 'review-apply-fixes')).toBeUndefined();
   });
 
-  it('recommends QA re-review only for Review + CONCERNS gate when gateFixApplied', () => {
+  it("recommends QA re-review only for CONCERNS gate when gateFixState is 'applied'", () => {
     const { recommendations } = computeNextSteps(
       makeData({
         ...baseOpts,
-        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'CONCERNS', gateFixApplied: true }] }],
+        epics: [{ number: 1, name: 'E1', stories: [{ file: '1.1.story.md', status: 'Review', gateResult: 'CONCERNS', gateFixState: 'applied' }] }],
       }),
     );
     const reviewRec = recommendations.find((r) => r.id === 'review-fixed');

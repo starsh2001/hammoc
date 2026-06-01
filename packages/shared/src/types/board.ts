@@ -149,11 +149,11 @@ export interface BoardItem {
   /** Latest QA gate decision: 'PASS' | 'CONCERNS' | 'FAIL' | 'WAIVED' */
   gateResult?: string;
   /**
-   * True when the story carries a Hammoc qa-fix marker matching the CURRENT
-   * gate identifier — Dev applied fixes against this gate and QA re-review is
-   * the next step. Derived from an explicit marker comment, never file mtime.
+   * qa-fix marker state vs the CURRENT gate: 'applied' (Dev addressed this gate
+   * → re-review), 'needed' (QA flagged it, not yet addressed → apply fixes), or
+   * undefined (no matching marker → show both actions). Marker-based, not mtime.
    */
-  gateFixApplied?: boolean;
+  gateFixState?: 'needed' | 'applied';
   /** Project-relative path to the source file (story/epic markdown) */
   filePath?: string;
   attachments?: IssueAttachment[];

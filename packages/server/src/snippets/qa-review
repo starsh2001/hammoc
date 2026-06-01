@@ -1,3 +1,7 @@
 /BMad:agents:qa
 ---
 *review {arg1}
+
+When you write the quality gate, if the gate decision is CONCERNS or FAIL, also record it in the story so Hammoc tracks that a fix is pending. Append this exact line inside the story's QA Results section, replacing the placeholder with the gate's `updated:` value you just wrote:
+<!-- hammoc:qa-fix gate="<paste the gate's updated value>" applied="false" -->
+For a PASS or WAIVED gate, do not add this marker.

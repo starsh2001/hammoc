@@ -231,10 +231,10 @@
 **절차 (CONCERNS / FAIL 경로)**:
 1. Q-04-03 PASS 검증 직후, 같은 gate 파일을 `gate: CONCERNS` (또는 `FAIL`) 로 덮어쓴다 (Write 로 재기록)
 2. 보드 새로고침 → 카드 badge 가 `QA Concerns` (또는 `QA Failed`) 로 전환되는지 확인
-3. 카드 메뉴 재오픈 → menuitem 1개 `"QA 반영"` 만 노출되는지 확인 (아직 qa-fix 표식이 없는 미반영 상태. PASS 경로의 3개 메뉴가 사라진 게 핵심 분기 증거)
-4. (옵션) "QA 반영" 클릭 → 새 세션 배지 `"💻 Dev"` + 첫 user 메시지에 `*review-qa 1.1` 또는 `apply-qa-fixes` 관련 텍스트 주입 확인 후 abort. 서버 스니펫 [apply-qa-fixes](../../packages/server/src/snippets/apply-qa-fixes) 가 Dev 에이전트 + `*review-qa 1.1` 으로 확장되며, **반영 후 스토리 Completion Notes 에 qa-fix 표식 주석**(`<!-- hammoc:qa-fix-applied gate="<게이트 updated 값>" -->`)을 남기도록 지시한다.
+3. 카드 메뉴 재오픈 → **수동 주입한 게이트라 qa-fix 표식이 없으므로** menuitem 2개 (`"QA 반영"` + `"QA 리뷰 요청"`) 가 노출되는지 확인 (PASS 경로의 3개 메뉴가 사라진 게 분기 증거). 실제 QA 세션이 게이트를 발급하면 `applied="false"` 표식이 생겨 `"QA 반영"` 단독으로 좁혀진다.
+4. (옵션) "QA 반영" 클릭 → 새 세션 배지 `"💻 Dev"` + 첫 user 메시지에 `*review-qa 1.1` 또는 `apply-qa-fixes` 관련 텍스트 주입 확인 후 abort. 서버 스니펫 [apply-qa-fixes](../../packages/server/src/snippets/apply-qa-fixes) 가 Dev 에이전트 + `*review-qa 1.1` 으로 확장되며, **반영 후 스토리 Completion Notes 에 qa-fix 표식**(`<!-- hammoc:qa-fix gate="<게이트 updated>" applied="true" -->`)을 남기도록 지시한다.
 
-   표식 흐름 (코어 분기): BMad 표준상 Dev 는 gate 파일을 건드리지 않고 Status 도 `Ready for Review` 로 유지한다 — gate 를 바꿀 권위는 QA 재리뷰뿐이다. 대신 서버([bmadStatusService.ts](../../packages/server/src/services/bmadStatusService.ts))가 스토리의 표식 주석에서 게이트 식별자를 읽어 **현재 게이트의 `updated` 값과 대조**한다. 일치하면(=Dev 가 바로 이 게이트를 반영함) `gateFixApplied=true` → 카드 배지가 `QA Fixed`(하늘색) + 메뉴가 `"QA 리뷰 요청"` 으로 전환된다. 재리뷰로 게이트가 새로 발급되면 `updated` 가 바뀌어 표식이 옛 식별자를 가리키게 되므로 자동 무효화된다(다시 `"QA 반영"`). 과거의 스토리·gate 파일 mtime 비교(`gateStale`)는 review-story 가 게이트보다 스토리를 늦게 써서 갓 리뷰한 스토리를 "반영됨"으로 오판했기에 제거하고, 명시적 표식으로 대체했다. 표식 개념이 없는 외부 BMad 프로젝트는 폴백으로 항상 `"QA 반영"` 을 보여준다.
+   표식 흐름 (코어 분기): BMad 표준상 Dev·QA 모두 Status 어휘와 gate 값을 표준대로 유지한다 — gate 를 바꿀 권위는 QA 재리뷰뿐이다. 대신 양쪽이 스토리에 HTML 주석 표식을 남기고, 서버([bmadStatusService.ts](../../packages/server/src/services/bmadStatusService.ts))가 표식의 게이트 식별자를 **현재 게이트의 `updated` 값과 대조**해 `gateFixState` 를 파생한다: QA 리뷰가 CONCERNS/FAIL 게이트와 함께 남긴 `applied="false"` → `needed`(→ `"QA 반영"` 단독), Dev 반영이 남긴 `applied="true"` → `applied`(→ 배지 `QA Fixed`(하늘색) + `"QA 리뷰 요청"` 단독). 재리뷰로 `updated` 가 바뀌면 표식이 옛 식별자를 가리켜 자동 무효화된다. **현재 게이트와 일치하는 표식이 없으면**(레거시 스토리·외부 BMad 프로젝트·수동 게이트) 반영 여부를 알 수 없으므로 두 액션을 모두 노출한다. (과거의 스토리·gate mtime 비교 `gateStale` 은 review-story 가 게이트보다 스토리를 늦게 써서 갓 리뷰한 스토리를 "반영됨"으로 오판했기에 제거하고 명시적 표식으로 대체했다.)
 
 **기대 결과**:
 - PASS → Done 이동 가능 (Dev 에이전트가 파일 status `Done`으로 업데이트, `%mark-done` 태스크로 처리됨)

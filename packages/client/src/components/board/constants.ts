@@ -21,13 +21,13 @@ export interface BadgeDefinition {
 
 // Ordered list — first match wins. More specific conditions (more entries) come first.
 //
-// qa-fixed badge: derived from an explicit qa-fix marker (gateFixApplied) that
-// matches the CURRENT gate — Dev ran apply-qa-fixes against this gate and QA
-// re-review is pending. It shares gateResult with qa-failed/qa-concerns, so its
-// two entries MUST precede those so first-match-wins picks qa-fixed when the
-// marker is present. (Marker-based, never file mtime.)
+// qa-fixed badge: gateFixState='applied' means a qa-fix marker matching the
+// CURRENT gate says Dev addressed it — QA re-review is pending. It shares
+// gateResult with qa-failed/qa-concerns, so its two entries MUST precede those
+// so first-match-wins picks qa-fixed when the marker is present. (Marker-based,
+// never file mtime.)
 export const BADGE_DEFINITIONS: BadgeDefinition[] = [
-  // QA gate compound badges (status + gateResult [+ gateFixApplied])
+  // QA gate compound badges (status + gateResult [+ gateFixState])
   {
     id: 'qa-fixed',
     label: 'QA Fixed',
@@ -35,7 +35,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     conditions: [
       { field: 'status', value: 'Ready for Review' },
       { field: 'gateResult', value: 'FAIL' },
-      { field: 'gateFixApplied', value: 'true' },
+      { field: 'gateFixState', value: 'applied' },
     ],
   },
   {
@@ -45,7 +45,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     conditions: [
       { field: 'status', value: 'Ready for Review' },
       { field: 'gateResult', value: 'CONCERNS' },
-      { field: 'gateFixApplied', value: 'true' },
+      { field: 'gateFixState', value: 'applied' },
     ],
   },
   // Ready for Review variants

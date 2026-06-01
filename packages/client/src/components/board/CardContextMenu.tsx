@@ -43,6 +43,7 @@ function getStoryWorkflowActions(
   onValidateAndFixAction: ((item: BoardItem) => void) | undefined,
   onValidateOnlyAction: ((item: BoardItem) => void) | undefined,
   onCommitAndComplete: ((item: BoardItem) => void) | undefined,
+  onRequestQAReview: ((item: BoardItem) => void) | undefined,
   t: (key: string) => string,
 ): MenuItem[] {
   // Draft — validate+fix and validate-only
@@ -84,12 +85,21 @@ function getStoryWorkflowActions(
     items.push({ label: t('workflow.completeStory'), action: () => onWorkflowAction(item) });
     return items;
   }
-  // FAIL/CONCERNS gate with no matching qa-fix marker → Dev applies fixes.
+  // FAIL/CONCERNS gate: apply fixes is always offered. With no qa-fix marker for
+  // the current gate (gateFixState undefined — legacy story or external project)
+  // we can't tell if Dev already fixed it, so also offer re-review. A 'needed'
+  // marker means QA flagged it and it's unaddressed → apply fixes only.
   if (badgeId === 'qa-failed' || badgeId === 'qa-concerns') {
-    return [{ label: t('workflow.applyQAFix'), action: () => onWorkflowAction(item) }];
+    const items: MenuItem[] = [
+      { label: t('workflow.applyQAFix'), action: () => onWorkflowAction(item) },
+    ];
+    if (item.gateFixState !== 'needed' && onRequestQAReview) {
+      items.push({ label: t('workflow.reviewStory'), action: () => onRequestQAReview(item) });
+    }
+    return items;
   }
-  // qa-fixed = the story carries a marker matching the current gate (Dev already
-  // applied fixes) → the next step is QA re-review.
+  // qa-fixed = a marker matching the current gate says Dev applied fixes
+  // → the next step is QA re-review.
   if (badgeId === 'qa-fixed') {
     return [{ label: t('workflow.reviewStory'), action: () => onWorkflowAction(item) }];
   }
@@ -180,7 +190,7 @@ export function CardContextMenu({
       });
     }
   } else if (item.type === 'story') {
-    const workflowItems = getStoryWorkflowActions(item, badge.id, onWorkflowAction, onValidateAndFixAction, onValidateOnlyAction, onCommitAndComplete, t);
+    const workflowItems = getStoryWorkflowActions(item, badge.id, onWorkflowAction, onValidateAndFixAction, onValidateOnlyAction, onCommitAndComplete, onRequestQAReview, t);
     for (const wi of workflowItems) {
       menuItems.push(wi);
     }

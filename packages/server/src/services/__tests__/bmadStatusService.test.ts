@@ -593,10 +593,9 @@ describe('bmadStatusService', () => {
     expect(epic1!.stories[0].gateResult).toBe('CONCERNS');
   });
 
-  // TC-BS-13d: an explicit qa-fix marker whose gate id matches the current
-  // gate's `updated` sets gateFixApplied (marker-based; replaces the old mtime
-  // signal). This is the "Dev addressed THIS gate, re-review pending" state.
-  it('sets gateFixApplied=true when the story qa-fix marker matches the current gate', async () => {
+  // TC-BS-13d: an 'applied' qa-fix marker matching the current gate's `updated`
+  // sets gateFixState='applied' (Dev addressed THIS gate, re-review pending).
+  it("sets gateFixState='applied' when an applied marker matches the current gate", async () => {
     (yaml.load as ReturnType<typeof vi.fn>).mockImplementation((content: string) => {
       if (typeof content === 'string' && content.includes('gate:')) {
         return { gate: 'CONCERNS', story: '1.1', updated: '2026-06-01T10:00:00Z' };
@@ -613,7 +612,7 @@ describe('bmadStatusService', () => {
       if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
       if (filePath.endsWith('1.1-foo.yml')) return "schema: 1\nstory: '1.1'\ngate: CONCERNS\nupdated: '2026-06-01T10:00:00Z'\n";
       if (filePath.endsWith('1.1.story.md')) {
-        return '# Story 1.1\n\n## Status\n\nReady for Review\n\n## Dev Agent Record\n\n<!-- hammoc:qa-fix-applied gate="2026-06-01T10:00:00Z" -->\n';
+        return '# Story 1.1\n\n## Status\n\nReady for Review\n\n## Dev Agent Record\n\n<!-- hammoc:qa-fix gate="2026-06-01T10:00:00Z" applied="true" -->\n';
       }
       throw makeEnoent();
     });
@@ -632,12 +631,53 @@ describe('bmadStatusService', () => {
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
     const epic1 = result.epics.find((e) => e.number === 1);
     expect(epic1!.stories[0].gateResult).toBe('CONCERNS');
-    expect(epic1!.stories[0].gateFixApplied).toBe(true);
+    expect(epic1!.stories[0].gateFixState).toBe('applied');
   });
 
-  // TC-BS-13e: a marker pointing at a DIFFERENT gate id (a previous review) does
-  // NOT set gateFixApplied — the current gate has not been addressed yet.
-  it('leaves gateFixApplied unset when the marker points at a different gate', async () => {
+  // TC-BS-13e: a 'needed' marker (QA flagged the gate) matching the current gate
+  // sets gateFixState='needed' (not yet addressed → apply fixes).
+  it("sets gateFixState='needed' when a needed marker matches the current gate", async () => {
+    (yaml.load as ReturnType<typeof vi.fn>).mockImplementation((content: string) => {
+      if (typeof content === 'string' && content.includes('gate:')) {
+        return { gate: 'CONCERNS', story: '1.1', updated: '2026-06-01T10:00:00Z' };
+      }
+      return {
+        prd: { prdFile: 'docs/prd.md', prdSharded: false },
+        architecture: { architectureFile: 'docs/architecture.md', architectureSharded: false },
+        devStoryLocation: 'docs/stories',
+        qa: { qaLocation: 'docs/qa' },
+      };
+    });
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
+      if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
+      if (filePath.endsWith('1.1-foo.yml')) return "schema: 1\nstory: '1.1'\ngate: CONCERNS\nupdated: '2026-06-01T10:00:00Z'\n";
+      if (filePath.endsWith('1.1.story.md')) {
+        return '# Story 1.1\n\n## Status\n\nReady for Review\n\n## QA Results\n\n<!-- hammoc:qa-fix gate="2026-06-01T10:00:00Z" applied="false" -->\n';
+      }
+      throw makeEnoent();
+    });
+    mockStat.mockImplementation(async (p: string) => {
+      if (p.endsWith('1.1-foo.yml')) return { mtimeMs: 1000 };
+      if (p.endsWith('1.1.story.md')) return { mtimeMs: 1000 };
+      throw makeEnoent();
+    });
+    mockReaddir.mockImplementation(async (dir: string) => {
+      if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['1.1.story.md'];
+      if (dir === path.join(PROJECT_ROOT, 'docs/qa', 'gates')) return ['1.1-foo.yml'];
+      throw makeEnoent();
+    });
+    setupOpenMock('# Story 1.1\n\n## Status\n\nReady for Review\n');
+
+    const result = await bmadStatusService.scanProject(PROJECT_ROOT);
+    const epic1 = result.epics.find((e) => e.number === 1);
+    expect(epic1!.stories[0].gateResult).toBe('CONCERNS');
+    expect(epic1!.stories[0].gateFixState).toBe('needed');
+  });
+
+  // TC-BS-13f: a marker pointing at a DIFFERENT gate id (a previous review) does
+  // NOT set gateFixState — the current gate has not been addressed yet.
+  it('leaves gateFixState unset when the marker points at a different gate', async () => {
     (yaml.load as ReturnType<typeof vi.fn>).mockImplementation((content: string) => {
       if (typeof content === 'string' && content.includes('gate:')) {
         return { gate: 'CONCERNS', story: '1.1', updated: '2026-06-02T10:00:00Z' };
@@ -654,7 +694,7 @@ describe('bmadStatusService', () => {
       if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
       if (filePath.endsWith('1.1-foo.yml')) return "schema: 1\nstory: '1.1'\ngate: CONCERNS\nupdated: '2026-06-02T10:00:00Z'\n";
       if (filePath.endsWith('1.1.story.md')) {
-        return '# Story 1.1\n\n## Status\n\nReady for Review\n\n<!-- hammoc:qa-fix-applied gate="2026-06-01T10:00:00Z" -->\n';
+        return '# Story 1.1\n\n## Status\n\nReady for Review\n\n<!-- hammoc:qa-fix gate="2026-06-01T10:00:00Z" applied="true" -->\n';
       }
       throw makeEnoent();
     });
@@ -673,7 +713,7 @@ describe('bmadStatusService', () => {
     const result = await bmadStatusService.scanProject(PROJECT_ROOT);
     const epic1 = result.epics.find((e) => e.number === 1);
     expect(epic1!.stories[0].gateResult).toBe('CONCERNS');
-    expect(epic1!.stories[0].gateFixApplied).toBeUndefined();
+    expect(epic1!.stories[0].gateFixState).toBeUndefined();
   });
 
   // TC-BS-14: 스토리 파일이 없는 에픽도 빈 stories 배열로 반환한다

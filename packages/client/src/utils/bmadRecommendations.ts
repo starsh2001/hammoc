@@ -365,37 +365,45 @@ function buildImplementationRecommendations(data: BmadStatusResponse): NextStepR
     });
   }
 
-  // Priority 2: QA gate is FAIL/CONCERNS. Whether the next step is "apply fixes"
-  // or "request re-review" depends on whether Dev has already addressed THIS
-  // gate. apply-qa-fixes leaves an explicit marker in the story (gateFixApplied,
-  // matched server-side against the current gate's identifier), so we show
-  // exactly one action instead of guessing. No marker => not yet applied =>
-  // apply fixes. This also covers external BMad projects with no marker.
+  // Priority 2: QA gate is FAIL/CONCERNS. The next step depends on the story's
+  // qa-fix marker for THIS gate (gateFixState, matched server-side):
+  //  - 'applied' (Dev addressed this gate)   → request QA re-review (only)
+  //  - 'needed'  (QA flagged, not addressed)  → apply QA fixes (only)
+  //  - undefined (no marker: legacy story or external project) → show BOTH and
+  //    let the user pick, since we can't tell whether fixes were applied.
   if (qaGatedStory) {
     const num = storyNum(qaGatedStory.file);
     const label = qaGatedStory.title ? `${num}. ${qaGatedStory.title}` : qaGatedStory.file;
     const hasPrior = recs.length > 0;
+    const state = qaGatedStory.gateFixState;
 
-    if (qaGatedStory.gateFixApplied) {
-      recs.push({
-        id: 'review-fixed',
-        title: i18n.t('common:rec.qaReview'),
-        description: i18n.t('common:rec.qaReviewDesc', { label }),
-        taskCommand: `%qa-review ${num}`,
-        variant: hasPrior ? 'secondary' : 'primary',
-        iconKey: 'check-circle',
-        storyFile: qaGatedStory.file,
-      });
+    const applyFixesRec: NextStepRecommendation = {
+      id: 'review-apply-fixes',
+      title: i18n.t('common:rec.applyQaFixes'),
+      description: label,
+      taskCommand: `%apply-qa-fixes ${num}`,
+      variant: hasPrior ? 'secondary' : 'primary',
+      iconKey: 'wrench',
+      storyFile: qaGatedStory.file,
+    };
+    const reReviewRec: NextStepRecommendation = {
+      id: 'review-fixed',
+      title: i18n.t('common:rec.qaReview'),
+      description: i18n.t('common:rec.qaReviewDesc', { label }),
+      taskCommand: `%qa-review ${num}`,
+      variant: hasPrior ? 'secondary' : 'primary',
+      iconKey: 'check-circle',
+      storyFile: qaGatedStory.file,
+    };
+
+    if (state === 'applied') {
+      recs.push(reReviewRec);
+    } else if (state === 'needed') {
+      recs.push(applyFixesRec);
     } else {
-      recs.push({
-        id: 'review-apply-fixes',
-        title: i18n.t('common:rec.applyQaFixes'),
-        description: label,
-        taskCommand: `%apply-qa-fixes ${num}`,
-        variant: hasPrior ? 'secondary' : 'primary',
-        iconKey: 'wrench',
-        storyFile: qaGatedStory.file,
-      });
+      // No marker for the current gate → offer both; apply-fixes leads.
+      recs.push(applyFixesRec);
+      recs.push({ ...reReviewRec, variant: 'secondary' });
     }
   }
 

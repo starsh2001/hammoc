@@ -675,7 +675,7 @@ class IssueService {
             status: story.status === 'Review' ? 'Ready for Review' : story.status,
             ...(epicNumber !== undefined && { epicNumber }),
             ...(story.gateResult && { gateResult: story.gateResult }),
-            ...(story.gateFixApplied && { gateFixApplied: story.gateFixApplied }),
+            ...(story.gateFixState && { gateFixState: story.gateFixState }),
             filePath: `${storyLocation}/${story.file}`,
             ...(updatedAt !== undefined && { updatedAt }),
           };
