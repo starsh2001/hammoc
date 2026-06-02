@@ -16,9 +16,10 @@ import { HarnessWorkbenchSection } from '../components/settings/HarnessWorkbench
 import { BmadConfigPanel } from '../components/settings/BmadConfigPanel';
 import { ContextBuilderPanel } from '../components/settings/ContextBuilderPanel';
 import { ObservabilityPanel } from '../components/settings/ObservabilityPanel';
+import { MarketplacePanel } from '../components/settings/MarketplacePanel';
 import { useProjectStore } from '../stores/projectStore';
 
-type TopSection = 'general' | 'harness' | 'bmad' | 'contextBuilder' | 'observability';
+type TopSection = 'general' | 'harness' | 'bmad' | 'contextBuilder' | 'observability' | 'marketplace';
 
 export function ProjectSettingsPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -48,6 +49,9 @@ export function ProjectSettingsPage() {
     { key: 'contextBuilder', label: t('settings:harness.contextBuilder.nav.title', '컨텍스트 빌더') },
     // Story 31.3 (AC-A1.a): the observability nav is likewise NOT gated.
     { key: 'observability', label: t('settings:harness.observability.nav.title', '관측성') },
+    // Story 31.4 (AC1.a): the marketplace nav is likewise NOT gated — available
+    // on all projects (plugin discovery is not project-type specific).
+    { key: 'marketplace', label: t('settings:harness.marketplace.nav.title', '마켓플레이스') },
   ];
 
   // AC1.a: if BMad was removed mid-session while this tab was active, fall back
@@ -87,6 +91,7 @@ export function ProjectSettingsPage() {
           {activeSection === 'bmad' && <BmadConfigPanel projectSlug={projectSlug} />}
           {activeSection === 'contextBuilder' && <ContextBuilderPanel projectSlug={projectSlug} />}
           {activeSection === 'observability' && <ObservabilityPanel projectSlug={projectSlug} />}
+          {activeSection === 'marketplace' && <MarketplacePanel projectSlug={projectSlug} />}
         </div>
       </div>
     </div>

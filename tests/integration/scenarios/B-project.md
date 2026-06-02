@@ -1363,4 +1363,82 @@
 - browser·queue 두 실행 경로 모두 동일 seam 통과(단일 공유 빌더)
 - orphan(시작했으나 미반환)은 nullable 필드로 관측 신호화, 중복 레코드 없음
 
+## B20. 플러그인 마켓플레이스 탐색 + 설치/제거 가이드 (Story 31.4) `[SDK]` `[EDGE]` `[CORE]`
+
+> 프로젝트 설정 탭의 **"마켓플레이스"** nav(`project-settings-nav-marketplace`, 게이팅 없음 — 모든 프로젝트 노출)에서 `MarketplacePanel`이 마운트된다. 등록 마켓들의 `marketplace.json` `plugins[]` 를 합쳐 카드 카탈로그로 보여주고(유형 배지·컴포넌트 요약·설치됨 배지), 카테고리/유형/이름/설치여부로 필터하며, "설치/제거/마켓추가"는 **복사 가이드 모달**로 안내한다. 선행 spike 2건([sdk-upstream-issues.md](../sdk-upstream-issues.md) §17·§18) 결과 **둘 다 부정** → (a) `/plugin` 은 SDK(헤드리스 채팅) 환경에서 미해석이라 "채팅에서 바로 시도" 버튼 **없음**, (b) 직접 설치/마켓추가 자동화 **없음** — 모달은 명령 복사 전용. 설치 자체는 외부 Claude CLI 세션에서 수행하고, 그 결과는 user-scope 하네스 와처가 감지해 본 카탈로그의 "설치됨" 배지와 28.1 PluginPanel 을 자동 갱신한다.
+
+### B-20-01: 마켓플레이스 nav 진입 → 카탈로그 카드 + 유형 배지 + 컴포넌트 요약 렌더 (AC1) `[CORE]`
+
+**전제**: `~/.claude/plugins/known_marketplaces.json` 에 마켓 1개 이상 등록 + 그 `marketplace.json` 의 `plugins[]` 가 1건 이상(없으면 빈 상태 문구로 대체).
+
+**시나리오**:
+1. 프로젝트 설정 탭 진입 → 좌측 nav 의 `project-settings-nav-marketplace` 클릭
+2. `MarketplacePanel` 마운트 확인(`marketplace-add-button` · `marketplace-filters` 노출)
+3. 카탈로그 카드(`marketplace-card`)들이 렌더되는지 확인
+
+**기대 결과**:
+- 각 카드에 유형 배지(`marketplace-type-badge` = Plugin/External MCP, `source` 접두로 판정)·마켓명·버전·카테고리·author·컴포넌트 요약(개수 산정 가능 시) 표시
+- 이미 설치된 엔트리는 설치됨 배지(`marketplace-card-installed-badge`) + "제거" 버튼(`marketplace-card-uninstall`), 미설치는 "설치" 버튼(`marketplace-card-install`)
+- 카탈로그가 비면 `marketplace`의 빈 상태 문구
+
+### B-20-02: 카테고리/유형/이름/설치여부 필터 적용 → 카드 리스트 갱신 (AC1) `[EDGE]`
+
+**전제**: 카테고리·유형이 다른 엔트리 2건 이상.
+
+**시나리오**:
+1. `marketplace-filter-search` 에 이름/설명 일부 입력 → 카드 리스트가 부분일치로 좁혀지는지 확인
+2. `marketplace-filter-category` · `marketplace-filter-type` · `marketplace-filter-installed` 각각 선택 → 조합 필터 반영 확인
+3. 일치 항목이 0이면 `marketplace-no-matches` 문구로 전환, 필터 초기화 시 전체 복원
+
+**기대 결과**:
+- 필터는 클라이언트측 즉시 반영(서버 재요청 없음 — 카탈로그는 1회 로드 후 메모리 필터)
+- 이름 검색은 대소문자 무시 + 설명까지 매칭
+
+### B-20-03: "설치"/"제거" 클릭 → 가이드 모달 + 명령 복사 (AC2·AC3) `[CORE]`
+
+**시나리오**:
+1. 미설치 카드의 `marketplace-card-install` 클릭 → `marketplace-modal` 표시, `marketplace-modal-command` = `/plugin install <name>@<marketplace>`
+2. `marketplace-modal-copy` 클릭 → 클립보드에 명령 복사(복사됨 표시)
+3. 이미 설치된 카드의 `marketplace-card-uninstall` 클릭 → 동일 모달에 `/plugin uninstall <name>@<marketplace>` (제거 가이드, 동일 흐름)
+4. `marketplace-modal-close` 또는 오버레이/Esc 로 닫기
+
+**기대 결과**:
+- 모달은 **복사 가이드 전용** — "Hammoc 채팅에서 바로 시도"·"자동 설치" 같은 버튼은 **존재하지 않음**(spike 부정)
+- "외부 Claude CLI 세션에서 실행" 고지(`marketplace-modal-cliOnlyNote` 류) 동반
+- 설치/제거 모두 명령 문자열만 다른 동일 모달 흐름
+
+### B-20-04: 한 마켓 marketplace.json 손상 → 그 마켓만 오류 배지, 나머지 정상 (AC5) `[EDGE]`
+
+**전제**: 마켓 2개 등록, 그중 1개의 `marketplace.json` 을 일부러 깨진 JSON 으로.
+
+**시나리오**:
+1. 마켓플레이스 nav 진입
+2. 손상된 마켓이 `marketplace-market-errors` 안의 `marketplace-market-error` 배지로 격리 표시되는지 확인
+3. 정상 마켓의 카드들은 그대로 렌더되는지 확인
+
+**기대 결과**:
+- 한 마켓 파싱 실패가 전체 카탈로그를 막지 않음(부분 성공) — 28.1 의 전체 abort 와 의도적으로 다름
+- 오류 배지에 마켓명 + 코드(예: HARNESS_PARSE_ERROR) 표기
+
+### B-20-05: (수동 / `[SDK]`) 외부 CLI 실제 설치 → 와처가 "설치됨" 자동 갱신 (AC2.b) `[SDK]`
+
+**시나리오** (릴리즈 직전 수동 — 실제 설치 의존, spike 와 무관):
+1. 마켓플레이스 패널을 띄워둔 상태에서, 외부 Claude CLI 세션에서 카탈로그의 한 플러그인을 `/plugin install <name>@<marketplace>` 로 실제 설치
+2. `installed_plugins.json` 변경을 user-scope 하네스 와처가 감지 → 본 카탈로그의 해당 카드가 "설치됨" 배지로, 28.1 PluginPanel 의 설치 카드 리스트도 자동 갱신되는지 확인
+
+**기대 결과**:
+- 신규 소켓/와처 없이 기존 `harness:external-change`(user scope) + 추적 4경로 매처 재사용으로 양쪽이 동시에 refetch
+- (AC6 분기) `installed_plugins.json` 이 미인식 포맷이면 `marketplace-format-warning` 배너가 뜨고 카탈로그는 degrade(크래시 없음)
+
+### B-20-06: 마켓플레이스 추가 URL 폼 → 명령 복사 (AC4) `[EDGE]`
+
+**시나리오**:
+1. `marketplace-add-button` 클릭 → 모달에 URL 입력(`marketplace-modal-url-input`) 노출
+2. URL 입력 → `marketplace-modal-command` 이 `/plugin marketplace add <url>` 로 실시간 갱신
+3. `marketplace-modal-copy` 로 복사
+
+**기대 결과**:
+- URL 폼 + 명령 복사 전용(자동 마켓 추가 버튼 없음 — spike #2 부정 + 임의 URL clone 보안경계)
+- 추가 자체는 외부 CLI 수행 → `known_marketplaces.json` 변경을 와처가 감지해 카탈로그 자동 갱신(B-20-05 경로 재사용)
+
 

@@ -1650,6 +1650,68 @@
                     "malformedManifestDetail": "El manifiesto falta o no se pudo analizar. Consulte los detalles a continuación."
                 }
             }
+        },
+        "marketplace": {
+            "nav": {
+                "title": "Marketplace"
+            },
+            "empty": "No hay marketplaces registrados",
+            "emptyHint": "Añade un marketplace para explorar los complementos instalables.",
+            "noMatches": "Ningún complemento coincide con los filtros actuales.",
+            "forbidden": "No se puede leer el directorio de complementos.",
+            "addButton": "Añadir marketplace",
+            "card": {
+                "install": "Instalar",
+                "uninstall": "Desinstalar",
+                "installed": "Instalado"
+            },
+            "type": {
+                "standard": "Complemento",
+                "externalMcp": "MCP externo"
+            },
+            "counts": {
+                "skills": "Skills",
+                "commands": "Comandos",
+                "agents": "Agentes",
+                "hooks": "Hooks",
+                "mcpServers": "MCP"
+            },
+            "filters": {
+                "searchPlaceholder": "Buscar complementos…",
+                "category": "Categoría",
+                "allCategories": "Todas las categorías",
+                "type": "Tipo",
+                "allTypes": "Todos los tipos",
+                "installedLabel": "Estado de instalación",
+                "installed": {
+                    "all": "Todos",
+                    "installed": "Instalados",
+                    "notInstalled": "No instalados"
+                }
+            },
+            "modal": {
+                "installTitle": "Instalar complemento",
+                "uninstallTitle": "Desinstalar complemento",
+                "addTitle": "Añadir marketplace",
+                "cliHint": "Pega este comando en tu sesión de Claude CLI.",
+                "cliOnlyNote": "Los comandos de complementos se ejecutan en una sesión externa de Claude CLI, no en el chat de Hammoc.",
+                "copy": "Copiar",
+                "copied": "Copiado",
+                "close": "Cerrar",
+                "addUrlLabel": "URL del marketplace",
+                "addUrlPlaceholder": "https://github.com/owner/repo"
+            },
+            "error": {
+                "market": "No se pudo cargar el marketplace «{{marketplace}}» ({{code}})"
+            },
+            "formatWarning": {
+                "title": "Formato del archivo de instalación de complementos no reconocido",
+                "reason": {
+                    "unrecognizedVersion": "Se detectó una versión no reconocida de installed_plugins.json; el estado de instalación puede estar incompleto.",
+                    "unexpectedShape": "installed_plugins.json tiene una estructura inesperada; el estado de instalación puede estar incompleto.",
+                    "parseError": "No se pudo analizar installed_plugins.json; el estado de instalación no está disponible."
+                }
+            }
         }
     },
     "permissionMode": {

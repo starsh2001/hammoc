@@ -1651,6 +1651,68 @@
                     "malformedManifestDetail": "매니페스트 파일이 없거나 파싱에 실패했습니다. 아래 상세 정보를 참고하세요."
                 }
             }
+        },
+        "marketplace": {
+            "nav": {
+                "title": "마켓플레이스"
+            },
+            "empty": "등록된 마켓플레이스가 없습니다",
+            "emptyHint": "마켓플레이스를 추가하면 설치 가능한 플러그인을 둘러볼 수 있습니다.",
+            "noMatches": "현재 필터에 맞는 플러그인이 없습니다.",
+            "forbidden": "플러그인 디렉토리를 읽을 수 없습니다.",
+            "addButton": "마켓플레이스 추가",
+            "card": {
+                "install": "설치",
+                "uninstall": "제거",
+                "installed": "설치됨"
+            },
+            "type": {
+                "standard": "플러그인",
+                "externalMcp": "외부 MCP"
+            },
+            "counts": {
+                "skills": "스킬",
+                "commands": "커맨드",
+                "agents": "에이전트",
+                "hooks": "훅",
+                "mcpServers": "MCP"
+            },
+            "filters": {
+                "searchPlaceholder": "플러그인 검색…",
+                "category": "카테고리",
+                "allCategories": "전체 카테고리",
+                "type": "유형",
+                "allTypes": "전체 유형",
+                "installedLabel": "설치 여부",
+                "installed": {
+                    "all": "전체",
+                    "installed": "설치됨",
+                    "notInstalled": "미설치"
+                }
+            },
+            "modal": {
+                "installTitle": "플러그인 설치",
+                "uninstallTitle": "플러그인 제거",
+                "addTitle": "마켓플레이스 추가",
+                "cliHint": "이 명령을 Claude CLI 세션에 붙여넣으세요.",
+                "cliOnlyNote": "플러그인 명령은 외부 Claude CLI 세션에서 실행됩니다 — Hammoc 채팅에서는 실행되지 않습니다.",
+                "copy": "복사",
+                "copied": "복사됨",
+                "close": "닫기",
+                "addUrlLabel": "마켓플레이스 URL",
+                "addUrlPlaceholder": "https://github.com/owner/repo"
+            },
+            "error": {
+                "market": "마켓플레이스 \"{{marketplace}}\" 를 불러오지 못했습니다 ({{code}})"
+            },
+            "formatWarning": {
+                "title": "플러그인 설치 파일 형식을 인식할 수 없습니다",
+                "reason": {
+                    "unrecognizedVersion": "installed_plugins.json 의 버전을 인식하지 못했습니다. 설치 여부 표시가 불완전할 수 있습니다.",
+                    "unexpectedShape": "installed_plugins.json 의 구조가 예상과 다릅니다. 설치 여부 표시가 불완전할 수 있습니다.",
+                    "parseError": "installed_plugins.json 을 파싱하지 못했습니다. 설치 여부를 표시할 수 없습니다."
+                }
+            }
         }
     },
     "permissionMode": {

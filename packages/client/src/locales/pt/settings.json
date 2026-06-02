@@ -1650,6 +1650,68 @@
                     "malformedManifestDetail": "O manifesto está ausente ou não pôde ser analisado. Veja os detalhes abaixo."
                 }
             }
+        },
+        "marketplace": {
+            "nav": {
+                "title": "Marketplace"
+            },
+            "empty": "Nenhum marketplace registrado",
+            "emptyHint": "Adicione um marketplace para explorar os plugins instaláveis.",
+            "noMatches": "Nenhum plugin corresponde aos filtros atuais.",
+            "forbidden": "Não foi possível ler o diretório de plugins.",
+            "addButton": "Adicionar marketplace",
+            "card": {
+                "install": "Instalar",
+                "uninstall": "Desinstalar",
+                "installed": "Instalado"
+            },
+            "type": {
+                "standard": "Plugin",
+                "externalMcp": "MCP externo"
+            },
+            "counts": {
+                "skills": "Skills",
+                "commands": "Comandos",
+                "agents": "Agentes",
+                "hooks": "Hooks",
+                "mcpServers": "MCP"
+            },
+            "filters": {
+                "searchPlaceholder": "Buscar plugins…",
+                "category": "Categoria",
+                "allCategories": "Todas as categorias",
+                "type": "Tipo",
+                "allTypes": "Todos os tipos",
+                "installedLabel": "Estado de instalação",
+                "installed": {
+                    "all": "Todos",
+                    "installed": "Instalados",
+                    "notInstalled": "Não instalados"
+                }
+            },
+            "modal": {
+                "installTitle": "Instalar plugin",
+                "uninstallTitle": "Desinstalar plugin",
+                "addTitle": "Adicionar marketplace",
+                "cliHint": "Cole este comando na sua sessão do Claude CLI.",
+                "cliOnlyNote": "Os comandos de plugin são executados em uma sessão externa do Claude CLI — não no chat do Hammoc.",
+                "copy": "Copiar",
+                "copied": "Copiado",
+                "close": "Fechar",
+                "addUrlLabel": "URL do marketplace",
+                "addUrlPlaceholder": "https://github.com/owner/repo"
+            },
+            "error": {
+                "market": "Falha ao carregar o marketplace \"{{marketplace}}\" ({{code}})"
+            },
+            "formatWarning": {
+                "title": "Formato do arquivo de instalação de plugins não reconhecido",
+                "reason": {
+                    "unrecognizedVersion": "Foi detectada uma versão não reconhecida de installed_plugins.json; o estado de instalação pode estar incompleto.",
+                    "unexpectedShape": "installed_plugins.json tem uma estrutura inesperada; o estado de instalação pode estar incompleto.",
+                    "parseError": "Não foi possível analisar installed_plugins.json; o estado de instalação está indisponível."
+                }
+            }
         }
     },
     "permissionMode": {

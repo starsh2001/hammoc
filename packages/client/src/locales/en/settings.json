@@ -1651,6 +1651,68 @@
                     "malformedManifestDetail": "The manifest file is missing or could not be parsed. See details below."
                 }
             }
+        },
+        "marketplace": {
+            "nav": {
+                "title": "Marketplace"
+            },
+            "empty": "No marketplaces registered",
+            "emptyHint": "Add a marketplace to browse installable plugins.",
+            "noMatches": "No plugins match the current filters.",
+            "forbidden": "Cannot read the plugins directory.",
+            "addButton": "Add marketplace",
+            "card": {
+                "install": "Install",
+                "uninstall": "Uninstall",
+                "installed": "Installed"
+            },
+            "type": {
+                "standard": "Plugin",
+                "externalMcp": "External MCP"
+            },
+            "counts": {
+                "skills": "Skills",
+                "commands": "Commands",
+                "agents": "Agents",
+                "hooks": "Hooks",
+                "mcpServers": "MCP"
+            },
+            "filters": {
+                "searchPlaceholder": "Search plugins…",
+                "category": "Category",
+                "allCategories": "All categories",
+                "type": "Type",
+                "allTypes": "All types",
+                "installedLabel": "Installed state",
+                "installed": {
+                    "all": "All",
+                    "installed": "Installed",
+                    "notInstalled": "Not installed"
+                }
+            },
+            "modal": {
+                "installTitle": "Install plugin",
+                "uninstallTitle": "Uninstall plugin",
+                "addTitle": "Add marketplace",
+                "cliHint": "Paste this command into your Claude CLI session.",
+                "cliOnlyNote": "Plugin commands run in an external Claude CLI session — they are not executed from the Hammoc chat.",
+                "copy": "Copy",
+                "copied": "Copied",
+                "close": "Close",
+                "addUrlLabel": "Marketplace URL",
+                "addUrlPlaceholder": "https://github.com/owner/repo"
+            },
+            "error": {
+                "market": "Failed to load marketplace \"{{marketplace}}\" ({{code}})"
+            },
+            "formatWarning": {
+                "title": "Plugin install file format not recognized",
+                "reason": {
+                    "unrecognizedVersion": "An unrecognized installed_plugins.json version was detected; installed state may be incomplete.",
+                    "unexpectedShape": "installed_plugins.json has an unexpected shape; installed state may be incomplete.",
+                    "parseError": "installed_plugins.json could not be parsed; installed state is unavailable."
+                }
+            }
         }
     },
     "permissionMode": {

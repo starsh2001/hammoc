@@ -157,3 +157,6 @@ export * from './types/bmadCoreConfig.js';
 
 // Story 31.2: SessionStart context-builder DTOs (Epic 31)
 export * from './types/contextBuilder.js';
+
+// Story 31.4: Plugin marketplace catalog DTOs (Epic 31)
+export * from './types/marketplace.js';

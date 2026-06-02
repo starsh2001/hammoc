@@ -1650,6 +1650,68 @@
                     "malformedManifestDetail": "マニフェストファイルが見つからないか解析に失敗しました。以下の詳細を確認してください。"
                 }
             }
+        },
+        "marketplace": {
+            "nav": {
+                "title": "マーケットプレイス"
+            },
+            "empty": "登録されたマーケットプレイスがありません",
+            "emptyHint": "マーケットプレイスを追加すると、インストール可能なプラグインを閲覧できます。",
+            "noMatches": "現在のフィルターに一致するプラグインがありません。",
+            "forbidden": "プラグインディレクトリを読み取れません。",
+            "addButton": "マーケットプレイスを追加",
+            "card": {
+                "install": "インストール",
+                "uninstall": "アンインストール",
+                "installed": "インストール済み"
+            },
+            "type": {
+                "standard": "プラグイン",
+                "externalMcp": "外部 MCP"
+            },
+            "counts": {
+                "skills": "スキル",
+                "commands": "コマンド",
+                "agents": "エージェント",
+                "hooks": "フック",
+                "mcpServers": "MCP"
+            },
+            "filters": {
+                "searchPlaceholder": "プラグインを検索…",
+                "category": "カテゴリ",
+                "allCategories": "すべてのカテゴリ",
+                "type": "種類",
+                "allTypes": "すべての種類",
+                "installedLabel": "インストール状態",
+                "installed": {
+                    "all": "すべて",
+                    "installed": "インストール済み",
+                    "notInstalled": "未インストール"
+                }
+            },
+            "modal": {
+                "installTitle": "プラグインをインストール",
+                "uninstallTitle": "プラグインをアンインストール",
+                "addTitle": "マーケットプレイスを追加",
+                "cliHint": "このコマンドを Claude CLI セッションに貼り付けてください。",
+                "cliOnlyNote": "プラグインコマンドは外部の Claude CLI セッションで実行されます — Hammoc チャットでは実行されません。",
+                "copy": "コピー",
+                "copied": "コピーしました",
+                "close": "閉じる",
+                "addUrlLabel": "マーケットプレイス URL",
+                "addUrlPlaceholder": "https://github.com/owner/repo"
+            },
+            "error": {
+                "market": "マーケットプレイス「{{marketplace}}」を読み込めませんでした ({{code}})"
+            },
+            "formatWarning": {
+                "title": "プラグインインストールファイルの形式を認識できません",
+                "reason": {
+                    "unrecognizedVersion": "installed_plugins.json のバージョンを認識できませんでした。インストール状態が不完全な可能性があります。",
+                    "unexpectedShape": "installed_plugins.json の構造が想定と異なります。インストール状態が不完全な可能性があります。",
+                    "parseError": "installed_plugins.json を解析できませんでした。インストール状態を表示できません。"
+                }
+            }
         }
     },
     "permissionMode": {

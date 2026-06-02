@@ -1650,6 +1650,68 @@
                     "malformedManifestDetail": "清单文件缺失或解析失败。请参阅下方详情。"
                 }
             }
+        },
+        "marketplace": {
+            "nav": {
+                "title": "插件市场"
+            },
+            "empty": "尚未注册任何市场",
+            "emptyHint": "添加市场后即可浏览可安装的插件。",
+            "noMatches": "没有符合当前筛选条件的插件。",
+            "forbidden": "无法读取插件目录。",
+            "addButton": "添加市场",
+            "card": {
+                "install": "安装",
+                "uninstall": "卸载",
+                "installed": "已安装"
+            },
+            "type": {
+                "standard": "插件",
+                "externalMcp": "外部 MCP"
+            },
+            "counts": {
+                "skills": "技能",
+                "commands": "命令",
+                "agents": "代理",
+                "hooks": "钩子",
+                "mcpServers": "MCP"
+            },
+            "filters": {
+                "searchPlaceholder": "搜索插件…",
+                "category": "类别",
+                "allCategories": "所有类别",
+                "type": "类型",
+                "allTypes": "所有类型",
+                "installedLabel": "安装状态",
+                "installed": {
+                    "all": "全部",
+                    "installed": "已安装",
+                    "notInstalled": "未安装"
+                }
+            },
+            "modal": {
+                "installTitle": "安装插件",
+                "uninstallTitle": "卸载插件",
+                "addTitle": "添加市场",
+                "cliHint": "将此命令粘贴到你的 Claude CLI 会话中。",
+                "cliOnlyNote": "插件命令在外部 Claude CLI 会话中运行 — 不会在 Hammoc 聊天中执行。",
+                "copy": "复制",
+                "copied": "已复制",
+                "close": "关闭",
+                "addUrlLabel": "市场 URL",
+                "addUrlPlaceholder": "https://github.com/owner/repo"
+            },
+            "error": {
+                "market": "无法加载市场 “{{marketplace}}”（{{code}}）"
+            },
+            "formatWarning": {
+                "title": "无法识别插件安装文件格式",
+                "reason": {
+                    "unrecognizedVersion": "检测到无法识别的 installed_plugins.json 版本；安装状态可能不完整。",
+                    "unexpectedShape": "installed_plugins.json 结构异常；安装状态可能不完整。",
+                    "parseError": "无法解析 installed_plugins.json；安装状态不可用。"
+                }
+            }
         }
     },
     "permissionMode": {

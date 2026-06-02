@@ -20,6 +20,7 @@ import { harnessBundleController, handleBundleUpload } from '../controllers/harn
 import { bmadCoreConfigController } from '../controllers/bmadCoreConfigController.js';
 import { contextBuilderController } from '../controllers/contextBuilderController.js';
 import { observabilityController } from '../controllers/observabilityController.js';
+import { marketplaceController } from '../controllers/marketplaceController.js';
 
 const router = Router();
 
@@ -167,5 +168,13 @@ router.put('/observability/tokenizer-pref', smallBodyParser, observabilityContro
 router.get('/observability/:projectSlug/mcp-calls', observabilityController.mcpCalls);
 router.get('/observability/:projectSlug/token-attribution', observabilityController.tokenAttribution);
 router.post('/observability/:projectSlug/exact-count', smallBodyParser, observabilityController.exactCount);
+
+// Story 31.4 — Plugin marketplace catalog (read-only). Single GET endpoint:
+// the unified `plugins[]` catalog across registered marketplaces + installed
+// join + per-market partial failures + installed_plugins.json format warning.
+// No install/add POST — direct-install automation was dropped after spike #2
+// (negative); installs are copy-only command guides (see sdk-upstream-issues.md
+// §17·§18).
+router.get('/marketplace/:projectSlug/catalog', marketplaceController.catalog);
 
 export default router;

@@ -548,4 +548,67 @@ Claude 4.x 와 정합하지 않음(정확도 우려의 근원). 신규(네이티
 
 ---
 
+## 17. Story 31.4 선행 spike #1 — Agent SDK 의 `/plugin install` 슬래시 해석 (2026-06-02)
+
+**확인 방법**: 격리 하니스에서 실제 `@anthropic-ai/claude-agent-sdk@0.3.158` 의 `query()` 에
+`/plugin install __spike_nonexistent_xyz__@claude-plugins-official` 를 prompt 로 전송(존재하지
+않는 플러그인명 → 해석되더라도 실제 설치 부작용 0). `maxTurns:1` · `bypassPermissions` ·
+`settingSources:['user','project','local']` 로 Hammoc chatService 의 query 경로를 그대로 재현하고
+메시지 스트림 type/subtype 를 관측. (사전 스모크: "Reply SMOKE_OK" → `result:success` 로 인증/연결 정상 확인.)
+
+### 실측 결과 (라이브 SDK 호출)
+
+| 항목 | 관측 |
+|---|---|
+| assistant 응답 | **`"/plugin isn't available in this environment."`** |
+| `SDKPluginInstallMessage`(subtype `plugin_install`) | **미발생** — 설치 시도 자체가 일어나지 않음 |
+| result | `subtype:success, is_error:false` (정상 종료, 에러 아님) |
+| 일반 프롬프트 처리 여부 | 아님 — 슬래시를 *인식*하되 환경 미지원으로 거부 |
+
+추가 정적 근거(SDK `sdk.d.ts`): 프로그램적 플러그인 로드는 `SdkPluginConfig` 의 `type:'local'`
+**로컬 경로만 지원**("Currently only local plugins are supported"). 마켓 설치 슬래시(`/plugin …`)는
+대화형 TUI 전용으로 헤드리스 query 경로에 노출되지 않음.
+
+### 결론 — AC2.c "Hammoc 채팅에서 바로 시도" 버튼 **제거**(spike 부정)
+
+- Hammoc 채팅은 동일 `query()` 경로(`chatService.ts` `query({prompt})`)를 쓰므로, 설정 탭 모달에서
+  슬래시를 채팅으로 주입해도 동일하게 `"/plugin isn't available"` 로 거부된다 → 버튼은 UX 손실만
+  주므로 제거하고 **복사 가이드만** 제공(AC2.a 보장 경로는 불변).
+- 부수 효과: 설정→채팅 표면 브릿지(`chatStore.sendMessage` 세션 컨텍스트 주입) 분기 결정 자체가
+  불요(주입할 액션이 없음). AC7.a 의 "브릿지 방식 확정"은 *"브릿지 없음"* 으로 종결.
+- 재검토 조건: SDK 가 향후 `/plugin` 슬래시를 헤드리스 환경에서 지원하면 본 버튼 재도입(에픽 §
+  Verification History "`/plugin install` 슬래시 명령이 Agent SDK 에서 해석 가능해짐" 트리거).
+
+## 18. Story 31.4 선행 spike #2 — 직접 설치 경로 안정성 + feature flag 호환 + 임의 URL clone 보안 (2026-06-02)
+
+**확인 방법**: 유저 실제 플러그인 상태(`~/.claude/plugins/installed_plugins.json`)를 변형하는 위험한
+라이브 설치 대신 — 실 데이터의 스키마 결합도 + SDK API 표면 + 마켓 repo git 상태를 교차 분석.
+(실제 파일을 손으로 install 하는 변형 테스트는 유저의 동작 중인 플러그인 3종을 깨뜨릴 위험이 있어
+미수행 — 정직 고지. 보수적 결론을 검증하려 위험을 감수할 필요가 없음.)
+
+### 실측 결과 (라이브 데이터 분석)
+
+| 증거 | 관측 | 함의 |
+|---|---|---|
+| 파일 포맷 | `installed_plugins.json` 이 이미 **`version: 2`** | AC6 이 우려한 `tengu_enable_versioned_plugins` 포맷이 **이미 현재 기본값** |
+| 엔트리 스키마 결합 | 3개 전부 `version` ≡ 12자 `gitCommitSha` ≡ `installPath` 접미 (`coupled=true`) | 손으로 엔트리 작성 시 clone 커밋 sha 해석 → 캐시 경로/version 정확 재현 필수 |
+| drift 원천 | 마켓 repo HEAD(`aa296ec81e8c`) = 현재 엔트리 version | 마켓 업데이트(git pull → 새 HEAD) 시 version/installPath **어긋남** → 재clone + sha 동기 필요 |
+| SDK 설치 API | `type:'local'` 로컬 로드만 + `reloadPlugins()`(디스크 재읽기) | 마켓에서 설치하는 **공개 프로그램 API 부재** |
+| 헤드리스 env | `CLAUDE_CODE_SYNC_PLUGIN_INSTALL`(d.ts 주석에만 존재, JS 표면 부재) | 바이너리 내부 contract — 미문서/불안정, 사용자향 자동화로 부적합 |
+| 보안 경계 | 임의 URL clone = 신뢰 안 된 번들(훅·MCP·스크립트)이 디스크 유입 → enable 시 하네스 실행 | 자동 추가는 출처 신뢰 게이트 없이는 임의 코드 실행 경로 |
+
+### 결론 — 자동 설치 / 자동 마켓 추가 **드롭**(spike 보수/부정)
+
+- 직접 파일 조작 설치는 *가능하지만 취약* — 내부 `version:2` 캐시-sha 결합 bookkeeping 을 손으로
+  복제·동기해야 하고, `version` 필드 자체가 스키마가 진화 중(versioned)임을 시사. CLI 내부 구현
+  변경 시 깨질 표면.
+- 마켓 설치용 공개 SDK API 가 없고 헤드리스 env 는 불안정(SDK 바이너리 결합 위험 — 신모델 1M
+  사례와 동일 계열). 임의 URL clone 보안 경계까지 더하면 **본 스토리에서 자동화 미출시**가 안전.
+- 채택: 카탈로그(읽기 전용) + `/plugin install|uninstall|marketplace add` **복사 가이드** + 와처
+  자동 갱신 + AC5 부분실패 격리 + **AC6 포맷 경고 배너**(version 미인식 시). install/add **POST
+  엔드포인트 미구현**, 모달은 **복사 전용**. (보장 6 산출물로 완결 — degrade-without-hole.)
+- 재검토 조건: 마켓 설치용 공개 SDK API 등장 또는 `tengu_enable_versioned_plugins` 정식 GA 시 자동화 재평가.
+
+---
+
 <!-- Add new upstream issues above this line as they are discovered. -->

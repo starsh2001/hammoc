@@ -41,6 +41,9 @@ vi.mock('../../components/settings/ContextBuilderPanel', () => ({
 vi.mock('../../components/settings/ObservabilityPanel', () => ({
   ObservabilityPanel: () => <div data-testid="observability-panel-mock" />,
 }));
+vi.mock('../../components/settings/MarketplacePanel', () => ({
+  MarketplacePanel: () => <div data-testid="marketplace-panel-mock" />,
+}));
 
 const mockUseProjectStore = useProjectStore as unknown as Mock;
 
@@ -96,5 +99,15 @@ describe('ProjectSettingsPage — BMad nav gate', () => {
     expect(screen.getByTestId('project-settings-nav-observability')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('project-settings-nav-observability'));
     expect(screen.getByTestId('observability-panel-mock')).toBeInTheDocument();
+  });
+
+  // Story 31.4 (AC1.a): the marketplace nav is NOT gated — it appears for every
+  // project and routes to the MarketplacePanel.
+  it('renders the marketplace nav item for a non-BMad project and routes to it', () => {
+    seedProjects(false);
+    render(<ProjectSettingsPage />);
+    expect(screen.getByTestId('project-settings-nav-marketplace')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('project-settings-nav-marketplace'));
+    expect(screen.getByTestId('marketplace-panel-mock')).toBeInTheDocument();
   });
 });
