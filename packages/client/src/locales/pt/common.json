@@ -152,7 +152,8 @@
   "layout": {
     "back": "Voltar",
     "projectTabs": "Abas do projeto",
-    "terminalDisabled": "Terminal desabilitado: Acesso a rede externa"
+    "terminalDisabled": "Terminal desabilitado: Acesso a rede externa",
+    "goToProjectList": "Ir para a lista de projetos"
   },
   "overview": {
     "bmadLabel": "BMad",

@@ -643,6 +643,8 @@ Each card has a **kebab menu** (⋮) with:
 
 **Dashboard summary bar** appears at the top when projects exist, showing aggregate stats: Projects, Sessions, Active, Queue, Terminals.
 
+**Header brand logo (Hammoc)** — The Hammoc logo on the left of every header is clickable and always returns you to the project list from any page (project Overview, Board, Sessions, Queue, Files, Git, Terminal, project Settings, chat session). Use it as a one-tap "Home" without going through the back button.
+
 ### 5.2 Creating a New Project
 
 1. Click **"New Project"** on the project list page

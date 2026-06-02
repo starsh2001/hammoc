@@ -152,7 +152,8 @@
   "layout": {
     "back": "返回",
     "projectTabs": "项目标签页",
-    "terminalDisabled": "终端已禁用：外部网络访问"
+    "terminalDisabled": "终端已禁用：外部网络访问",
+    "goToProjectList": "前往项目列表"
   },
   "overview": {
     "bmadLabel": "BMad",

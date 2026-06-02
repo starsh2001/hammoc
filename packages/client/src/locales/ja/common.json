@@ -152,7 +152,8 @@
   "layout": {
     "back": "戻る",
     "projectTabs": "プロジェクトタブ",
-    "terminalDisabled": "ターミナル無効：外部ネットワークアクセス"
+    "terminalDisabled": "ターミナル無効：外部ネットワークアクセス",
+    "goToProjectList": "プロジェクト一覧へ移動"
   },
   "overview": {
     "bmadLabel": "BMad",
