@@ -181,6 +181,26 @@ describe('ModelSelector', () => {
       );
       expect(onEffortChange).not.toHaveBeenCalled();
     });
+
+    it('keeps XHigh selected when activeModel reports Opus 4.8', () => {
+      const onEffortChange = vi.fn();
+      const { rerender } = render(
+        <ModelSelector
+          {...defaultProps}
+          effort="xhigh"
+          onEffortChange={onEffortChange}
+        />
+      );
+      rerender(
+        <ModelSelector
+          {...defaultProps}
+          activeModel="claude-opus-4-8"
+          effort="xhigh"
+          onEffortChange={onEffortChange}
+        />
+      );
+      expect(onEffortChange).not.toHaveBeenCalled();
+    });
   });
 
   describe('tooltip', () => {

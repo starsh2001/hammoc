@@ -25,7 +25,7 @@
    ```js
    browser_evaluate(`() => [...document.querySelectorAll('[role="option"]')].find(o => o.textContent.startsWith('OpusLatest'))?.click()`)
    ```
-4. 모델명 확인용 프롬프트 전송: `Say your model name in one short line (e.g. "I am Claude Opus 4.7"). No other text.` → 응답 완료 대기.
+4. 모델명 확인용 프롬프트 전송: `Say your model name in one short line (e.g. "I am Claude Opus 4.8"). No other text.` → 응답 완료 대기.
 5. 응답에 `Claude Opus` 문자열이 포함되는지 확인:
    ```js
    browser_evaluate(`() => {
@@ -111,10 +111,10 @@
 ## E2. Thinking Effort `[SDK]`
 
 ### E-02-01: Effort 레벨 전환 · ThinkingBlock 영속 렌더링
-**전제**: Thinking Effort는 5 값 enum — `low | medium | high | xhigh | max` ([ModelSelector.tsx:139](../../packages/client/src/components/ModelSelector.tsx#L139)). 모델별 노출 bar 수가 다르다([ModelSelector.tsx:147-164](../../packages/client/src/components/ModelSelector.tsx#L147-L164)): 3 bar (Low/Medium/High — 레거시), 4 bar (+Max — Opus 4.6·Sonnet 4.6), 5 bar (+XHigh — Opus 4.7 only). **"Off" 레벨은 존재하지 않는다.** 명시적 선택이 없으면 `effort: undefined`로 전송되어 SDK 기본값(Opus 4.7=XHigh, 그 외=High)이 적용된다.
+**전제**: Thinking Effort는 5 값 enum — `low | medium | high | xhigh | max` ([ModelSelector.tsx:139](../../packages/client/src/components/ModelSelector.tsx#L139)). 모델별 노출 bar 수가 다르다([ModelSelector.tsx:147-164](../../packages/client/src/components/ModelSelector.tsx#L147-L164)): 3 bar (Low/Medium/High — 레거시), 4 bar (+Max — Opus 4.6·Sonnet 4.6), 5 bar (+XHigh — Opus 4.7+). **"Off" 레벨은 존재하지 않는다.** 명시적 선택이 없으면 `effort: undefined`로 전송되어 SDK 기본값(Opus 4.7+=XHigh, 그 외=High)이 적용된다.
 
 **절차**:
-1. 새 세션 시작 → **채팅 입력바 하단**의 모델 버튼 (`aria-label^="모델:"`) 클릭 → 드롭다운에서 **Opus 4.7** 명시 선택 (5 bar 전부 노출하기 위함; Opus 4.7이 없으면 Opus 4.6 또는 `Latest Opus`로 대체하고 Max를 XHigh 대용으로 사용)
+1. 새 세션 시작 → **채팅 입력바 하단**의 모델 버튼 (`aria-label^="모델:"`) 클릭 → 드롭다운에서 **Opus 4.8** 명시 선택 (5 bar 전부 노출하기 위함; Opus 4.8이 없으면 Opus 4.7 → Opus 4.6 → `Latest Opus` 순으로 대체하고 4.6 사용 시 Max를 XHigh 대용으로 사용)
 2. 모델 드롭다운을 다시 열어 Thinking Effort radiogroup 확인:
    ```js
    browser_evaluate(`() => {
@@ -124,7 +124,7 @@
      };
    }`)
    ```
-   기대: `radios`가 5개이고 titles = `['Low','Medium','High','XHigh','Max']`. 전부 `aria-checked="false"`이면 effort 미선택 상태(SDK default).
+   기대: `radios`가 5개이고 titles = `['Low','Medium','High','XHigh','Max']` (Opus 4.7+ 기준). 전부 `aria-checked="false"`이면 effort 미선택 상태(SDK default).
 3. **Low 선택** — React 커스텀 버튼은 단일 `click()`만으론 handler가 안 붙는 경우가 있으므로 pointer 시퀀스 포함:
    ```js
    browser_evaluate(`() => {
@@ -134,7 +134,7 @@
    }`)
    ```
    라디오 클릭은 **드롭다운을 닫지 않는다** (effort는 다시 닫지 않는 영구 선택). 드롭다운은 Escape 또는 바깥 클릭으로 닫는다.
-4. 드롭다운 닫기 (`browser_press_key("Escape")`) → **thinking-강제 프롬프트** 전송. 평범한 "분석해줘"는 Opus 4.7이 thinking 없이 즉답하므로 비자명한 답 + 여러 접근 평가가 필요한 문제를 쓴다:
+4. 드롭다운 닫기 (`browser_press_key("Escape")`) → **thinking-강제 프롬프트** 전송. 평범한 "분석해줘"는 Opus 4.7+가 thinking 없이 즉답하므로 비자명한 답 + 여러 접근 평가가 필요한 문제를 쓴다:
    ```
    12 balls puzzle: One of 12 balls has a different weight from the other 11 — you don't know if it's heavier or lighter. Using a two-pan balance, design a procedure that in exactly 3 weighings identifies the odd ball AND determines heavier-or-lighter. Respond with ONLY a compact decision tree (weighing 1 / weighing 2 / weighing 3 branches), no prose explanation, no preamble.
    ```
@@ -158,13 +158,13 @@
 8. (선택) 각 레벨에서 실제 전송된 effort 값을 Zustand store로 교차 확인 — store가 전역 노출되어 있으면 활용, 아니면 UI 라벨(`effort.tooltipFull.*`가 `버튼` title에 반영) 변화로 검증:
    ```js
    browser_evaluate(`() => document.querySelector('button[aria-label^="모델:"]')?.getAttribute('title')`)
-   // 기대: "모델: Opus 4.7 · Low 사고" / "... · Medium 사고" / "... · Max 사고"
+   // 기대: "모델: Opus 4.8 · Low 사고" / "... · Medium 사고" / "... · Max 사고" (또는 사용한 모델 라벨)
    ```
 
 > **UI 위치 주의**: 모델 선택 및 Thinking Effort 셀렉터 모두 **채팅 입력바 하단 모델 버튼** 내부 동일 드롭다운에 있다([ModelSelector.tsx:294-397](../../packages/client/src/components/ModelSelector.tsx#L294-L397)). ChatHeader에는 모델 드롭다운이 없다.
 
 **기대 결과**:
-- radiogroup에 Low/Medium/High/XHigh/Max 5개 radio 존재 (Opus 4.7), 각 title 매칭
+- radiogroup에 Low/Medium/High/XHigh/Max 5개 radio 존재 (Opus 4.7+), 각 title 매칭
 - Low/Medium/Max 각 레벨 클릭 시 해당 radio만 `aria-checked="true"`, 나머지 `"false"`
 - 세 레벨 모두에서 프롬프트 전송·응답 수신 성공
 - **Max에서 ThinkingBlock 영속 필수** — 12-balls 같은 thinking-강제 프롬프트 + Max effort 조합에서는 응답 완료 후에도 `button[aria-expanded][aria-controls]` + Brain 아이콘(`svg.lucide-brain`) + "생각 중..." 텍스트가 해당 turn 컨테이너 안에 남아있어야 한다 ([chatStore.ts:86](../../packages/client/src/stores/chatStore.ts#L86) `streamingSegments`에 thinking segment 영속). 이 한 레벨에서 thinking 경로가 동작함을 확인하면 `onThinking → thinking:chunk → addStreamingThinking → ThinkingBlock` 전체 체인 생존 검증으로 충분
@@ -175,7 +175,7 @@
 
 **엣지케이스**:
 - E1. **미지원 모델 호환**: Haiku 선택 시 drop-down에서 radiogroup 자체가 숨겨지거나 bar 수가 줄어들어야 한다 (`supportsMaxEffort=false`, `supportsXHighEffort=false` → 3 bar).
-- E2. **모델 전환 시 effort 보존**: Opus 4.7에서 Max 선택 → Sonnet 4.6로 전환 시 `effective effort`가 clamp됨 (`max`는 살아있고 `xhigh`는 제외). [ModelSelector.tsx:245-248](../../packages/client/src/components/ModelSelector.tsx#L245-L248).
+- E2. **모델 전환 시 effort 보존**: Opus 4.8(XHigh+Max 둘 다 지원)에서 Max 선택 → Sonnet 4.6로 전환 시 `effective effort`가 clamp됨 (`max`는 살아있고 `xhigh`는 제외). [ModelSelector.tsx:245-248](../../packages/client/src/components/ModelSelector.tsx#L245-L248).
 
 > **Thinking 토큰 수치 UI 표시는 현재 구현에 없다** — `ContextUsageDisplay` 툴팁은 입력/캐시/출력/비용만 표시([ContextUsageDisplay.tsx:60-73](../../packages/client/src/components/ContextUsageDisplay.tsx#L60-L73)), `UsageStatusBar`는 5h/7d Rate Limit 전용.
 
@@ -199,7 +199,7 @@
    }).then(r => r.json()).then(p => p.maxBudgetUsd)`)
    // → 0.01
    ```
-3. 새 세션 + Opus 4.7 선택 (비용 빠르게 올려 초과 유도).
+3. 새 세션 + Opus 4.8 선택 (비용 빠르게 올려 초과 유도; 없으면 Opus 4.7로 대체).
 4. 긴 응답 유도 프롬프트 전송: `Write a detailed 2000-word essay on computer architecture history.`
 5. 응답 스트리밍 중 **예산 경고 배너** 노출 확인 — 실제 UI 문구(ko): `예산 위험: 현재 비용 $<amount> / $<limit> (<pct>%) — 한도 초과 시 스트림이 자동 중단됩니다.`
    ```js
@@ -276,7 +276,7 @@
 ### E-04-01: 1M 모델 사용 시 contextWindow 표시
 **절차**:
 1. 새 세션 시작.
-2. **채팅 입력바 하단**의 모델 버튼 (`aria-label^="모델:"`) 클릭 → 드롭다운에서 `Opus 4.7` 명시 선택. Opus 4.7이 드롭다운에 없으면 다른 `1M ctx` 표시 모델(Opus 4.6, Sonnet 4.6)로 대체.
+2. **채팅 입력바 하단**의 모델 버튼 (`aria-label^="모델:"`) 클릭 → 드롭다운에서 `Opus 4.8` 명시 선택. Opus 4.8이 드롭다운에 없으면 다른 `1M ctx` 표시 모델(Opus 4.7, Opus 4.6, Sonnet 4.6)로 대체.
 3. 짧은 메시지 `"hi"` 전송 → 응답 완료 대기 (10-30s).
 4. ContextUsageDisplay 상태 조회:
    ```js
@@ -297,13 +297,13 @@
 - 200K 수준 부근에서 잘못된 "곧 compact" 경고가 뜨지 않는다 (E-04-02에서 추가 검증)
 
 **엣지케이스**:
-- E1. **1M 지원 모델이 라인업에 없는 경우**: 현재는 Opus 4.7, Opus 4.6, Sonnet 4.6 모두 있음. 향후 라인업 변경으로 전부 사라지면 본 시나리오는 "1M 지원 모델 부재"로 전환 (기대 title이 더 작은 윈도우 수치) — 이 경우 시나리오 파일을 먼저 수정
+- E1. **1M 지원 모델이 라인업에 없는 경우**: 현재는 Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6 모두 있음. 향후 라인업 변경으로 전부 사라지면 본 시나리오는 "1M 지원 모델 부재"로 전환 (기대 title이 더 작은 윈도우 수치) — 이 경우 시나리오 파일을 먼저 수정
 
 ### E-04-02: 1M 모델에서 대용량 입력 처리
-**배경**: 과거 버전은 `'The quick brown fox...'.repeat(20000)` 반복 문자열을 썼으나 Anthropic Usage Policy가 반복 패턴 대량 입력을 스팸으로 판정해 자동 거절한다("API Error ... appears to violate our Usage Policy"). 본 시나리오는 **다변형 자연어 단락을 무작위 배열**해 AUP를 통과하면서 1M 윈도우 계산 경로를 검증한다. 토큰 규모는 **1M 윈도우의 약 5~10%** (~50K 토큰, ~200KB)로 스케일 다운 — 계산 경로 검증 목적이라 초대용량 필요 없고, Opus 4.7 기준 입력 비용을 $1 이하로 억제하기 위함.
+**배경**: 과거 버전은 `'The quick brown fox...'.repeat(20000)` 반복 문자열을 썼으나 Anthropic Usage Policy가 반복 패턴 대량 입력을 스팸으로 판정해 자동 거절한다("API Error ... appears to violate our Usage Policy"). 본 시나리오는 **다변형 자연어 단락을 무작위 배열**해 AUP를 통과하면서 1M 윈도우 계산 경로를 검증한다. 토큰 규모는 **1M 윈도우의 약 5~10%** (~50K 토큰, ~200KB)로 스케일 다운 — 계산 경로 검증 목적이라 초대용량 필요 없고, Opus 4.7/4.8 기준 입력 비용을 $1 이하로 억제하기 위함.
 
 **절차**:
-1. E-04-01 상태(1M 모델 = Opus 4.7 선택)를 이어가되, **새 세션**에서 시작 (앞 세션의 큰 context 누적 배제)
+1. E-04-01 상태(1M 모델 = Opus 4.8 선택)를 이어가되, **새 세션**에서 시작 (앞 세션의 큰 context 누적 배제)
 2. 다변형 자연어 페이로드 생성 후 textarea 주입. 주제별 다른 짧은 단락들을 셔플·재조립해 같은 패턴 반복을 회피한다:
    ```js
    browser_evaluate(`() => {
@@ -367,7 +367,7 @@
    ```js
    browser_evaluate(`() => document.querySelector('[aria-label*="컨텍스트"]')?.getAttribute('title')`)
    ```
-4. Enter 전송 → 응답 완료 대기 (Opus 4.7 입력 50K 토큰 수준이면 응답까지 30-60s 소요 예상; 최대 180s까지 허용)
+4. Enter 전송 → 응답 완료 대기 (Opus 4.7/4.8 입력 50K 토큰 수준이면 응답까지 30-60s 소요 예상; 최대 180s까지 허용)
 5. 응답 완료 후 ContextUsageDisplay 툴팁 읽어서 검증:
    ```js
    browser_evaluate(`() => {

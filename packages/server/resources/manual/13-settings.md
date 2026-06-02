@@ -36,8 +36,8 @@ Choose the default Claude model:
 - **Haiku** — Latest Haiku
 
 **Claude 4.x:**
-- Opus 4.7 (most capable, 1M context), 4.6, 4.5, 4.1, 4
-- Sonnet 4.5, 4
+- Opus 4.8 (most capable, 1M context), 4.7, 4.6, 4.5, 4.1, 4
+- Sonnet 4.6 (1M context), 4.5, 4
 - Haiku 4.5
 
 **Claude 3.x:**
@@ -107,8 +107,8 @@ The timeout resets on every activity. If overridden by an environment variable, 
 Set the default thinking effort for new sessions:
 
 - **SDK Default** / Low / Medium / High / XHigh / Max
-- Max is available on Opus 4.6, Sonnet 4.6, and Opus 4.7
-- XHigh is available only on Opus 4.7 (and is the SDK default for that model)
+- Max is available on Opus 4.6, Sonnet 4.6, Opus 4.7, and Opus 4.8
+- XHigh is available on Opus 4.7 and Opus 4.8 (and is the SDK default for those models)
 - If the active model does not support the configured level, it falls back to High automatically — the saved preference is kept, only the request to the SDK is clamped
 - The chosen level is preserved while the active model is still resolving (no flicker back to Default during project switches)
 

@@ -175,7 +175,7 @@ Control how much Claude "thinks" before responding. The intensity bar appears in
 
 - **Low / Medium / High** — 3 levels, available for all models
 - **Max** — 4th level, added for Opus 4.6 / Sonnet 4.6
-- **XHigh** — 5th level, added only for **Opus 4.7** (the default effort for this model is XHigh)
+- **XHigh** — 5th level, added for **Opus 4.7+** (the default effort for these models is XHigh)
 
 Behavior:
 

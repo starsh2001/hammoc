@@ -306,13 +306,13 @@ Control how much Claude "thinks" before responding. The intensity bar appears in
 
 - **Low / Medium / High** — 3 levels, available for all models
 - **Max** — 4th level, added for Opus 4.6 / Sonnet 4.6
-- **XHigh** — 5th level, added only for **Opus 4.7** (the default effort for this model is XHigh)
+- **XHigh** — 5th level, added for **Opus 4.7+** (the default effort for these models is XHigh)
 
 Behavior:
 
 - Click the currently active level again to reset to default
 - Cannot be changed while Claude is responding
-- If you switch to a model that doesn't support the current level (e.g., XHigh → non-Opus-4.7, or Max → model without Max), the effort automatically resets to the highest supported level
+- If you switch to a model that doesn't support the current level (e.g., XHigh → model without XHigh, or Max → model without Max), the effort automatically resets to the highest supported level
 - When the active model is temporarily unknown (e.g., right after switching projects before the resolved model arrives), the dropdown keeps your saved choice instead of resetting it. As soon as the model is known, the effort is reclamped if necessary
 
 The default thinking effort for new sessions can be configured in Settings > Global.
@@ -1761,8 +1761,8 @@ Choose the default Claude model:
 - **Haiku** — Latest Haiku
 
 **Claude 4.x:**
-- Opus 4.7 (most capable, 1M context), 4.6, 4.5, 4.1, 4
-- Sonnet 4.5, 4
+- Opus 4.8 (most capable, 1M context), 4.7, 4.6, 4.5, 4.1, 4
+- Sonnet 4.6 (1M context), 4.5, 4
 - Haiku 4.5
 
 **Claude 3.x:**
@@ -1832,8 +1832,8 @@ The timeout resets on every activity. If overridden by an environment variable, 
 Set the default thinking effort for new sessions:
 
 - **SDK Default** / Low / Medium / High / XHigh / Max
-- Max is available on Opus 4.6, Sonnet 4.6, and Opus 4.7
-- XHigh is available only on Opus 4.7 (and is the SDK default for that model)
+- Max is available on Opus 4.6, Sonnet 4.6, Opus 4.7, and Opus 4.8
+- XHigh is available on Opus 4.7 and Opus 4.8 (and is the SDK default for those models)
 - If the active model does not support the configured level, it falls back to High automatically — the saved preference is kept, only the request to the SDK is clamped
 - The chosen level is preserved while the active model is still resolving (no flicker back to Default during project switches)
 

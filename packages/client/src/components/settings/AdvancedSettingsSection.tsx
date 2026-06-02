@@ -523,7 +523,7 @@ export function AdvancedSettingsSection() {
         </div>
       </div>
 
-      {/* Thinking block visibility (Opus 4.7+ flipped API default to 'omitted') */}
+      {/* Thinking block visibility (Opus 4.7+ flipped API default to 'omitted'; same on 4.8) */}
       <div>
         <label className="flex items-center gap-3 cursor-pointer">
           <input

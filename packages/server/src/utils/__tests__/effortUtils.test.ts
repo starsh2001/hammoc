@@ -38,8 +38,10 @@ describe('clampEffortForModel', () => {
       'sonnet',
       'claude-opus-4-6',
       'claude-opus-4-7',
+      'claude-opus-4-8',
       'claude-sonnet-4-6',
       'claude-opus-4-6-20250914',
+      'claude-opus-4-8[1m]',
       'claude-sonnet-4-6[1m]',
     ])('keeps max for supporting model %s', (model) => {
       expect(clampEffortForModel('max', model)).toBe('max');
@@ -62,6 +64,8 @@ describe('clampEffortForModel', () => {
       'opus',
       'claude-opus-4-7',
       'claude-opus-4-7[1m]',
+      'claude-opus-4-8',
+      'claude-opus-4-8[1m]',
     ])('keeps xhigh for supporting model %s', (model) => {
       expect(clampEffortForModel('xhigh', model)).toBe('xhigh');
     });

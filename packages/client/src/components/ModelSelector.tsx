@@ -6,7 +6,7 @@
  * - Checkmark on currently selected model
  * - All supported Claude models grouped by generation
  * - Signal-strength bar control for thinking effort
- *   · 5 bars when XHigh+Max are available (Opus 4.7)
+ *   · 5 bars when XHigh+Max are available (Opus 4.7+)
  *   · 4 bars when only Max is available (Opus 4.6, Sonnet 4.6)
  *   · 3 bars when neither XHigh nor Max is available (other models)
  * - Opens upward (input area is at bottom)
@@ -64,7 +64,8 @@ export const MODEL_GROUPS: ModelGroup[] = [
     label: 'Claude 4.x',
     labelKey: 'model.claude4x',
     models: [
-      { value: 'claude-opus-4-7', label: 'Opus 4.7', description: 'Most capable · 1M ctx' },
+      { value: 'claude-opus-4-8', label: 'Opus 4.8', description: 'Most capable · 1M ctx' },
+      { value: 'claude-opus-4-7', label: 'Opus 4.7', description: '1M ctx' },
       { value: 'claude-opus-4-6', label: 'Opus 4.6', description: '1M ctx' },
       { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6', description: '1M ctx' },
       { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01' },
@@ -123,15 +124,15 @@ function supportsMaxEffort(model: string | null | undefined, activeModel: string
   if (!m) return false;
   return (
     m === 'opus' || m === 'sonnet' ||
-    m.includes('opus-4-6') || m.includes('opus-4-7') || m.includes('sonnet-4-6')
+    m.includes('opus-4-6') || m.includes('opus-4-7') || m.includes('opus-4-8') || m.includes('sonnet-4-6')
   );
 }
 
-/** Check if model supports 'xhigh' effort (Opus 4.7 only) */
+/** Check if model supports 'xhigh' effort (Opus 4.7+) */
 function supportsXHighEffort(model: string | null | undefined, activeModel: string | null | undefined): boolean {
   const m = effectiveModelId(model, activeModel);
   if (!m) return false;
-  return m === 'opus' || m.includes('opus-4-7');
+  return m === 'opus' || m.includes('opus-4-7') || m.includes('opus-4-8');
 }
 
 /** Bar config: level + active/default gradient colors */
@@ -252,7 +253,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
   const effectiveEffort = knownModel
     ? ((effort === 'max' && !maxAvailable) || (effort === 'xhigh' && !xhighAvailable) ? undefined : effort)
     : effort;
-  // SDK default is 'xhigh' on Opus 4.7, 'high' on other effort-capable models
+  // SDK default is 'xhigh' on Opus 4.7+, 'high' on other effort-capable models
   const defaultLevel: ThinkingEffort = xhighAvailable ? 'xhigh' : 'high';
   const isDefault = !effectiveEffort;
   const displayEffort = effectiveEffort ?? defaultLevel;
