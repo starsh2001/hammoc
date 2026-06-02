@@ -19,6 +19,7 @@ import { harnessLintController } from '../controllers/harnessLintController.js';
 import { harnessBundleController, handleBundleUpload } from '../controllers/harnessBundleController.js';
 import { bmadCoreConfigController } from '../controllers/bmadCoreConfigController.js';
 import { contextBuilderController } from '../controllers/contextBuilderController.js';
+import { observabilityController } from '../controllers/observabilityController.js';
 
 const router = Router();
 
@@ -153,5 +154,18 @@ router.patch('/bmad-config/:projectSlug', largeBodyParser, bmadCoreConfigControl
 router.get('/context-builder/:projectSlug', contextBuilderController.read);
 router.post('/context-builder/:projectSlug/disable', largeBodyParser, contextBuilderController.disable);
 router.put('/context-builder/:projectSlug', largeBodyParser, contextBuilderController.write);
+
+// Story 31.3 — Observability: MCP call log (read-only aggregates + timeline) +
+// token attribution + count_tokens proxy + global tokenizer preference.
+// Available on ALL projects (no gate). The global `/tokenizer-pref` (no
+// projectSlug) is mounted ABOVE the `:projectSlug` routes so Express does not
+// treat `tokenizer-pref` as a slug. The MCP log has no write endpoint —
+// records are appended by the streamCallbacks recorder.
+const smallBodyParser = express.json({ limit: '32kb' });
+router.get('/observability/tokenizer-pref', observabilityController.getTokenizerPref);
+router.put('/observability/tokenizer-pref', smallBodyParser, observabilityController.setTokenizerPref);
+router.get('/observability/:projectSlug/mcp-calls', observabilityController.mcpCalls);
+router.get('/observability/:projectSlug/token-attribution', observabilityController.tokenAttribution);
+router.post('/observability/:projectSlug/exact-count', smallBodyParser, observabilityController.exactCount);
 
 export default router;

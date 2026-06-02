@@ -79,4 +79,49 @@ describe('buildStreamCallbacks', () => {
       originalSessionId: 'my-original-session',
     }));
   });
+
+  // -------------------------------------------------------------------------
+  // Story 31.3 — MCP-call recorder seam (read-only collection)
+  // -------------------------------------------------------------------------
+  describe('mcpRecorder integration', () => {
+    function makeRecorder() {
+      return { onToolUse: vi.fn(), onToolResult: vi.fn(), onTurnEnd: vi.fn() };
+    }
+
+    it('drives onToolUse(id,name,input) and onToolResult(id,result,sessionId)', () => {
+      const mcpRecorder = makeRecorder();
+      const { callbacks } = buildStreamCallbacks({ ...baseDeps, mcpRecorder });
+
+      // resolve the session id first so the result carries it.
+      callbacks.onSessionInit!('resolved-session', { model: 'claude-4' });
+
+      callbacks.onToolUse!({ id: 'tu1', name: 'mcp__pw__nav', input: { url: 'x' }, status: 'pending' });
+      expect(mcpRecorder.onToolUse).toHaveBeenCalledWith('tu1', 'mcp__pw__nav', { url: 'x' });
+
+      callbacks.onToolResult!('tu1', { success: true, output: 'ok' });
+      expect(mcpRecorder.onToolResult).toHaveBeenCalledWith('tu1', { success: true, output: 'ok' }, 'resolved-session');
+    });
+
+    it('flushes orphans at turn end on both onComplete and onResultError', () => {
+      const mcpRecorder = makeRecorder();
+      const { callbacks } = buildStreamCallbacks({ ...baseDeps, mcpRecorder });
+      callbacks.onSessionInit!('s9', {});
+
+      callbacks.onComplete!({ id: 'm1', sessionId: 's9', content: 'done' } as any);
+      expect(mcpRecorder.onTurnEnd).toHaveBeenCalledWith('s9');
+
+      mcpRecorder.onTurnEnd.mockClear();
+      callbacks.onResultError!({ message: 'boom' } as any);
+      expect(mcpRecorder.onTurnEnd).toHaveBeenCalledWith('s9');
+    });
+
+    it('is a no-op when no recorder is injected (back-compat)', () => {
+      const { callbacks } = buildStreamCallbacks(baseDeps);
+      expect(() => {
+        callbacks.onToolUse!({ id: 'tu1', name: 'Read', input: {}, status: 'pending' });
+        callbacks.onToolResult!('tu1', { success: true });
+        callbacks.onComplete!({ id: 'm', sessionId: 's', content: '' } as any);
+      }).not.toThrow();
+    });
+  });
 });

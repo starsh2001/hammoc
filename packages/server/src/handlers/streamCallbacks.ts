@@ -16,6 +16,9 @@ import type {
   SessionMetadata,
   ChatResponse,
 } from '@hammoc/shared';
+// Type-only import — erased at runtime, so no circular dep with the service
+// (consistent with the "injected, not imported" dependency convention below).
+import type { McpCallRecorder } from '../services/observabilityService.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('streamCallbacks');
@@ -55,6 +58,13 @@ export interface CallbackBuilderDeps {
   getQueueProgress?: () => QueueProgress | undefined;
   /** Story 25.11: when true, emit 'session:forked' instead of 'session:created'/'session:resumed' */
   isFork?: boolean;
+  /**
+   * Story 31.3: optional MCP-call recorder (read-only observability collection).
+   * When present, tool-use/result callbacks feed it; the body of args/results is
+   * never passed through — only sizes are persisted. Absent on paths that opt
+   * out (no behavior change when undefined).
+   */
+  mcpRecorder?: McpCallRecorder;
 }
 
 export interface CallbackBuilderHooks {
@@ -130,6 +140,8 @@ export function buildStreamCallbacks(
         input: toolCall.input,
         startedAt: Date.now(),
       });
+      // Story 31.3 — buffer start info (size only, body discarded).
+      deps.mcpRecorder?.onToolUse(toolCall.id, toolCall.name, toolCall.input);
     },
 
     onToolInputUpdate: (toolCallId: string, input: Record<string, unknown>) => {
@@ -141,6 +153,8 @@ export function buildStreamCallbacks(
       activity?.('onToolResult');
       log.debug(`onToolResult: id=${toolCallId}, success=${result.success}`);
       emit('tool:result', { toolCallId, result });
+      // Story 31.3 — append the completed record (size only, body discarded).
+      deps.mcpRecorder?.onToolResult(toolCallId, result, sessionIdRef.current);
     },
 
     onCompact: (metadata: CompactMetadata) => {
@@ -173,6 +187,8 @@ export function buildStreamCallbacks(
 
     onResultError: (data) => {
       emit('result:error', data);
+      // Story 31.3 — flush any orphan (started-never-returned) calls on error end.
+      deps.mcpRecorder?.onTurnEnd(sessionIdRef.current);
     },
 
     onComplete: (response: ChatResponse) => {
@@ -192,6 +208,9 @@ export function buildStreamCallbacks(
       if (notificationService.shouldNotify(stream.sockets.size)) {
         notificationService.notifyComplete(stream.sessionId, response.content, deps.getQueueProgress?.());
       }
+
+      // Story 31.3 — flush any orphan (started-never-returned) calls at turn end.
+      deps.mcpRecorder?.onTurnEnd(sessionIdRef.current);
     },
 
     // onError: intentionally omitted — callers provide their own

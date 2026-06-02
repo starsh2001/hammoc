@@ -742,6 +742,67 @@
                 "secretNotice": "{{count}} 件のカスタムコマンドにシークレットが含まれている可能性があります — プロジェクトを共有する前に確認してください。"
             }
         },
+        "observability": {
+            "nav": {
+                "title": "可観測性"
+            },
+            "title": "可観測性",
+            "subtitle": "MCP ツール呼び出しと、各ハーネス要素がコンテキストウィンドウをどれだけ消費するかを追跡します。",
+            "common": {
+                "loading": "読み込み中…"
+            },
+            "mcp": {
+                "title": "MCP 呼び出し",
+                "empty": "MCP 呼び出しの記録はまだありません。ツールを使うセッションを実行すると表示されます。",
+                "callCount": "{{count}} 回",
+                "avgMs": "平均 {{ms}}ms",
+                "errorCount": "エラー {{count}} 件",
+                "col": {
+                    "errors": "エラー"
+                },
+                "filter": {
+                    "server": "サーバー",
+                    "tool": "ツール",
+                    "sinceDays": "期間",
+                    "allServers": "すべてのサーバー",
+                    "allTools": "すべてのツール",
+                    "lastNDays": "直近 {{days}} 日"
+                }
+            },
+            "timeline": {
+                "title": "タイムライン",
+                "empty": "最近の呼び出しはありません。",
+                "orphan": "応答なし（開始後、未返却）",
+                "success": "成功",
+                "failure": "失敗",
+                "noDuration": "—"
+            },
+            "tokens": {
+                "title": "トークン帰属",
+                "help": "各ハーネス要素の推定トークン量です。インライン値はバイト基準の概算で、公式値は「正確カウント」を押してください。",
+                "empty": "ハーネス要素が見つかりません。",
+                "windowOverlay": "ハーネス全体のコンテキスト",
+                "total": "合計 {{tokens}} トークン",
+                "ofWindow": "ウィンドウの ~{{pct}}%",
+                "ofHarness": "ハーネスの {{pct}}%",
+                "inlineApprox": "~{{tokens}} トークン（ウィンドウの ~{{pct}}%）",
+                "inlineExact": "{{tokens}} トークン（ウィンドウの {{pct}}%）",
+                "exactButton": "正確カウント",
+                "exactPending": "計算中…",
+                "exactFailed": "正確カウント不可 — 概算を維持",
+                "exactDone": "正確カウント",
+                "approxNote": "~ はバイト基準の概算（サイズ ÷ 4）で、マルチバイト文字では異なる場合があります。公式トークン数は「正確カウント」を使用してください。"
+            },
+            "tokenizer": {
+                "title": "近似トークナイザー",
+                "help": "サーバー側の近似に使うトークナイザーです。インラインの ~ ヒントは常にバイトサイズ ÷ 4 です。",
+                "option": {
+                    "size4": "バイトサイズ ÷ 4（ヒューリスティック）",
+                    "anthropic": "@anthropic-ai/tokenizer"
+                },
+                "notAdopted": "バイトサイズ ÷ 4 のヒューリスティックのみ利用可能です — トークナイザー等級の tier は採用されませんでした（spike #1: Claude 4.x で公式値と 25〜45% 乖離）。正確カウントの経路は常に利用できます。"
+            }
+        },
         "hook": {
             "managedBadge": {
                 "contextBuilder": "Hammoc コンテキストビルダー",

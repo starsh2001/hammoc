@@ -5,6 +5,7 @@
 
 import type { PermissionMode, ThinkingEffort } from './sdk.js';
 import type { LintRuleId } from './harness.js';
+import type { ObservabilityTokenizer } from './observability.js';
 
 /** Supported i18n languages (Epic 22) */
 export const SUPPORTED_LANGUAGES = ['en', 'ko', 'zh-CN', 'ja', 'es', 'pt'] as const;
@@ -68,6 +69,10 @@ export interface UserPreferences {
   // Keys absent from disk fall back to LINT_RULE_DEFAULTS (mcp/command-not-on-path
   // is opt-in OFF; the other six rules default ON).
   harnessLintRules?: Partial<Record<LintRuleId, boolean>>;
+  // Story 31.3 — observability server-side approximation tokenizer (AC-B4).
+  // Global preference; the panel toggle writes here. Absent → 'size/4'.
+  // Per spike #1 only 'size/4' is currently selectable.
+  observabilityTokenizer?: ObservabilityTokenizer;
 }
 
 /** Controls when permission mode changes are broadcast to other browsers viewing the same session */

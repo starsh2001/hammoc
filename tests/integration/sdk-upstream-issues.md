@@ -452,4 +452,100 @@ for Claude"* 섹션 직접 fetch (2026-06-01).
 
 ---
 
+## 14. Story 31.3 선행 spike #1 — `@anthropic-ai/tokenizer` Claude 4.x 정확도 + 실행 위치 (2026-06-02)
+
+**확인 방법**: `@anthropic-ai/tokenizer@0.0.4` 를 격리 스크래치에 임시 설치 →
+샘플 4종(영어 산문 · CLAUDE.md 류 마크다운 · 한글 멀티바이트 · TS 코드)에 대해
+`tokenizer.countTokens()` 결과를 **spike #2 의 실제 `count_tokens` 정답값**과 대조.
+동시에 `size/4`(UTF-8 바이트/4) · `chars/4` 휴리스틱도 같은 정답에 대조.
+
+### 실측 결과 (count_tokens 정답 대비 오차율)
+
+| 샘플 | 정답(`count_tokens`) | `@anthropic-ai/tokenizer` | `size/4`(바이트) | `chars/4` |
+|---|---|---|---|---|
+| 영어 산문 | 727 | 401 (**−45%**) | 450 (−38%) | 450 (−38%) |
+| 마크다운(CLAUDE.md 류) | 527 | 396 (**−25%**) | 317 (−40%) | 317 (−40%) |
+| 한글 멀티바이트 | 1416 | 1440 (+2%) | 765 (−46%) | 315 (−78%) |
+| TS 코드 | 945 | 660 (**−30%**) | 555 (−41%) | 555 (−41%) |
+
+**패키지 실체**: `0.0.4`, `tiktoken ^1.0.10` 의존 — **Claude 1/2 시대 BPE vocab**.
+Claude 4.x 와 정합하지 않음(정확도 우려의 근원). 신규(네이티브성) 의존성.
+
+### 결론 — 서버측 tokenizer tier **미채택**, 인라인 `~` 고지 강화
+
+- `@anthropic-ai/tokenizer` 는 라틴 텍스트(영어·마크다운·코드)를 **25~45% 과소계상**하며,
+  `size/4` 휴리스틱을 **일관되게 이기지 못한다**(한글 +2% 근접은 우연 — 다른 3종은 모두
+  size/4 와 동급의 큰 오차). 정확도 미흡 + 신규 의존성 + 정확 경로(`count_tokens`) 이미
+  존재 → **Task A.4(서버측 `@anthropic-ai/tokenizer` 근사 tier) 생략**. AC-B4 토글은
+  **`size/4` 단일 옵션 + 근거 고지**로 degrade(AC-B4.b — 토글 숨김 없음).
+- `size/4`(바이트) 가 멀티바이트에서 `chars/4` 보다 우수(한글 −46% vs −78%) → **인라인
+  근사는 바이트 기준 `size/4` 영구 유지**(AC-B2.b) 가 실측으로 재확인됨.
+- 모든 휴리스틱 오차가 **20% 초과**(AC8.a threshold) → 인라인 `~` 근사 고지를 **강하게**
+  표기하고, 토큰 등급 정밀값은 `count_tokens`(§15) 가 전담. 어느 분기든 정확값 경로는 상시 제공.
+
+---
+
+## 15. Story 31.3 선행 spike #2 — `count_tokens`(기존 `@anthropic-ai/sdk`) 시그니처·인증·실패모드 (2026-06-02)
+
+**확인 방법**: 이미 설치된 `@anthropic-ai/sdk@0.100.1` 의 `messages.countTokens` 를
+실제 호출(라이브). 인증 3분기(OAuth `authToken` / OAuth+beta 헤더 / 무자격증명)를 실측.
+
+### 확인된 사실 (디스크 타입 + 라이브 호출)
+
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| 메서드 | `client.messages.countTokens(body, options?)` → `APIPromise<MessageTokensCount>` | `resources/messages/messages.d.ts:93` |
+| 필수 body | `model: Model` · `messages: MessageParam[]` (`system?`·`tools?` 선택) | `MessageCountTokensParams:2221` |
+| 응답 | `{ input_tokens: number }` | `MessageTokensCount:783` |
+| `model` 타입 | 알려진 모델 유니온 + `(string & {})` — 임의 모델 문자열 허용 | `Model:824` |
+| beta 헤더 | **불필요** (GA) — `anthropic-beta` 없이 정상 동작 | 라이브 |
+| 인증 ① OAuth | `new Anthropic({ authToken })` + `~/.claude/.credentials.json` 의 `claudeAiOauth.accessToken` → **OK (`input_tokens=21`)** | 라이브 |
+| 인증 ② API 키 | `ANTHROPIC_API_KEY` 환경변수 (SDK 자동 인식) | `client.d.ts:34` |
+| 실패 모드 | 무/오 자격증명 → **HTTP 401 `authentication_error`** (throw) | 라이브 |
+| quota/비용 | count_tokens 는 별도 무료/저비용 — 라이브 호출 1건당 정상 200, rate-limit 미관측 | 라이브 |
+
+**핵심**: 본 환경엔 `ANTHROPIC_API_KEY` 가 없지만 **Claude Code OAuth 로그인 토큰이
+`count_tokens` 공개 API 에 그대로 수용**됨(라이브 검증). 즉 OAuth 로그인 유저도 정확
+카운트 사용 가능. 서버 코드에 기존 `new Anthropic()` 인스턴스화 지점은 **부재**(실제 채팅은
+`@anthropic-ai/claude-agent-sdk` 경유) — `tokenCountService` 가 첫 직접 사용처.
+
+### 결론 — AC-B3 프록시 설계 확정
+
+- **인증 우선순위**: `ANTHROPIC_API_KEY`(있으면) → 없으면 `~/.claude/.credentials.json`
+  의 OAuth `accessToken` 을 `authToken` 으로. 둘 다 불가/401 → **throw 하지 않고
+  `{ failed: true }` 반환**(AC-B3.c — 호출자가 인라인 근사 유지). 신규 의존성 0.
+- **캐시 적극성**: count_tokens 가 저비용·rate-limit 여유라 빈도 제한 불필요. 단 동일
+  내용 재계산 방지를 위해 **내용 sha 키 캐시**(AC-B3.b)는 유지 — 서버가 실제 입력으로 sha
+  재계산해 권위 키로 삼음(N-B). `model` 인자는 현재/기본 Claude 모델 문자열 1개로 충분.
+
+---
+
+## 16. Story 31.3 선행 spike #3 — MCP 호출 영속화 백엔드 (JSONL vs SQLite) (2026-06-02)
+
+**확인 방법**: JSONL 롤링 로그 프로토타입으로 **30k 레코드**(단일 프로젝트 과중한 30일
+분량 가정: 50 세션 × 평균 수백 호출)를 합성 생성 → 전체 파싱 + 필터(서버=playwright,
+최근 30일) + tool별 집계 + prune(30일 초과 제거 후 재기록) 지연 실측.
+
+### 실측 결과 (Node 22, 로컬 디스크)
+
+| 연산 | 30k 레코드 | 비고 |
+|---|---|---|
+| 파일 크기(prune 후) | **4.50 MB** | 레코드당 ≈150바이트 |
+| 전체 write | 35.2 ms | 초기 적재 |
+| **query**(parse+filter+aggregate) | **34.1 ms** | 서버/기간 필터 + tool별 count/avg/err 집계 |
+| **prune**(30일 초과 제거 후 재기록) | **17.8 ms** | 서버 기동/append 시점 |
+| 필터 결과 | playwright/30일 = 4,486건 → 6 tool 집계 | 정합 확인 |
+
+### 결론 — **JSONL 롤링 로그 채택**(SQLite 불요)
+
+- 30k(과중) 레코드에서도 query 34ms / prune 18ms — 온디맨드 로드되는 설정 패널 기준
+  충분. AC-A2(서버/tool/세션/기간 필터)·AC-A3(30일 유지·자동 정리)를 JSONL 로 만족.
+- 아키텍처 §9 *"외부 DB 미사용, 파일 시스템 기반 저장"* 원칙 + 기존 `~/.hammoc/` 평문
+  파일(projects.json·config.json) 관례 + `better-sqlite3` 부재(네이티브 의존성 회피)와
+  정합. **SQLite 승격 보류** — 향후 멀티프로젝트 합산 쿼리가 병목이 될 때 재평가.
+- 저장 위치: `~/.hammoc/` 하위 JSONL, **projectSlug 키 분리**(파일명 또는 컬럼). append 는
+  `onToolResult`(complete) + 턴 종료 orphan flush 두 진입(S-A). prune 은 append/기동 시점.
+
+---
+
 <!-- Add new upstream issues above this line as they are discovered. -->

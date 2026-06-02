@@ -742,6 +742,67 @@
                 "secretNotice": "{{count}} 条自定义命令可能包含机密信息 — 共享此项目前请检查。"
             }
         },
+        "observability": {
+            "nav": {
+                "title": "可观测性"
+            },
+            "title": "可观测性",
+            "subtitle": "跟踪 MCP 工具调用以及每个框架元素占用多少上下文窗口。",
+            "common": {
+                "loading": "加载中…"
+            },
+            "mcp": {
+                "title": "MCP 调用",
+                "empty": "尚无 MCP 调用记录。运行使用工具的会话即可填充。",
+                "callCount": "{{count}} 次调用",
+                "avgMs": "平均 {{ms}}ms",
+                "errorCount": "{{count}} 个错误",
+                "col": {
+                    "errors": "错误"
+                },
+                "filter": {
+                    "server": "服务器",
+                    "tool": "工具",
+                    "sinceDays": "时间范围",
+                    "allServers": "所有服务器",
+                    "allTools": "所有工具",
+                    "lastNDays": "最近 {{days}} 天"
+                }
+            },
+            "timeline": {
+                "title": "时间线",
+                "empty": "没有最近的调用。",
+                "orphan": "无响应（已开始，未返回）",
+                "success": "成功",
+                "failure": "失败",
+                "noDuration": "—"
+            },
+            "tokens": {
+                "title": "Token 归因",
+                "help": "每个框架元素的估算 token 量。内联值为基于字节的近似值；点击“精确计数”获取官方数值。",
+                "empty": "未找到框架元素。",
+                "windowOverlay": "框架总上下文",
+                "total": "共 {{tokens}} 个 token",
+                "ofWindow": "窗口的 ~{{pct}}%",
+                "ofHarness": "框架的 {{pct}}%",
+                "inlineApprox": "~{{tokens}} 个 token（窗口的 ~{{pct}}%）",
+                "inlineExact": "{{tokens}} 个 token（窗口的 {{pct}}%）",
+                "exactButton": "精确计数",
+                "exactPending": "计算中…",
+                "exactFailed": "无法精确计数 — 保留近似值",
+                "exactDone": "精确计数",
+                "approxNote": "~ 为基于字节的估算（大小 ÷ 4）；多字节文字可能不同。请使用“精确计数”获取官方 token 数。"
+            },
+            "tokenizer": {
+                "title": "近似分词器",
+                "help": "用于服务器端近似的分词器。内联 ~ 提示始终为字节大小 ÷ 4。",
+                "option": {
+                    "size4": "字节大小 ÷ 4（启发式）",
+                    "anthropic": "@anthropic-ai/tokenizer"
+                },
+                "notAdopted": "仅提供字节大小 ÷ 4 的启发式 — 未采用分词器级别的 tier（spike #1：在 Claude 4.x 上与官方数值偏差 25–45%）。精确计数路径始终可用。"
+            }
+        },
         "hook": {
             "managedBadge": {
                 "contextBuilder": "Hammoc 上下文构建器",

@@ -23,6 +23,7 @@ import {
 import {
   useContextBuilderStore,
   approximateTokens,
+  TOKEN_APPROXIMATION_IS_HEURISTIC,
   assembledSizeLevel,
   CONTEXT_BUILDER_EXTERNAL_PATH,
   CONTEXT_BUILDER_SOFT_LIMIT_CHARS,
@@ -152,11 +153,19 @@ describe('handleExternalChange', () => {
   });
 });
 
-describe('approximateTokens / assembledSizeLevel (AC4.b/4.c)', () => {
-  it('estimates tokens as ceil(chars / 4)', () => {
+describe('approximateTokens / assembledSizeLevel (AC4.b/4.c · Story 31.3 AC-B2.b)', () => {
+  it('estimates tokens as ceil(byteSize / 4) — byte-based heuristic, positional input unchanged', () => {
+    // Story 31.3 F.1: the parameter is bytes (renamed charCount→byteSize); the
+    // positional call site is unchanged and the size/4 behavior is preserved.
     expect(approximateTokens(0)).toBe(0);
     expect(approximateTokens(10)).toBe(3);
     expect(approximateTokens(4000)).toBe(1000);
+  });
+
+  it('remains a permanent heuristic (not promoted to a tokenizer — AC-B2.b)', () => {
+    // The inline approximation is NEVER upgraded in place (no text at the call
+    // site); tokenizer-grade precision is the server count_tokens path instead.
+    expect(TOKEN_APPROXIMATION_IS_HEURISTIC).toBe(true);
   });
 
   it('classifies assembled size against the soft/hard caps', () => {

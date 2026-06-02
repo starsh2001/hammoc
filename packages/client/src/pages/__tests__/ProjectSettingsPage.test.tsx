@@ -38,6 +38,9 @@ vi.mock('../../components/settings/BmadConfigPanel', () => ({
 vi.mock('../../components/settings/ContextBuilderPanel', () => ({
   ContextBuilderPanel: () => <div data-testid="context-builder-panel-mock" />,
 }));
+vi.mock('../../components/settings/ObservabilityPanel', () => ({
+  ObservabilityPanel: () => <div data-testid="observability-panel-mock" />,
+}));
 
 const mockUseProjectStore = useProjectStore as unknown as Mock;
 
@@ -83,5 +86,15 @@ describe('ProjectSettingsPage — BMad nav gate', () => {
     expect(screen.getByTestId('project-settings-nav-contextBuilder')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('project-settings-nav-contextBuilder'));
     expect(screen.getByTestId('context-builder-panel-mock')).toBeInTheDocument();
+  });
+
+  // Story 31.3 (AC-A1.a): the observability nav is NOT gated either — it appears
+  // for every project and routes to the ObservabilityPanel.
+  it('renders the observability nav item for a non-BMad project and routes to it', () => {
+    seedProjects(false);
+    render(<ProjectSettingsPage />);
+    expect(screen.getByTestId('project-settings-nav-observability')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('project-settings-nav-observability'));
+    expect(screen.getByTestId('observability-panel-mock')).toBeInTheDocument();
   });
 });

@@ -742,6 +742,67 @@
                 "secretNotice": "{{count}} comando(s) personalizado(s) podrían contener un secreto: revísalos antes de compartir este proyecto."
             }
         },
+        "observability": {
+            "nav": {
+                "title": "Observabilidad"
+            },
+            "title": "Observabilidad",
+            "subtitle": "Rastrea las llamadas a herramientas MCP y cuánto de la ventana de contexto consume cada elemento del harness.",
+            "common": {
+                "loading": "Cargando…"
+            },
+            "mcp": {
+                "title": "Llamadas MCP",
+                "empty": "Aún no hay llamadas MCP registradas. Ejecuta una sesión que use herramientas para llenarlo.",
+                "callCount": "{{count}} llamadas",
+                "avgMs": "{{ms}}ms prom.",
+                "errorCount": "{{count}} errores",
+                "col": {
+                    "errors": "Errores"
+                },
+                "filter": {
+                    "server": "Servidor",
+                    "tool": "Herramienta",
+                    "sinceDays": "Periodo",
+                    "allServers": "Todos los servidores",
+                    "allTools": "Todas las herramientas",
+                    "lastNDays": "Últimos {{days}} días"
+                }
+            },
+            "timeline": {
+                "title": "Cronología",
+                "empty": "Sin llamadas recientes.",
+                "orphan": "Sin respuesta (iniciada, nunca devuelta)",
+                "success": "Correcto",
+                "failure": "Fallida",
+                "noDuration": "—"
+            },
+            "tokens": {
+                "title": "Atribución de tokens",
+                "help": "Peso estimado de tokens de cada elemento del harness. Los valores en línea son aproximaciones por bytes; pulsa “Conteo exacto” para el valor oficial.",
+                "empty": "No se encontraron elementos del harness.",
+                "windowOverlay": "Contexto total del harness",
+                "total": "Total {{tokens}} tokens",
+                "ofWindow": "~{{pct}}% de la ventana",
+                "ofHarness": "{{pct}}% del harness",
+                "inlineApprox": "~{{tokens}} tokens (~{{pct}}% de la ventana)",
+                "inlineExact": "{{tokens}} tokens ({{pct}}% de la ventana)",
+                "exactButton": "Conteo exacto",
+                "exactPending": "Contando…",
+                "exactFailed": "Conteo exacto no disponible — se mantiene la aproximación",
+                "exactDone": "Conteo exacto",
+                "approxNote": "Los valores ~ son estimaciones por bytes (tamaño ÷ 4); los scripts multibyte pueden diferir. Usa “Conteo exacto” para el número oficial de tokens."
+            },
+            "tokenizer": {
+                "title": "Tokenizador de aproximación",
+                "help": "Tokenizador para la aproximación del lado del servidor. La pista ~ en línea siempre es tamaño en bytes ÷ 4.",
+                "option": {
+                    "size4": "Tamaño en bytes ÷ 4 (heurística)",
+                    "anthropic": "@anthropic-ai/tokenizer"
+                },
+                "notAdopted": "Solo está disponible la heurística de tamaño en bytes ÷ 4 — el nivel de tokenizador no se adoptó (spike #1: se desvía 25–45 % del valor oficial en Claude 4.x). La ruta de conteo exacto siempre está disponible."
+            }
+        },
         "hook": {
             "managedBadge": {
                 "contextBuilder": "Constructor de contexto de Hammoc",

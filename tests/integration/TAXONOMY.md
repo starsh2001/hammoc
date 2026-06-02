@@ -48,6 +48,7 @@
 - B16. 하네스 Export/Import 번들 (Story 30.5+30.6+30.7) `[CORE]` `[EDGE]` <!-- DECISION REQUIRED IN THIS PR — see Story 30.8 Task D -->
 - B17. BMad core-config 편집기 (Story 31.1) `[EDGE]` <!-- Q 교차 — see Story 31.1 AC8.c (Q3·Q4 cross-link): devStoryLocation/qaLocation/epicFilePattern 폼 편집 후 Q3·Q4 재실행 검증 -->
 - B18. SessionStart 컨텍스트 빌더 (Story 31.2) `[SDK]` `[EDGE]` <!-- spike #1 세션 트리거 시맨틱 · spike #2 additionalContext 10k 캡 — see sdk-upstream-issues.md §12·§13. 신규 세션 additionalContext 실주입은 수동 [SDK] 시나리오 -->
+- B19. 관측성 — MCP 로그 + 토큰 어트리뷰션 (Story 31.3) `[SDK]` `[EDGE]` `[CORE]` <!-- spike #1 tokenizer 정확도(미채택, size/4 단일 tier) · spike #2 count_tokens(기존 @anthropic-ai/sdk, OAuth authToken) · spike #3 JSONL 영속화 — see sdk-upstream-issues.md §14·§15·§16. 실제 MCP 도구 호출의 타임라인 영속 기록은 수동 [SDK] 시나리오 (B-19-05) -->
 
 ### C. 채팅 · 세션 ★ SDK 핵심
 - C1. 새 세션 시작 · 첫 메시지 송신 `[CORE] [SDK] [ASYNC]`
@@ -157,13 +158,13 @@
 ## 태그별 시나리오 인덱스
 
 ### `[SDK]` (SDK 민감영역 — sdk-sensitive 모드)
-B9, B18, C1, C2, C3, C4, C5, C7, C8, C9, C10, D1, D2, D3, E1, E2, E3, E4, F2, H2, H5, P4, R1, R2
+B9, B18, B19, C1, C2, C3, C4, C5, C7, C8, C9, C10, D1, D2, D3, E1, E2, E3, E4, F2, H2, H5, P4, R1, R2
 
 ### `[CORE]` (smoke 모드)
-A1, A2, B1, B2, B4, B5, B7, B16, C1, C2, C6, C10, D1, E1, F1, F3, F4, G1, H1, H4, I1, I2, I4, J1, J2, J5, K1, K2, L1, M1, M2, N1, P1, P2, Q1, Q2, Q3, S1, S2, S3, S4
+A1, A2, B1, B2, B4, B5, B7, B16, B19, C1, C2, C6, C10, D1, E1, F1, F3, F4, G1, H1, H4, I1, I2, I4, J1, J2, J5, K1, K2, L1, M1, M2, N1, P1, P2, Q1, Q2, Q3, S1, S2, S3, S4
 
 ### `[EDGE]` (심층 회귀)
-A3, B3, B9, B16, B17, B18, C3, C4, C8, C9, D3, D4, E3, E4, F2, G2, G3, H3, H5, J4, K3, L2, L3, N2, O1, O2, P3, P4, P5, Q4, R3, S5
+A3, B3, B9, B16, B17, B18, B19, C3, C4, C8, C9, D3, D4, E3, E4, F2, G2, G3, H3, H5, J4, K3, L2, L3, N2, O1, O2, P3, P4, P5, Q4, R3, S5
 
 ### `[ASYNC]` (타이밍 · 동시성)
 B1, C1, C2, C5, C7, G2, H2, L1, N1, R1, R2

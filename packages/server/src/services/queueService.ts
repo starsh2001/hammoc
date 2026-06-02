@@ -36,6 +36,7 @@ import {
   broadcastStreamChange,
 } from '../handlers/websocket.js';
 import { buildStreamCallbacks } from '../handlers/streamCallbacks.js';
+import { createMcpCallRecorder } from './observabilityService.js';
 
 type ProjectService = typeof _ps;
 type NotificationService = typeof _ns;
@@ -859,6 +860,8 @@ export class QueueService {
             current: this.currentIndex + 1,
             total: this.items.length,
           }),
+          // Story 31.3 — projectSlug is known synchronously on the queue path.
+          mcpRecorder: createMcpCallRecorder(() => this.projectSlug || undefined),
         },
         {
           onSessionIdResolved: (sid) => { this.currentSessionId = sid; },

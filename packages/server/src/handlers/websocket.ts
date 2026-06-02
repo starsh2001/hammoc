@@ -40,6 +40,7 @@ import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
 import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
+import { createMcpCallRecorder } from '../services/observabilityService.js';
 import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 import { ptyService } from '../services/ptyService.js';
 import { projectService } from '../services/projectService.js';
@@ -2735,6 +2736,12 @@ async function handleChatSend(
         rekeyStream: (sid) => rekeyStream(stream, sid),
         broadcastStreamChange,
         notificationService,
+        // Story 31.3 — browser path resolves projectSlug from the working dir
+        // (async; memoized by the recorder). append is read-only so the lazy
+        // slug resolution cannot disrupt the stream.
+        mcpRecorder: createMcpCallRecorder(() =>
+          projectService.findProjectByPath(workingDirectory).then((p) => p?.projectSlug),
+        ),
       },
       {
         onCallbackActivity: (source) => resetTimeout(source),

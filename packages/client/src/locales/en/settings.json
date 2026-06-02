@@ -743,6 +743,67 @@
                 "secretNotice": "{{count}} custom command(s) may contain a secret — review before sharing this project."
             }
         },
+        "observability": {
+            "nav": {
+                "title": "Observability"
+            },
+            "title": "Observability",
+            "subtitle": "Track MCP tool calls and how much of the context window each harness element consumes.",
+            "common": {
+                "loading": "Loading…"
+            },
+            "mcp": {
+                "title": "MCP calls",
+                "empty": "No MCP calls recorded yet. Run a session that uses tools to populate this.",
+                "callCount": "{{count}} calls",
+                "avgMs": "{{ms}}ms avg",
+                "errorCount": "{{count}} errors",
+                "col": {
+                    "errors": "Errors"
+                },
+                "filter": {
+                    "server": "Server",
+                    "tool": "Tool",
+                    "sinceDays": "Window",
+                    "allServers": "All servers",
+                    "allTools": "All tools",
+                    "lastNDays": "Last {{days}} days"
+                }
+            },
+            "timeline": {
+                "title": "Timeline",
+                "empty": "No recent calls.",
+                "orphan": "No response (started, never returned)",
+                "success": "Success",
+                "failure": "Failed",
+                "noDuration": "—"
+            },
+            "tokens": {
+                "title": "Token attribution",
+                "help": "Estimated token weight of each harness element. Inline values are byte-based approximations; click “Exact count” for the official number.",
+                "empty": "No harness elements found.",
+                "windowOverlay": "Total harness context",
+                "total": "Total {{tokens}} tokens",
+                "ofWindow": "~{{pct}}% of window",
+                "ofHarness": "{{pct}}% of harness",
+                "inlineApprox": "~{{tokens}} tokens (~{{pct}}% of window)",
+                "inlineExact": "{{tokens}} tokens ({{pct}}% of window)",
+                "exactButton": "Exact count",
+                "exactPending": "Counting…",
+                "exactFailed": "Exact count unavailable — approximation kept",
+                "exactDone": "Exact count",
+                "approxNote": "~ values are byte-based estimates (size ÷ 4); multibyte scripts may differ. Use “Exact count” for the official token count."
+            },
+            "tokenizer": {
+                "title": "Approximation tokenizer",
+                "help": "Tokenizer for the server-side approximation. The inline ~ hint is always byte size ÷ 4.",
+                "option": {
+                    "size4": "Byte size ÷ 4 (heuristic)",
+                    "anthropic": "@anthropic-ai/tokenizer"
+                },
+                "notAdopted": "Only the byte size ÷ 4 heuristic is available — the tokenizer-grade tier was not adopted (spike #1: it drifts 25–45% from the official count on Claude 4.x). The exact count path is always available."
+            }
+        },
         "hook": {
             "managedBadge": {
                 "contextBuilder": "Hammoc Context Builder",

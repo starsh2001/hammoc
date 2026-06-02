@@ -1290,4 +1290,77 @@
 - 신규 세션(SessionStart=startup)에서 선언 파일·변수가 시스템 프롬프트 앞쪽에 주입 (문서상 보장 — 라이브 최종 확인은 본 수동 시나리오)
 - resume 세션에서도 발화(매 메시지 재계산) — 단 중복 주입 가능성은 운영 신호로 관찰
 
+---
+
+## B19. 관측성 — MCP 로그 + 토큰 어트리뷰션 (Story 31.3) `[SDK]` `[EDGE]` `[CORE]`
+
+> 프로젝트 설정 탭의 **"관측성"** nav(`project-settings-nav-observability`, 게이팅 없음 — 모든 프로젝트 노출)에서 `ObservabilityPanel`(`observability-panel`)이 마운트된다. (A) MCP 호출 로그(집계 차트 + 타임라인), (B) 하네스 요소별 토큰 어트리뷰션(막대 + 컨텍스트 윈도우 overlay + 근사/정확 토큰). 선행 spike 3건 결과는 [sdk-upstream-issues.md](../sdk-upstream-issues.md) §14·§15·§16 참조.
+
+### B-19-01: 관측성 nav 진입 → MCP 집계 차트 + 타임라인 렌더 (AC-A1) `[CORE]`
+
+**전제**: 프로젝트에 MCP/도구 호출 이력이 1건 이상 영속화되어 있음(없으면 빈 상태 문구 확인으로 대체).
+
+**시나리오**:
+1. 프로젝트 설정 탭 진입 → 좌측 nav 의 `project-settings-nav-observability` 클릭
+2. `observability-panel` 마운트 확인
+3. MCP 섹션의 집계 차트(`observability-mcp-chart`)와 타임라인(`observability-mcp-timeline`) 렌더 확인
+
+**기대 결과**:
+- 호출 이력 있음 → `observability-mcp-row` 막대(서버 배지·tool·호출수·평균응답)와 `observability-timeline-row`(시간·성공/실패·세션) 표시
+- 이력 없음 → `observability-mcp-empty` / `observability-timeline-empty` 빈 상태 문구
+- 인수/응답 본문은 어디에도 노출되지 않음(크기만 집계 — 시크릿 표면 없음)
+
+### B-19-02: 서버/tool 필터 적용 → 차트·타임라인 갱신 (AC-A2) `[EDGE]`
+
+**전제**: 2개 이상의 서버 또는 tool 호출 이력.
+
+**시나리오**:
+1. `observability-mcp-filter-server` 드롭다운에서 특정 MCP 서버 선택
+2. 차트·타임라인이 해당 서버로 필터링되어 재조회되는지 확인
+3. `observability-mcp-filter-tool` · `observability-mcp-filter-since`(기간) 도 동일하게 검증 → "모든 서버/도구" 로 리셋
+
+**기대 결과**:
+- 서버/tool/기간 필터가 서버측 재쿼리로 반영(집계·타임라인 동기 갱신)
+- 빈 결과 시 빈 상태 문구로 전환, 리셋 시 전체 복원
+
+### B-19-03: 토큰 어트리뷰션 막대 + 컨텍스트 윈도우 overlay + 인라인 `~N tokens (~X%)` (AC-B1·B2) `[CORE]`
+
+**전제**: 프로젝트에 CLAUDE.md 또는 스킬 등 측정 대상 하네스 요소 존재.
+
+**시나리오**:
+1. 토큰 어트리뷰션 섹션(`observability-token-attribution`) 확인
+2. 컨텍스트 윈도우 overlay(`observability-token-overlay` + `observability-token-overlay-bar`) 표시 확인
+3. 각 요소 행(`observability-token-row`)의 인라인 힌트(`observability-token-inline`)가 `~N tokens (~X% of window)` 형식 + `~` 근사 고지(`observability-token-approx-note`) 동반인지 확인
+
+**기대 결과**:
+- 요소별 막대 + 두 가지 % (윈도우 대비 · 하네스 총량 대비) 동시 표시
+- 인라인 근사는 항상 `~` 접두 + 바이트 기반 `size/4` 휴리스틱(멀티바이트 고지)
+- 측정 대상 = 프로젝트/전역 CLAUDE.md · 스킬별 SKILL.md · 컨텍스트 빌더 주입분(매니페스트 산정, 임의 훅 실행 없음)
+
+### B-19-04: "정확 카운트" 버튼 → 서버 count_tokens → 결과/캐시 hit, 실패 시 근사 유지 (AC-B3) `[SDK]`
+
+**전제**: 토큰 어트리뷰션 요소 1건 이상. 인증(`ANTHROPIC_API_KEY` 또는 `~/.claude` OAuth)으로 count_tokens 호출 가능.
+
+**시나리오**:
+1. 한 요소의 "정확 카운트" 버튼(`observability-token-exact-btn`) 클릭
+2. 서버 `count_tokens`(기존 `@anthropic-ai/sdk` `messages.countTokens`) 호출 → 정확 토큰 수가 `~` 없이 표시(`observability-token-inline` 이 exact 형식으로 전환), 버튼 사라짐
+3. 동일 요소 재클릭(내용 불변) → 내용 해시 캐시 hit(API 재호출 없음)
+4. (분기) 인증 불가/429 등 실패 → `observability-token-failed` 마커 + 인라인은 근사치 그대로 유지(비차단)
+
+**기대 결과**:
+- 성공 시 공식 토큰 수 표시 + 해시 캐시로 재호출 억제(서버가 실제 입력으로 sha 재계산 = 권위 키, 요청 해시는 힌트)
+- 실패 시 근사치 유지 + 비차단 고지(앱이 멈추지 않음)
+
+### B-19-05: (수동 / `[SDK]`) 실제 MCP 도구 세션 → 타임라인 영속 기록 (수집 hook 라이브) `[SDK]`
+
+**시나리오** (릴리즈 직전 수동 — 실제 SDK 스트림 의존, spike 와 무관):
+1. 실제 MCP 도구(예: Playwright MCP)를 사용하는 Hammoc 채팅/큐 세션 1회 실행
+2. 세션 종료 후 관측성 패널 재진입 → 타임라인에 그 도구 호출이 서버·tool·응답시간과 함께 영속 기록됐는지 확인
+3. (orphan 검증) 도구 응답 전 세션을 중단 → 턴 종료 시 `durationMs:null`·`success:null` 인 '미완' 레코드 1건이 기록되는지 확인
+
+**기대 결과**:
+- 수집은 read-only(기존 stream/emit 흐름 불변) — 공유 콜백 빌더 seam 에서 호출당 1회 append
+- browser·queue 두 실행 경로 모두 동일 seam 통과(단일 공유 빌더)
+- orphan(시작했으나 미반환)은 nullable 필드로 관측 신호화, 중복 레코드 없음
+
 

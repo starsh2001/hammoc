@@ -15,9 +15,10 @@ import { ProjectSettingsSection } from '../components/settings/ProjectSettingsSe
 import { HarnessWorkbenchSection } from '../components/settings/HarnessWorkbenchSection';
 import { BmadConfigPanel } from '../components/settings/BmadConfigPanel';
 import { ContextBuilderPanel } from '../components/settings/ContextBuilderPanel';
+import { ObservabilityPanel } from '../components/settings/ObservabilityPanel';
 import { useProjectStore } from '../stores/projectStore';
 
-type TopSection = 'general' | 'harness' | 'bmad' | 'contextBuilder';
+type TopSection = 'general' | 'harness' | 'bmad' | 'contextBuilder' | 'observability';
 
 export function ProjectSettingsPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -45,6 +46,8 @@ export function ProjectSettingsPage() {
     // Story 31.2 (AC1.a): the context-builder nav is NOT gated — it is available
     // on all projects (unlike the BMad gate above).
     { key: 'contextBuilder', label: t('settings:harness.contextBuilder.nav.title', '컨텍스트 빌더') },
+    // Story 31.3 (AC-A1.a): the observability nav is likewise NOT gated.
+    { key: 'observability', label: t('settings:harness.observability.nav.title', '관측성') },
   ];
 
   // AC1.a: if BMad was removed mid-session while this tab was active, fall back
@@ -83,6 +86,7 @@ export function ProjectSettingsPage() {
           {activeSection === 'harness' && <HarnessWorkbenchSection projectSlug={projectSlug} />}
           {activeSection === 'bmad' && <BmadConfigPanel projectSlug={projectSlug} />}
           {activeSection === 'contextBuilder' && <ContextBuilderPanel projectSlug={projectSlug} />}
+          {activeSection === 'observability' && <ObservabilityPanel projectSlug={projectSlug} />}
         </div>
       </div>
     </div>

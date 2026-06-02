@@ -76,16 +76,25 @@ export function assembledSizeLevel(totalChars: number): AssembledSizeLevel {
 }
 
 /**
- * AC4.b isolation point. Today: a char/4 heuristic (always prefix `~` and show
- * the "근사치" notice in the UI). When Story 31.3's `@anthropic-ai/tokenizer`
- * util lands, replace ONLY this function body with the real tokenizer call and
- * flip `TOKEN_APPROXIMATION_IS_HEURISTIC` to false — call sites stay unchanged.
+ * AC4.b isolation point — the inline token approximation. It receives a *size*
+ * in UTF-8 bytes (the only call site, FileListEditor, passes the same byte value
+ * it feeds to `formatBytes()`), NOT raw text — so a real tokenizer cannot be
+ * slotted in here (there is no text to tokenize). Story 31.3 (§14 spike #1 /
+ * AC-B2.b) therefore keeps the inline approximation a PERMANENT byte `size/4`
+ * heuristic (4 bytes ≈ 1 token; always `~`-prefixed + the "근사치" notice —
+ * multibyte scripts diverge from a char basis, so precise values come from the
+ * server). Tokenizer-grade precision lives on the SERVER path: the official
+ * `count_tokens` (exact, AC-B3) and an optional server-side tokenizer running on
+ * file contents the server already reads. This CORRECTS the earlier "replace
+ * ONLY this function body to upgrade" comment, which the measured byte-input
+ * contract makes impossible. The parameter is named `byteSize` to be honest
+ * about its unit; the runtime signature + positional call site are unchanged.
  */
-export function approximateTokens(charCount: number): number {
-  return Math.ceil(Math.max(0, charCount) / 4);
+export function approximateTokens(byteSize: number): number {
+  return Math.ceil(Math.max(0, byteSize) / 4);
 }
 
-/** True while `approximateTokens` is the char/4 heuristic (drives the `~`/notice). */
+/** True permanently — `approximateTokens` is the byte `size/4` heuristic (drives the `~`/notice). */
 export const TOKEN_APPROXIMATION_IS_HEURISTIC = true;
 
 /** The discriminated watcher path the server emits for the manifest (Task A.4). */
