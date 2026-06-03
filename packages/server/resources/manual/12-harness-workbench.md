@@ -2,6 +2,8 @@
 
 The **Harness Workbench** is the unified surface for managing everything Claude Code reads from the `.claude/` configuration tree — plugins, skills, MCP servers, hooks, slash commands, sub-agents, `CLAUDE.md`, and Hammoc-native `%snippets`. It lives inside each project's **Settings** tab (see §5.3) under the "Harness Workbench" group, so the workbench is always scoped to the project you're working on but can also reach the global (`~/.claude/`) versions of each item.
 
+The same Settings tab also hosts four sibling harness-engineering panels next to the Workbench (each a top-level nav item, not one of the Workbench's own sections): **BMad Settings** (§12.16, BMad projects only), **Context Builder** (§12.17), **Observability** (§12.18), and **Plugin Marketplace** (§12.19).
+
 ### 12.1 Layout
 
 The workbench has two stacked headers above an eight-section navigator:
@@ -31,7 +33,7 @@ A workbench-wide banner just above the navigator tells you how the project share
 
 The banner is derived from the project root's `.gitignore`. Edit the rules and the banner updates the next time the workbench refreshes.
 
-> An **Export bundle** action is planned for the Private mode banner so you can ship the current harness state to a teammate as a single file. The button is intentionally hidden until the export/import flow is fully wired — until then, copy individual files by hand or via the workbench's Project ↔ Global copy actions.
+> The Private mode banner surfaces an **Export** action on its right edge (in addition to the workbench-wide Bundle menu) so you can ship the current harness state to a teammate as a single `.zip` bundle. See §12.15 for the full export/import flow.
 
 ### 12.3 Share Badges
 
@@ -172,4 +174,83 @@ The dialog lists exactly which values were flagged (line numbers for text files,
 ### 12.14 Fullscreen Editor
 
 Every Markdown body in the workbench — skill body and raw view, skill bundle files, command body and raw view, agent system prompt and raw view, `CLAUDE.md` (both columns), snippet body — shows a small **Expand** button (⤢ icon) above the editor area. Clicking it opens a fullscreen overlay with the same CodeMirror instance, line wrapping, and a Markdown edit / preview toggle, so you can write long content without scrolling inside a narrow modal. Edits in the overlay sync back to the host panel through the same 300 ms debounce auto-save — there is no separate save button. Close the overlay with **X** or `Escape`. Read-only buffers (a plugin-scope file, a bundled snippet) show a small "read-only" chip in the overlay header.
+
+### 12.15 Bundle Export / Import (Team Sharing)
+
+When your project's `.claude/` tree is **fully git-ignored** (Mode B — typical when you use Hammoc itself to develop on Hammoc, or when your team intentionally keeps the harness out of source control), you can still share the entire workbench configuration with a teammate by exporting it as a single `.zip` bundle and importing on the other side. The workbench shows a **Bundle** menu (top-right of the workbench header, also surfaced as an **Export** button on the Mode B banner), with two actions:
+
+- **Export bundle** — Opens a dialog summarizing what will be packed (the five domain cards + `CLAUDE.md` + snippets) and lets you choose how secrets are handled:
+  - **Exclude (default)** — Secrets detected by the heuristic are stripped before packing; the recipient sees a *"N secrets removed"* toast after import. Use this when you want your teammate to fill in their own credentials.
+  - **Include as `${ENV_REF}` placeholders** — Detected secrets are replaced with named environment-variable references and a hint table lists which keys the recipient needs to set. Good for sharing a config skeleton without leaking real values.
+  - **Include explicit (with secrets)** — Plain-text secrets are packed as-is. This is the *"send it over secure DM and delete after use"* mode: you must check a second confirmation box before the dialog enables the download button, the resulting filename contains a visible `WITH-SECRETS` token, and a 5-second warning toast appears after the download starts.
+- **Import bundle** — Drop a `.zip` (or browse for one). Before anything is applied, Hammoc shows a preview of every incoming item alongside what already exists, with three per-item actions (Overwrite / Skip / Add only if missing) and three bulk-action shortcuts. Bundles tagged *"with secrets"* require the recipient to acknowledge a separate *"this bundle contains plaintext secrets"* checkbox before the apply button activates, and bundles produced by a newer Hammoc version (`bundleVersion` greater than what the local server supports) are rejected outright with an upgrade hint.
+
+The export/import flow only touches the workbench items themselves — `package.json`, repository code, and tracked files outside `.claude/` are never bundled. Bundles produced and consumed by the same Hammoc version are round-trip identical: re-importing your own export into an empty project reproduces the workbench cards byte-for-byte (handy for backups or for setting up a new dev machine).
+
+### 12.16 BMad Settings (core-config Editor)
+
+> Shown only for BMad projects (those with a `.bmad-core/` folder). For non-BMad projects this nav item is hidden entirely — no empty placeholder.
+
+A form-based editor for BMad's `core-config.yaml`, so you can change BMad's paths and flags without opening a terminal or text editor. It is a top-level item in the project Settings left nav (a sibling of the Harness Workbench, not one of its sections).
+
+Keys are organized into collapsible groups — **General**, **QA**, **PRD**, **Architecture**, and **Brownfield Epic** — and each value uses a widget matched to its type:
+
+- **Toggle** for boolean flags (e.g., Markdown Exploder, PRD Sharded)
+- **Path picker** for file/folder paths — a **Browse** button opens a file-tree dialog; paths are relative to the project root (e.g., Dev Story Location, QA Location)
+- **Text** for plain strings (e.g., PRD Version, Slash Prefix)
+- **Glob** with a live match preview that counts the files matching the pattern (e.g., Epic File Pattern)
+- **Drag-sortable list** for path arrays (e.g., Dev Load Always Files, Custom Technical Documents)
+
+Other behaviors:
+
+- **Auto-save** — Text/path/glob edits debounce-save (~300 ms); toggles and list changes save immediately. Saves write `.bmad-core/core-config.yaml` while preserving comments and key order.
+- **Raw YAML toggle** — A **Form / Raw** switch in the top-right lets you edit the file as raw YAML; switching back to Form preserves comments and ordering. A parse error keeps you in Raw mode until it is fixed.
+- **Unknown Keys** — Keys the form doesn't recognize (for example, a newer BMad schema) are preserved and listed read-only in an "Unknown Keys" section at the bottom; edit them in Raw mode.
+- **External-change banner** — If the file changes outside Hammoc while the panel is open, a banner with a **Reload** button appears.
+
+After you change a path such as **Dev Story Location**, the BMad agents (e.g., `/dev`) pick up the new value on their next run.
+
+### 12.17 Context Builder
+
+The **Context Builder** automatically injects a block of context into every new chat session, so you don't have to re-explain "what was I working on" each time. It does this by generating a Claude Code **SessionStart hook** for you. Available on all projects.
+
+You declare three kinds of content in the panel:
+
+- **Reference files** — Project files that are read fresh and injected at each session start. Each file shows its byte size and an approximate token count. If the combined size nears the SessionStart output cap an amber warning appears; past the hard cap (red), the content spills to a file plus a preview instead of being injected inline, so trim the list when warned.
+- **Dynamic variables** — Built-in values recomputed every session, each with an on/off toggle:
+  - **Current branch** — the active git branch
+  - **Active BMad story** — title and status of the most recently modified story file
+  - **Recent commits** — the most recent commit subjects (count configurable)
+  - **Today** — today's date
+  - **Uncommitted files** — count of files with uncommitted changes
+- **Custom commands** (advanced) — Arbitrary shell commands whose output is appended. Because these run automatically at every session start, each requires you to tick a confirmation checkbox ("I understand this command runs automatically at every session start"). Hammoc also flags commands that look like they contain a secret.
+
+When you save, Hammoc generates a hook script under the project's `.hammoc/` folder and registers a SessionStart entry in `.claude/settings.json`. In the **Hooks** panel (§12.7) that entry is marked **"Hammoc Context Builder"**; editing it by hand there raises a sync-loss warning, since the Context Builder owns it — change it from this panel instead. The token-size hints reuse the same approximation as Observability (§12.18).
+
+### 12.18 Observability
+
+The **Observability** panel is the feedback loop for harness tuning: it shows which tools get called and how much of the context window each harness element consumes. Available on all projects.
+
+**MCP / tool calls:**
+
+- A **timeline** of recent tool calls (server, tool, response time, and success / failed / no-response status) and an **aggregate chart** of calls per server and per tool with average response time and error counts.
+- **Filters** by server, tool, and time window (default: last 30 days).
+- Only call **metadata** is recorded — server, tool, timestamp, argument and response **sizes**, and duration. Argument and response **bodies are never stored**, so file contents and secrets don't leak into the log.
+
+**Token attribution:**
+
+- A bar chart of how many tokens each harness element contributes — project and global `CLAUDE.md`, each skill's `SKILL.md`, and the Context Builder's injected block — with an overlay showing the total against the current model's context window.
+- Inline hints show an **approximate** token count prefixed with `~` (a fast byte-based estimate), expressed two ways at once: as a percentage of the context window and as a share of the total harness prompt.
+- An **Exact count** button calls Anthropic's official token-count API and caches the result by file content; if the call fails, the approximation is kept.
+
+### 12.19 Plugin Marketplace
+
+The **Marketplace** panel lets you discover Claude Code plugins from the marketplaces registered on your machine, complementing the install/toggle view in the Plugins panel (§12.4). Available on all projects.
+
+- **Catalog** — One card per plugin parsed from each registered marketplace, showing name, description, version, author, category, a type badge (**Plugin** or **External MCP**), bundled-component counts, and an **Installed** badge when applicable.
+- **Filter & search** — By name, category, type, and installed state.
+- **Install / Uninstall guide** — Because Claude Code's plugin commands are interactive slash commands (not shell subcommands), the **Install** and **Uninstall** buttons open a dialog containing the exact command — e.g. `/plugin install <name>@<marketplace>` — with a **Copy** button. Paste it into your Claude CLI session to run it; plugin commands can't be executed from the Hammoc chat.
+- **Add marketplace** — A form takes a marketplace URL and produces the matching `/plugin marketplace add <url>` command to copy.
+- **Auto-refresh** — After you install or remove a plugin in your CLI session, Hammoc detects the on-disk change and updates both this catalog's **Installed** badges and the Plugins panel cards automatically.
+- **Resilience** — If one marketplace's catalog file can't be read, only that marketplace shows an error badge and the rest still load. If the installed-plugins file is in an unrecognized format, a warning banner notes that installed state may be incomplete.
 

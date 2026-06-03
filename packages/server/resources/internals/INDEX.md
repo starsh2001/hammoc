@@ -9,7 +9,9 @@ Read individual entries **on demand** when the user's request involves the under
 ## Entries
 
 - [Image Storage](./image-storage.md) — On-disk path and filename scheme for chat-attached images
-- [Harness File Layout](./harness-files.md) — Where `.claude/` items (skills, commands, agents, hooks, MCP servers, `CLAUDE.md`) live on disk, when changes take effect, and how the Secret-on-Shared guard relates to direct file writes
+- [Harness File Layout](./harness-files.md) — Where `.claude/` items (skills, commands, agents, hooks, MCP servers, `CLAUDE.md`) live on disk, when changes take effect, the Context Builder's Hammoc-managed SessionStart files, plugin install-state paths, and how the Secret-on-Shared guard relates to direct file writes
+- [Observability Storage](./observability-storage.md) — Where the MCP call log and exact-token-count cache live, their JSONL/JSON format, body-stripping, and 30-day retention
+- [BMad QA-Fix Marker](./bmad-qa-fix-marker.md) — The `<!-- hammoc:qa-fix -->` story-file convention that drives QA re-review recommendations and the board's "QA Fixed" badge
 
 ## Maintenance
 

@@ -181,7 +181,7 @@ Behavior:
 
 - Click the currently active level again to reset to default
 - Cannot be changed while Claude is responding
-- If you switch to a model that doesn't support the current level (e.g., XHigh → non-Opus-4.7, or Max → model without Max), the effort automatically resets to the highest supported level
+- If you switch to a model that doesn't support the current level (e.g., XHigh → model without XHigh, or Max → model without Max), the effort automatically resets to the highest supported level
 - When the active model is temporarily unknown (e.g., right after switching projects before the resolved model arrives), the dropdown keeps your saved choice instead of resetting it. As soon as the model is known, the effort is reclamped if necessary
 
 The default thinking effort for new sessions can be configured in Settings > Global.

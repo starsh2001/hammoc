@@ -29,6 +29,28 @@ When the same name (skill, command, agent, hook, MCP server, snippet) exists in 
 
 Hammoc-native `%snippets` are a separate layer (see manual §4.6); they live under `<projectRoot>/.hammoc/snippets/` and `<homeDir>/.hammoc/snippets/`, **not** the `.claude/` tree.
 
+## Context Builder generated files (Hammoc-managed)
+
+The Context Builder (manual §12.17) writes two Hammoc-owned files plus one `settings.json` entry:
+
+| File | Role |
+|------|------|
+| `<projectRoot>/.hammoc/context-builder.json` | Manifest — the single source of truth: `enabled` flag, reference-file list, dynamic-variable toggles, recent-commit count, custom-command list |
+| `<projectRoot>/.hammoc/hooks/context-builder.mjs` | Generated Node.js SessionStart hook. Regenerated from the manifest on every change; reads the reference files fresh, recomputes the variables, runs acknowledged custom commands, and prints `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}` |
+| `<projectRoot>/.claude/settings.json` → `hooks.SessionStart[]` | Auto-registered entry whose `command` is `node "<absPath>/.hammoc/hooks/context-builder.mjs"` (forward-slash normalized) |
+
+Hammoc recognizes its own SessionStart entry by the `.hammoc/hooks/context-builder.` substring in the command — there is no metadata key. **Do not hand-edit that entry or the `.mjs` script directly**: the Context Builder panel owns them and regenerates the script (overwriting manual edits) on the next save. To change the injected context, edit `context-builder.json` (or use the panel). User-authored SessionStart entries that do not contain the marker substring are left untouched.
+
+## Plugin install state (read-only)
+
+The Marketplace panel (manual §12.19) and the Plugins panel read Claude Code's own plugin bookkeeping under `<homeDir>/.claude/plugins/`:
+
+- `known_marketplaces.json` — registered marketplace repos
+- `marketplaces/<name>/.claude-plugin/marketplace.json` — each marketplace's catalog manifest (`plugins[]`)
+- `installed_plugins.json` — which plugins are installed (used to mark catalog cards "Installed")
+
+Hammoc only **reads** these; installs/uninstalls happen through the interactive `/plugin …` slash commands in a Claude CLI session, after which a file watcher refreshes the cards.
+
 ## Sharing scope
 
 Each file's "share" status is computed from the project's `.gitignore`:

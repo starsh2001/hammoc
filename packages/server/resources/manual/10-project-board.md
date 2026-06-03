@@ -85,7 +85,7 @@ Draft → Approved → In Progress → Ready for Review → Done
 - **QA Waived** — Quality review waived/skipped
 - **QA Failed** — Quality review failed, fixes needed
 - **QA Concerns** — Quality review raised concerns
-- **QA Fixed** — Fixes applied, ready for re-review
+- **QA Fixed** — The developer has recorded a fix for the current gate; ready for re-review
 
 Not all statuses are required. Use the context menu to change status directly. **Promoted** indicates an issue that has been escalated to a story or epic.
 
@@ -134,9 +134,10 @@ Click the **⋮** button on any card to open the context menu. Actions vary by c
   - **Complete Story** — Mark as Done without committing
   - **Request QA Review** — Re-request quality review
 - **QA Failed / QA Concerns:**
-  - **Apply QA Fix** — Apply fixes for QA issues
+  - **Apply QA Fix** — Apply fixes for QA issues (always offered)
+  - **Review Story** — Re-request QA review; also offered unless Hammoc has confirmed fixes are still pending for the current gate (e.g., legacy stories or external BMad projects)
 - **QA Fixed:**
-  - **Review Story** — Request re-review after fixes
+  - **Apply QA Fix** / **Review Story** — Apply further fixes, or request re-review
 - **Ready for Review / Ready for Done (no QA gate):**
   - **Review Story** — Request quality review
 

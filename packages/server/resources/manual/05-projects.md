@@ -38,7 +38,7 @@ Per-project settings live in their own tab inside each project (Overview / Queue
 
 The Settings tab has a two-pane layout:
 
-- **Left nav** — Two top-level groups: **General** and **Harness Workbench** (see §12)
+- **Left nav** — Top-level groups: **General**, **Harness Workbench** (see §12), **Context Builder** (§12.17), **Observability** (§12.18), and **Marketplace** (§12.19). BMad projects also get a **BMad Settings** group (§12.16)
 - **Right panel** — Form contents for the selected group
 
 **General group** (per-project override fields):

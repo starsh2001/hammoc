@@ -108,14 +108,16 @@ The Next Step Recommender analyzes the project state and suggests actions based 
 
 Recommendations follow reverse workflow order (finish what's closest to done first):
 
-- **Priority 1:** QA Passed/Waived stories → Commit and mark Done, or re-request QA review → Dev agent
-- **Priority 2:** QA Fixed stories → Re-review → QA agent
-- **Priority 3:** QA Failed/Concerns stories → Apply QA fixes → Dev agent
-- **Priority 4:** Ready for Review stories (no QA gate) → Request QA review → QA agent
-- **Priority 5:** In Progress stories → Continue development → Dev agent
-- **Priority 6:** Approved stories → Start development (Dev), or re-validate with Validate and Fix / Validate Only → PO agent
-- **Priority 7:** Draft stories → Validate and Fix / Validate Only → PO agent
-- **Priority 8:** Create next story → SM agent (when no actionable stories)
+- **Priority 1:** QA Passed/Waived stories → Commit and mark Done, mark Done without committing, or re-request QA review → Dev/QA agent
+- **Priority 2:** QA Failed/Concerns stories → the next step depends on whether the developer has already recorded a fix for the *current* gate:
+  - Fix already applied for this gate → Request QA re-review → QA agent
+  - Fix still needed → Apply QA fixes → Dev agent
+  - State unknown (a story from before this tracking existed, an external BMad project, or a manually-edited gate) → **both** "Apply QA fixes" and "Request QA review" are offered (apply-fixes leading) so you choose
+- **Priority 3:** Ready for Review stories (no QA gate) → Request QA review → QA agent
+- **Priority 4:** In Progress stories → Continue development → Dev agent
+- **Priority 5:** Approved stories → Start development (Dev), or re-validate with Validate and Fix / Validate Only → PO agent
+- **Priority 6:** Draft stories → Validate and Fix / Validate Only → PO agent
+- **Priority 7:** Create next story → SM agent (when no actionable stories)
 
 **Phase 4: Completed** (all planned stories are Done)
 - Brainstorm new features → Analyst agent

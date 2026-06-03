@@ -160,8 +160,8 @@ Real-time conversations with Claude through a rich web UI.
 
 ### Model & Permission Control
 
-- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants (including Opus 4.7 with 1M context) with model name displayed on the button
-- **Thinking effort** — Adjust reasoning intensity (Low / Medium / High, plus Max on 4.6 models and XHigh on Opus 4.7)
+- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants (including Opus 4.8 and Sonnet 4.6 with 1M context) with model name displayed on the button
+- **Thinking effort** — Adjust reasoning intensity (Low / Medium / High, plus Max on 4.6 models and XHigh on Opus 4.7 / 4.8)
 - **Permission modes** — Plan, Ask (default), Auto, or Bypass
 - **Per-project overrides** — Different settings per project
 
@@ -185,6 +185,10 @@ Edit the `.claude/` configuration tree from inside Hammoc — no need to hand-ed
 - **Secret-on-shared guard** — Blocks plaintext API keys / tokens from sneaking into committed config files, with one-click "move to local sibling" remediation
 - **Bundle Export / Import** — Pack the entire workbench (5 domains + `CLAUDE.md` + snippets) into a single `.zip` with a chosen secrets policy (exclude / env-ref placeholders / explicit with multi-layer guards), import on another machine with a per-item conflict preview — round-trip identical, ideal for Mode B projects where `.claude/` is git-ignored
 - **Fullscreen editor overlay** — Maximize any body field (skill, command, agent, CLAUDE.md, snippet) into a fullscreen CodeMirror
+- **BMad core-config editor** — Form-based editing of `.bmad-core/core-config.yaml` (paths, flags, sharding) for BMad projects, with a raw-YAML fallback
+- **Context Builder** — Auto-injects reference files and dynamic variables (current branch, active story, recent commits…) into every new session via a generated SessionStart hook
+- **Observability** — MCP/tool call timeline and aggregates, plus per-element token attribution against the model's context window
+- **Plugin marketplace** — Browse plugins from registered marketplaces with copy-paste install/uninstall command guides
 
 ### File Explorer & Editor
 
@@ -327,6 +331,7 @@ npm run dev
 | User preferences | `~/.hammoc/preferences.json` |
 | Queue templates | `<project-root>/.hammoc/queue-templates.json` (per project) |
 | Chain failures | `~/.hammoc/chain-failures/<sessionId>.json` (per session) |
+| MCP call log & token cache | `~/.hammoc/observability/` (per project; 30-day retention) |
 | Snippets (global) | `~/.hammoc/snippets/` (shared across projects) |
 | Snippets (project) | `<project-root>/.hammoc/snippets/` (per project) |
 | Harness items (global) | `~/.claude/` (skills, agents, commands, hooks, `CLAUDE.md`, `.mcp.json`, `settings.json`) |
