@@ -95,11 +95,28 @@ export interface BmadAuxDocument {
 }
 
 /** Response for GET /api/projects/:projectSlug/bmad-status */
+/**
+ * A QA gate file that failed to parse as YAML. Surfaced to the UI so it can warn
+ * that next-step recommendations may be inaccurate until the file is fixed —
+ * an unparseable gate is treated as "no gate", which silently misroutes the
+ * recommendation (e.g. a PASS gate that won't parse looks like "needs review").
+ */
+export interface GateParseError {
+  /** Gate file name, e.g. "1.7-rule-firing-pool-entry-accrual.yml" */
+  file: string;
+  /** Story id parsed from the file name, e.g. "1.7" */
+  storyId: string;
+  /** Parser error message */
+  message: string;
+}
+
 export interface BmadStatusResponse {
   config: BmadConfig;
   documents: BmadDocuments;
   auxiliaryDocuments: BmadAuxDocument[];
   epics: BmadEpicStatus[];
+  /** QA gate files that failed to parse. Omitted/empty when all gates parsed. */
+  gateParseErrors?: GateParseError[];
 }
 
 export const BMAD_STATUS_ERRORS = {

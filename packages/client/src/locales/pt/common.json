@@ -161,6 +161,8 @@
     "epicsLabel": "Épicos",
     "storiesLabel": "Histórias",
     "bmadLoadFailed": "Falha ao carregar o status do BMad",
+    "gateParseErrorTitle": "Erro de análise do gate de QA",
+    "gateParseErrorBody": "{{count}} arquivo(s) de gate falharam ao analisar como YAML, então algumas recomendações de próximos passos podem estar incorretas. Verifique a sintaxe YAML de:",
     "totalSessions": "Total de sessões",
     "totalMessages": "Total de mensagens",
     "activeSessions": "Sessões ativas",

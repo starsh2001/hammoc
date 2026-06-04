@@ -179,6 +179,29 @@ function BmadSection({
       {data && (
         <>
           <BmadSummaryCard epics={data.epics} isRefreshing={isRefreshing} />
+          {data.gateParseErrors && data.gateParseErrors.length > 0 && (
+            <div
+              role="alert"
+              className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {t('overview.gateParseErrorTitle')}
+                </span>
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
+                {t('overview.gateParseErrorBody', { count: data.gateParseErrors.length })}
+              </p>
+              <ul className="text-xs text-amber-700 dark:text-amber-300 list-disc list-inside space-y-0.5">
+                {data.gateParseErrors.map((e) => (
+                  <li key={e.file}>
+                    <code className="font-mono">{e.file}</code>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <NextStepRecommender data={data} projectSlug={projectSlug} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <DocumentStatusCard

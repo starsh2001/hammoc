@@ -162,6 +162,8 @@
     "epicsLabel": "에픽",
     "storiesLabel": "스토리",
     "bmadLoadFailed": "BMad 현황 로드 실패",
+    "gateParseErrorTitle": "QA 게이트 파싱 오류",
+    "gateParseErrorBody": "게이트 파일 {{count}}개가 YAML 파싱에 실패해 일부 다음 작업 추천이 부정확할 수 있습니다. 아래 파일의 YAML 문법을 확인하세요:",
     "totalSessions": "총 세션",
     "totalMessages": "총 메시지",
     "activeSessions": "활성 세션",

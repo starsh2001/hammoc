@@ -243,3 +243,4 @@
 **엣지케이스**:
 - E1. QA gate 없이 Done 시도: `qa-passed`/`qa-waived` 상태에서만 "스토리 완료" 메뉴가 노출됨 (자연스럽게 막힘). status를 수동으로 `Done`으로 설정하는 우회는 가능하나 UI 메뉴 경로로는 제어됨.
 - E2. 동일 스토리에 Dev + QA 세션 동시 진행: 각각 다른 세션 ID로 생성되므로 파일 일관성은 BMad 에이전트의 lock/Dev Agent Record 규약에 의존. Hammoc 자체 직렬화 없음.
+- E3. QA gate YAML 파싱 실패: gate 파일이 잘못된 YAML(따옴표/escape 오류 등)이면 서버가 gate 를 인식 못 해 스토리를 "gate 없음"으로 처리한다(추천이 어긋날 수 있음). 이때 오버뷰 상단에 amber 경고 배너(`overview.gateParseErrorTitle` + 깨진 파일 목록)가 뜬다 — 응답의 `gateParseErrors[]` 가 신호. qa-review 스니펫은 게이트 작성 시 자유 텍스트를 블록 스칼라(`|`)로 쓰고 작성 후 파싱을 검증하도록 지시해 재발을 예방한다.

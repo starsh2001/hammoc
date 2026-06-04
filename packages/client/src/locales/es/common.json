@@ -161,6 +161,8 @@
     "epicsLabel": "Épicas",
     "storiesLabel": "Historias",
     "bmadLoadFailed": "Error al cargar el estado de BMad",
+    "gateParseErrorTitle": "Error de análisis de la puerta de QA",
+    "gateParseErrorBody": "{{count}} archivo(s) de puerta no se pudieron analizar como YAML, por lo que algunas recomendaciones de próximos pasos podrían ser inexactas. Revisa la sintaxis YAML de:",
     "totalSessions": "Total de sesiones",
     "totalMessages": "Total de mensajes",
     "activeSessions": "Sesiones activas",

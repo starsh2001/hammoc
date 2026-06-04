@@ -162,6 +162,8 @@
     "epicsLabel": "Epics",
     "storiesLabel": "Stories",
     "bmadLoadFailed": "Failed to load BMad status",
+    "gateParseErrorTitle": "QA gate parse error",
+    "gateParseErrorBody": "{{count}} gate file(s) failed to parse as YAML, so some next-step recommendations may be inaccurate. Check the YAML syntax of:",
     "totalSessions": "Total sessions",
     "totalMessages": "Total messages",
     "activeSessions": "Active sessions",

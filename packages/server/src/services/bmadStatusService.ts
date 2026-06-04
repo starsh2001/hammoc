@@ -11,6 +11,7 @@ import type {
   BmadEpicStatus,
   BmadStoryStatus,
   DirEntry,
+  GateParseError,
 } from '@hammoc/shared';
 import { createLogger } from '../utils/logger.js';
 
@@ -41,9 +42,15 @@ class BmadStatusService {
     const config = await this.parseConfig(projectRoot);
     const documents = await this.checkDocuments(projectRoot, config);
     const auxiliaryDocuments = await this.scanAuxiliaryDocuments(projectRoot, config);
-    const epics = await this.scanEpicsAndStories(projectRoot, config);
+    const { epics, gateParseErrors } = await this.scanEpicsAndStories(projectRoot, config);
 
-    return { config, documents, auxiliaryDocuments, epics };
+    return {
+      config,
+      documents,
+      auxiliaryDocuments,
+      epics,
+      ...(gateParseErrors.length > 0 && { gateParseErrors }),
+    };
   }
 
   /**
@@ -190,7 +197,8 @@ class BmadStatusService {
   private async scanEpicsAndStories(
     projectRoot: string,
     config: BmadConfig
-  ): Promise<BmadEpicStatus[]> {
+  ): Promise<{ epics: BmadEpicStatus[]; gateParseErrors: GateParseError[] }> {
+    const gateParseErrors: GateParseError[] = [];
     const epicMap = new Map<number | string, string>();
     // Planned story count from PRD epic headers (## Story N.N / ### Story N.N)
     const plannedMap = new Map<number | string, Set<string>>();
@@ -364,13 +372,17 @@ class BmadStatusService {
               gateResults.set(storyId, { gate, updated });
             }
           } catch (err) {
-            // Skip unparseable gate files but warn so the operator can spot
-            // a malformed YAML (e.g. unescaped quotes) instead of silently
-            // missing the gate decision in the BMad overview.
+            // Skip unparseable gate files but warn so the operator can spot a
+            // malformed YAML (e.g. unescaped quotes) instead of silently missing
+            // the gate decision. Also collect it so the UI can show a banner —
+            // an unparseable gate is treated as "no gate" and silently misroutes
+            // the next-step recommendation.
+            const message = (err as Error)?.message ?? String(err);
             log.warn(
               `Failed to parse QA gate file ${file} (story ${storyId}); ` +
-              `gate decision will be missing in the overview. Reason: ${(err as Error)?.message ?? String(err)}`,
+              `gate decision will be missing in the overview. Reason: ${message}`,
             );
+            gateParseErrors.push({ file, storyId, message });
           }
         }
       } catch (err: unknown) {
@@ -440,7 +452,7 @@ class BmadStatusService {
         ...(epicFileMap.has(number) && { filePath: epicFileMap.get(number) }),
       }));
 
-    return epics;
+    return { epics, gateParseErrors };
   }
 
   /**

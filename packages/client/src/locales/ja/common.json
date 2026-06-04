@@ -161,6 +161,8 @@
     "epicsLabel": "エピック",
     "storiesLabel": "ストーリー",
     "bmadLoadFailed": "BMadステータスの読み込みに失敗しました",
+    "gateParseErrorTitle": "QA ゲート解析エラー",
+    "gateParseErrorBody": "ゲートファイル {{count}} 件が YAML として解析できず、一部の次アクション推奨が不正確になる可能性があります。以下のファイルの YAML 構文を確認してください:",
     "totalSessions": "総セッション数",
     "totalMessages": "総メッセージ数",
     "activeSessions": "アクティブセッション",

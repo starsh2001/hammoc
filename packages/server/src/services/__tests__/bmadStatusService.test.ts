@@ -716,6 +716,49 @@ describe('bmadStatusService', () => {
     expect(epic1!.stories[0].gateFixState).toBeUndefined();
   });
 
+  // TC-BS-13g: a gate file that fails to parse is collected into gateParseErrors
+  // (and treated as "no gate", so its story keeps gateResult undefined). This is
+  // the signal the BMad overview banner reads to warn the user.
+  it('collects gateParseErrors when a gate file fails to parse', async () => {
+    (yaml.load as ReturnType<typeof vi.fn>).mockImplementation((content: string) => {
+      if (typeof content === 'string' && content.includes('gate:')) {
+        throw new Error('bad indentation of a mapping entry');
+      }
+      return {
+        prd: { prdFile: 'docs/prd.md', prdSharded: false },
+        architecture: { architectureFile: 'docs/architecture.md', architectureSharded: false },
+        devStoryLocation: 'docs/stories',
+        qa: { qaLocation: 'docs/qa' },
+      };
+    });
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      if (filePath.includes('core-config.yaml')) return VALID_CONFIG_YAML;
+      if (filePath.includes('prd.md')) return '## Epic 1: Foundation\n';
+      if (filePath.endsWith('1.1-foo.yml')) return "schema: 1\nstory: '1.1'\ngate: CONCERNS\n";
+      throw makeEnoent();
+    });
+    mockStat.mockImplementation(async (p: string) => {
+      if (p.endsWith('1.1-foo.yml')) return { mtimeMs: 1000 };
+      if (p.endsWith('1.1.story.md')) return { mtimeMs: 1000 };
+      throw makeEnoent();
+    });
+    mockReaddir.mockImplementation(async (dir: string) => {
+      if (dir === path.join(PROJECT_ROOT, 'docs/stories')) return ['1.1.story.md'];
+      if (dir === path.join(PROJECT_ROOT, 'docs/qa', 'gates')) return ['1.1-foo.yml'];
+      throw makeEnoent();
+    });
+    setupOpenMock('# Story 1.1\n\n## Status\n\nReady for Review\n');
+
+    const result = await bmadStatusService.scanProject(PROJECT_ROOT);
+    expect(result.gateParseErrors).toBeDefined();
+    expect(result.gateParseErrors).toHaveLength(1);
+    expect(result.gateParseErrors![0].storyId).toBe('1.1');
+    expect(result.gateParseErrors![0].file).toBe('1.1-foo.yml');
+    // An unparseable gate is treated as "no gate".
+    const epic1 = result.epics.find((e) => e.number === 1);
+    expect(epic1!.stories[0].gateResult).toBeUndefined();
+  });
+
   // TC-BS-14: 스토리 파일이 없는 에픽도 빈 stories 배열로 반환한다
   it('returns epics with empty stories when no story files exist', async () => {
     (yaml.load as ReturnType<typeof vi.fn>).mockReturnValue({

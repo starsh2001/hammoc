@@ -161,6 +161,8 @@
     "epicsLabel": "Epic",
     "storiesLabel": "Story",
     "bmadLoadFailed": "加载 BMad 状态失败",
+    "gateParseErrorTitle": "QA 门禁解析错误",
+    "gateParseErrorBody": "{{count}} 个门禁文件无法解析为 YAML，部分后续操作建议可能不准确。请检查以下文件的 YAML 语法：",
     "totalSessions": "总会话数",
     "totalMessages": "总消息数",
     "activeSessions": "活跃会话",
