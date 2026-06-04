@@ -1,4 +1,4 @@
-import type { CanUseTool } from '@anthropic-ai/claude-agent-sdk';
+import type { CanUseTool, RewindFilesResult } from '@anthropic-ai/claude-agent-sdk';
 import type { StreamCallbacks, ChatOptions, ChatResponse, PermissionMode } from '@hammoc/shared';
 
 /**
@@ -44,4 +44,13 @@ export interface ChatEngine {
 
   /** Read the current permission mode (used by permission-gating call-site logic). */
   getPermissionMode(): PermissionMode;
+
+  /**
+   * Standalone file rewind (no message send): rewind project files to the
+   * checkpoint at `messageUuid` for `sessionId`. `dryRun` previews without writing.
+   * Used by the `session:rewind-files` handler. This is the *separate* operation
+   * from the inline rewind-before-send (`ChatOptions.rewindToMessageUuid`, whose
+   * outcome surfaces via `rewindWarning`) — do not conflate the two.
+   */
+  rewindFiles(params: { sessionId: string; messageUuid: string; dryRun?: boolean }): Promise<RewindFilesResult>;
 }

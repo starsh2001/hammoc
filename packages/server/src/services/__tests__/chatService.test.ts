@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatService } from '../chatService.js';
+import { SessionService } from '../sessionService.js';
 import {
   SDKError,
   RateLimitError,
@@ -688,5 +689,115 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
     expect(callArgs.options).toHaveProperty('forkSession', true);
     expect(callArgs.options).toHaveProperty('resumeSessionAt', 'assistant-uuid');
     expect(callArgs.options).toHaveProperty('resume', 'original-session-id');
+  });
+});
+
+// Story 32.3: standalone file rewind absorbed into the ChatEngine seam.
+// The SDK mechanism (throwaway resume query + markRewindDirty + close) now lives
+// here in the engine; these tests verify it directly against the mocked SDK query.
+describe('rewindFiles (standalone)', () => {
+  let service: ChatService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new ChatService({ workingDirectory: '/test/path' });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should spin up a throwaway resume query with checkpointing and delegate to rewindFiles', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockClose = vi.fn();
+    const mockRewindFiles = vi.fn().mockResolvedValue({
+      canRewind: true,
+      filesChanged: ['src/index.ts', 'src/utils.ts'],
+      insertions: 10,
+      deletions: 5,
+    });
+    vi.mocked(query).mockReturnValue(
+      { rewindFiles: mockRewindFiles, close: mockClose } as unknown as ReturnType<typeof query>
+    );
+    const markSpy = vi
+      .spyOn(SessionService.prototype, 'markRewindDirty')
+      .mockImplementation(() => {});
+
+    const result = await service.rewindFiles({
+      sessionId: 'session-abc',
+      messageUuid: 'msg-123',
+      dryRun: true,
+    });
+
+    // Throwaway query: empty prompt + resume + project cwd + checkpointing.
+    // No `sessionId` option (CLI rejects --session-id combined with --resume).
+    expect(query).toHaveBeenCalledWith({
+      prompt: '',
+      options: {
+        resume: 'session-abc',
+        cwd: '/test/path',
+        enableFileCheckpointing: true,
+      },
+    });
+    // Delegates to the SDK rewind with positional uuid + dryRun flag
+    expect(mockRewindFiles).toHaveBeenCalledWith('msg-123', { dryRun: true });
+    // Returns the RewindFilesResult verbatim
+    expect(result).toEqual({
+      canRewind: true,
+      filesChanged: ['src/index.ts', 'src/utils.ts'],
+      insertions: 10,
+      deletions: 5,
+    });
+    // Side effects: markRewindDirty(cwd, sessionId) BEFORE close()
+    expect(markSpy).toHaveBeenCalledWith('/test/path', 'session-abc');
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('should return a canRewind:false result without throwing (defaults dryRun to false)', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockClose = vi.fn();
+    const mockRewindFiles = vi.fn().mockResolvedValue({
+      canRewind: false,
+      error: 'No checkpoint available for this message',
+    });
+    vi.mocked(query).mockReturnValue(
+      { rewindFiles: mockRewindFiles, close: mockClose } as unknown as ReturnType<typeof query>
+    );
+    const markSpy = vi
+      .spyOn(SessionService.prototype, 'markRewindDirty')
+      .mockImplementation(() => {});
+
+    const result = await service.rewindFiles({
+      sessionId: 'session-abc',
+      messageUuid: 'msg-123',
+    });
+
+    expect(result.canRewind).toBe(false);
+    expect(result.error).toBe('No checkpoint available for this message');
+    // dryRun omitted → SDK called with { dryRun: false }
+    expect(mockRewindFiles).toHaveBeenCalledWith('msg-123', { dryRun: false });
+    // Side effects still run on the cannot-rewind path
+    expect(markSpy).toHaveBeenCalledWith('/test/path', 'session-abc');
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('should still markRewindDirty and close when the SDK rewind rejects, then propagate', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockClose = vi.fn();
+    const mockRewindFiles = vi.fn().mockRejectedValue(new Error('rewind boom'));
+    vi.mocked(query).mockReturnValue(
+      { rewindFiles: mockRewindFiles, close: mockClose } as unknown as ReturnType<typeof query>
+    );
+    const markSpy = vi
+      .spyOn(SessionService.prototype, 'markRewindDirty')
+      .mockImplementation(() => {});
+
+    await expect(
+      service.rewindFiles({ sessionId: 'session-abc', messageUuid: 'msg-123', dryRun: false })
+    ).rejects.toThrow('rewind boom');
+
+    // finally ran despite the rejection
+    expect(markSpy).toHaveBeenCalledWith('/test/path', 'session-abc');
+    expect(mockClose).toHaveBeenCalled();
   });
 });

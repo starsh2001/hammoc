@@ -26,7 +26,6 @@ import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, Te
 import i18next from '../i18n.js';
 import { SUPPORTED_LANGUAGES, DEFAULT_ENGINE_MODE } from '@hammoc/shared';
 import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
-import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatEngine } from '../services/chatEngine.js';
 import { createChatEngine } from '../services/chatEngineFactory.js';
@@ -1703,49 +1702,27 @@ export async function initializeWebSocket(
       log.info(`session:rewind-files sessionId=${sessionId}, messageUuid=${messageUuid}, dryRun=${!!dryRun}`);
 
       try {
-        const sessionService = new SessionService();
-        const _projectSlug = sessionService.encodeProjectPath(workingDirectory);
+        // Standalone rewind is now a ChatEngine operation (Story 32.3) — the SDK
+        // mechanism (throwaway resume query + markRewindDirty + close) lives
+        // behind the seam in ChatService.rewindFiles. The handler keeps only the
+        // transport concerns: result → session:rewind-result mapping.
+        const engine = createChatEngine(DEFAULT_ENGINE_MODE, { workingDirectory });
+        const result = await engine.rewindFiles({ sessionId, messageUuid, dryRun: !!dryRun });
 
-        const rewindQuery = sdkQuery({
-          prompt: '',
-          options: {
-            resume: sessionId,
-            cwd: workingDirectory,
-            enableFileCheckpointing: true,
-            // Do NOT pass sessionId here — CLI rejects --session-id
-            // combined with --resume unless --fork-session is also set.
-            // resume: sessionId already identifies the session.
-          },
-        });
-
-        try {
-          const rewindResult = await rewindQuery.rewindFiles(messageUuid, { dryRun: !!dryRun });
-          log.info(`rewindFiles result: canRewind=${rewindResult.canRewind}, filesChanged=${rewindResult.filesChanged?.length ?? 0}, insertions=${rewindResult.insertions ?? 0}, deletions=${rewindResult.deletions ?? 0}`);
-
-          if (rewindResult.canRewind) {
-            socket.emit('session:rewind-result', {
-              success: true,
-              dryRun: !!dryRun,
-              filesChanged: rewindResult.filesChanged,
-              insertions: rewindResult.insertions,
-              deletions: rewindResult.deletions,
-            });
-          } else {
-            socket.emit('session:rewind-result', {
-              success: false,
-              dryRun: !!dryRun,
-              error: rewindResult.error,
-            });
-          }
-        } finally {
-          // Mark session as dirty BEFORE close — SDK query({ prompt: '' })
-          // writes an empty user message to the JSONL which causes
-          // cache_control 400 errors. chatService will clean the JSONL
-          // before the next resume.
-          sessionService.markRewindDirty(workingDirectory, sessionId);
-
-          // Clean up the query object
-          try { rewindQuery.close(); } catch { /* best-effort */ }
+        if (result.canRewind) {
+          socket.emit('session:rewind-result', {
+            success: true,
+            dryRun: !!dryRun,
+            filesChanged: result.filesChanged,
+            insertions: result.insertions,
+            deletions: result.deletions,
+          });
+        } else {
+          socket.emit('session:rewind-result', {
+            success: false,
+            dryRun: !!dryRun,
+            error: result.error,
+          });
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

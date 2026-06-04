@@ -1,4 +1,4 @@
-import { query, type Query, type Options, type SDKMessage, type SDKUserMessage, type CanUseTool } from '@anthropic-ai/claude-agent-sdk';
+import { query, type Query, type Options, type SDKMessage, type SDKUserMessage, type CanUseTool, type RewindFilesResult } from '@anthropic-ai/claude-agent-sdk';
 import type {
   ChatServiceConfig,
   ChatOptions,
@@ -465,6 +465,44 @@ export class ChatService implements ChatEngine {
     }
 
     return streamHandler.processStream(wrapGenerator(), callbacks);
+  }
+
+  /**
+   * Standalone file rewind (no message send) — backs the `session:rewind-files`
+   * handler. Spins up a throwaway resume query with file checkpointing enabled,
+   * rewinds tracked files to the checkpoint at `messageUuid`, then cleans up.
+   *
+   * This is the *separate* operation from the inline rewind-before-send path
+   * (`sendMessage`'s `options.rewindToMessageUuid`, whose outcome surfaces via
+   * `rewindWarning`) — do not conflate the two.
+   */
+  async rewindFiles(params: { sessionId: string; messageUuid: string; dryRun?: boolean }): Promise<RewindFilesResult> {
+    const { sessionId, messageUuid, dryRun } = params;
+    const cwd = this.workingDirectory;
+    const rewindQuery = query({
+      prompt: '',
+      options: {
+        resume: sessionId,
+        cwd,
+        enableFileCheckpointing: true,
+        // Do NOT pass sessionId here — CLI rejects --session-id
+        // combined with --resume unless --fork-session is also set.
+        // resume: sessionId already identifies the session.
+      },
+    });
+
+    try {
+      const result = await rewindQuery.rewindFiles(messageUuid, { dryRun: !!dryRun });
+      log.info(`rewindFiles result: canRewind=${result.canRewind}, filesChanged=${result.filesChanged?.length ?? 0}, insertions=${result.insertions ?? 0}, deletions=${result.deletions ?? 0}`);
+      return result;
+    } finally {
+      // Mark session as dirty BEFORE close — SDK query({ prompt: '' }) writes an
+      // empty user message to the JSONL that triggers cache_control 400 errors;
+      // cleanRewindDirty (called before the next resume) strips it.
+      if (cwd) new SessionService().markRewindDirty(cwd, sessionId);
+      // Clean up the throwaway query object
+      try { rewindQuery.close(); } catch { /* best-effort */ }
+    }
   }
 }
 

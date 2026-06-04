@@ -14,19 +14,19 @@ import { ERROR_CODES } from '@hammoc/shared';
 const { mockState } = vi.hoisted(() => {
   const mockState = {
     sendImpl: vi.fn().mockResolvedValue({}),
+    // Story 32.3: the rewind handler now delegates to the engine's rewindFiles
+    rewindImpl: vi.fn(),
     lastCtorArgs: undefined as unknown,
   };
   return { mockState };
 });
 
-// Mock SDK query for session:rewind-files tests
-const { mockSdkQuery } = vi.hoisted(() => {
-  const mockSdkQuery = vi.fn();
-  return { mockSdkQuery };
-});
-
+// Stub the Agent SDK module. Story 32.3 moved the rewind handler's SDK call
+// behind the ChatEngine seam, so the handler no longer drives `query` directly.
+// This stub only prevents the real SDK from loading via transitive importers
+// (e.g. summarizeService, which websocket.ts imports) during these socket tests.
 vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
-  query: mockSdkQuery,
+  query: vi.fn(),
 }));
 
 // Mock fs module used by logger and other imports
@@ -54,6 +54,7 @@ vi.mock('../../services/chatService.js', () => ({
     sendMessageWithCallbacks(...args: unknown[]) { return mockState.sendImpl(...args); }
     setPermissionMode() {}
     getPermissionMode() { return 'default'; }
+    rewindFiles(...args: unknown[]) { return mockState.rewindImpl(...args); }
   },
 }));
 
@@ -2061,14 +2062,12 @@ describe('WebSocket Handler', () => {
     });
 
     it('should emit session:rewind-result {success:true} when canRewind is true', async () => {
-      const mockClose = vi.fn();
-      const mockRewindFiles = vi.fn().mockResolvedValue({
+      mockState.rewindImpl.mockResolvedValue({
         canRewind: true,
         filesChanged: ['src/index.ts', 'src/utils.ts'],
         insertions: 10,
         deletions: 5,
       });
-      mockSdkQuery.mockReturnValue({ rewindFiles: mockRewindFiles, close: mockClose });
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -2098,14 +2097,15 @@ describe('WebSocket Handler', () => {
       expect(result.success).toBe(true);
       expect(result.dryRun).toBe(true);
       expect(result.filesChanged).toEqual(['src/index.ts', 'src/utils.ts']);
-      expect(mockRewindFiles).toHaveBeenCalledWith(VALID_MSG_UUID, { dryRun: true });
+      // Handler delegated to the engine's rewind op with the right params
+      expect(mockState.rewindImpl).toHaveBeenCalledWith({
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+        dryRun: true,
+      });
     });
 
     it('should silently reject rewind when socket has not joined the session room', async () => {
-      const mockClose = vi.fn();
-      const mockRewindFiles = vi.fn();
-      mockSdkQuery.mockReturnValue({ rewindFiles: mockRewindFiles, close: mockClose });
-
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
       });
@@ -2125,18 +2125,15 @@ describe('WebSocket Handler', () => {
       // Wait enough time for handler to potentially fire
       await new Promise((r) => setTimeout(r, 200));
 
-      // rewindFiles should never be called since socket is not in the session room
-      expect(mockRewindFiles).not.toHaveBeenCalled();
-      expect(mockClose).not.toHaveBeenCalled();
+      // The engine's rewind op must never be reached — the room gate short-circuits first
+      expect(mockState.rewindImpl).not.toHaveBeenCalled();
     });
 
     it('should emit session:rewind-result {success:false} when canRewind is false', async () => {
-      const mockClose = vi.fn();
-      const mockRewindFiles = vi.fn().mockResolvedValue({
+      mockState.rewindImpl.mockResolvedValue({
         canRewind: false,
         error: 'No checkpoint available for this message',
       });
-      mockSdkQuery.mockReturnValue({ rewindFiles: mockRewindFiles, close: mockClose });
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {
         transports: ['websocket'],
@@ -2165,6 +2162,12 @@ describe('WebSocket Handler', () => {
       expect(result.success).toBe(false);
       expect(result.dryRun).toBe(false);
       expect(result.error).toBe('No checkpoint available for this message');
+      // Handler delegated to the engine with dryRun:false
+      expect(mockState.rewindImpl).toHaveBeenCalledWith({
+        sessionId: VALID_SESSION_UUID,
+        messageUuid: VALID_MSG_UUID,
+        dryRun: false,
+      });
     });
   });
 
