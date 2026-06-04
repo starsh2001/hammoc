@@ -13,6 +13,7 @@ import { syncBundledDocs } from './services/manualSyncService.js';
 import { resetPassword } from './cli/passwordSetup.js';
 import { createLogger, getEffectiveLogLevel } from './utils/logger.js';
 import { ptyService } from './services/ptyService.js';
+import { cliSessionPool } from './services/cliSessionPool.js';
 import { LogLevel } from '@hammoc/shared';
 import { isExternalBinding } from './utils/networkUtils.js';
 import { config } from './config/index.js';
@@ -218,6 +219,7 @@ async function main() {
   // Graceful shutdown: release port before process exits (critical for --watch restart on Windows)
   const shutdown = () => {
     ptyService.destroyAll();
+    cliSessionPool.destroyAll();
     httpServer.close(() => process.exit(0));
     // Force exit if close hangs longer than 2s
     setTimeout(() => process.exit(0), 2000).unref();
