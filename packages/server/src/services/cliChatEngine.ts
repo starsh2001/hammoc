@@ -16,10 +16,11 @@
  * than token-by-token (accepted constraint, spike §1/§9-2). SDK mode keeps real
  * token streaming.
  *
- * Scope of THIS story is the core happy-path (prompt → block response). Standalone
- * rewind (`claude --resume`) is Story 32.5; the interactive tool-approval round-trip
- * (`canUseTool` web dialog) is a later story (spike §10 unobserved); synthetic
- * typing / progress UI is 32.6; mode-selection UI is Epic 33.
+ * The CLI engine grows by story: 32.4 built the core happy-path (prompt → block
+ * response); 32.5 fills standalone rewind (`rewindFiles`, below — billing-neutral
+ * SDK file-rewind reuse). Still deferred: the interactive tool-approval round-trip
+ * (`canUseTool` web dialog) is Story 32.6 (spike §10 unobserved); synthetic typing /
+ * progress UI is Story 32.7; mode-selection UI is Epic 33.
  *
  * [Source: docs/spike-32.1-cli-output-source.md#7.1; docs/prd/epic-32-cli-engine-core.md#Story 32.4+]
  */
@@ -44,6 +45,7 @@ import { watch, type FSWatcher } from 'fs';
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
 import { parseJSONLFile } from './historyParser.js';
+import { rewindSessionFiles } from './fileRewind.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -137,7 +139,7 @@ export class CliChatEngine implements ChatEngine {
 
   /**
    * CLI mode performs no inline rewind-before-send, so this stays null. (Standalone
-   * rewind is `rewindFiles`, deferred to Story 32.5.)
+   * rewind is the separate `rewindFiles` operation below — implemented in Story 32.5.)
    */
   rewindWarning: string | null = null;
 
@@ -158,12 +160,26 @@ export class CliChatEngine implements ChatEngine {
   }
 
   /**
-   * Standalone file rewind. The CLI implementation lands in Story 32.5 (via
-   * `claude --resume` + file checkpointing); this fills the `ChatEngine` member
-   * 32.3 added so the seam compiles, and fails loudly until then.
+   * Standalone file rewind (Story 32.5). Delegates to the shared billing-neutral
+   * `rewindSessionFiles` helper: a throwaway `query({ prompt: '' })` resumed only to
+   * drive its file-checkpoint rewind (0 tokens → no conflict with CLI mode's
+   * subscription-pool purpose). This is the documented exception to 32.4's "the CLI
+   * engine never spawns the SDK directly" rule, and the ONLY programmatic rewind path
+   * (interactive claude exposes no non-interactive rewind flag; `/rewind` is an ANSI
+   * picker; control-protocol rewind is headless-only — verified §AC2). Verified
+   * billing-neutral + working against a real CLI-created session (AC4).
+   *
+   * Separate from the inline rewind-before-send (`rewindWarning`, always null for
+   * CLI) — the "two rewinds"; do not conflate.
    */
-  async rewindFiles(_params: { sessionId: string; messageUuid: string; dryRun?: boolean }): Promise<RewindFilesResult> {
-    throw new Error('CLI rewind not supported yet (Story 32.5)');
+  async rewindFiles(params: { sessionId: string; messageUuid: string; dryRun?: boolean }): Promise<RewindFilesResult> {
+    if (!this.workingDirectory) {
+      // Rewind needs the session JSONL + tracked files under cwd. Mirrors the
+      // sendMessageWithCallbacks cwd guard, surfaced as the rewind contract's
+      // canRewind:false (not a throw) so the handler maps it to a clean result.
+      return { canRewind: false, error: 'CliChatEngine requires a workingDirectory to locate the session JSONL' };
+    }
+    return rewindSessionFiles(params, this.workingDirectory);
   }
 
   /**

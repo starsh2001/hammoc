@@ -8,7 +8,7 @@
  *   - §6.3 filter (meta / non-assistant / already-emitted excluded)
  *   - S-1 heartbeat: PTY data → onRawMessage during JSONL silence
  *   - abort cleanup, early-exit failure, resume seeding, arg mapping
- *   - rewindFiles deferral throw + permission-mode store/return
+ *   - rewindFiles delegation to the shared fileRewind helper + permission-mode store/return
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -60,11 +60,14 @@ const h = vi.hoisted(() => {
     getSessionFilePath: (_slug: string, id: string) => path.join(state.sessionsDir, `${id}.jsonl`),
   };
 
-  return { fakePty, disposers, cliSessionPool, state, sessionService };
+  const rewindSessionFiles = vi.fn();
+
+  return { fakePty, disposers, cliSessionPool, state, sessionService, rewindSessionFiles };
 });
 
 vi.mock('../cliSessionPool.js', () => ({ cliSessionPool: h.cliSessionPool }));
 vi.mock('../sessionService.js', () => ({ sessionService: h.sessionService, SessionService: class {} }));
+vi.mock('../fileRewind.js', () => ({ rewindSessionFiles: h.rewindSessionFiles }));
 vi.mock('../../utils/logger.js', () => ({
   createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), verbose: vi.fn() }),
 }));
@@ -159,10 +162,44 @@ describe('CliChatEngine', () => {
     });
   });
 
-  describe('rewindFiles', () => {
-    it('throws a clear "deferred to 32.5" error', async () => {
+  describe('rewindFiles (Story 32.5 — delegates to the shared billing-neutral helper)', () => {
+    it('delegates to rewindSessionFiles with the params + workingDirectory and returns its result', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
-      await expect(engine.rewindFiles({ sessionId: 's', messageUuid: 'm' })).rejects.toThrow(/32\.5/);
+      h.rewindSessionFiles.mockResolvedValue({ canRewind: true, filesChanged: ['a.ts'], insertions: 3, deletions: 1 });
+
+      const result = await engine.rewindFiles({ sessionId: 'sess', messageUuid: 'uuid-1', dryRun: true });
+
+      // (1) delegates with params + cwd; (2) dryRun forwarded
+      expect(h.rewindSessionFiles).toHaveBeenCalledWith({ sessionId: 'sess', messageUuid: 'uuid-1', dryRun: true }, '/proj');
+      // (3) returns the RewindFilesResult verbatim (canRewind:true case)
+      expect(result).toEqual({ canRewind: true, filesChanged: ['a.ts'], insertions: 3, deletions: 1 });
+    });
+
+    it('returns a canRewind:false result from the helper verbatim', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      h.rewindSessionFiles.mockResolvedValue({ canRewind: false, error: 'no checkpoint for this message' });
+
+      const result = await engine.rewindFiles({ sessionId: 'sess', messageUuid: 'uuid-1' });
+
+      expect(result).toEqual({ canRewind: false, error: 'no checkpoint for this message' });
+      expect(h.rewindSessionFiles).toHaveBeenCalledWith({ sessionId: 'sess', messageUuid: 'uuid-1' }, '/proj');
+    });
+
+    it('propagates errors thrown by the helper', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      h.rewindSessionFiles.mockRejectedValue(new Error('rewind boom'));
+
+      await expect(engine.rewindFiles({ sessionId: 'sess', messageUuid: 'uuid-1' })).rejects.toThrow('rewind boom');
+    });
+
+    it('returns canRewind:false WITHOUT calling the helper when no workingDirectory is configured', async () => {
+      const engine = new CliChatEngine({});
+
+      const result = await engine.rewindFiles({ sessionId: 'sess', messageUuid: 'uuid-1' });
+
+      expect(result.canRewind).toBe(false);
+      expect(result.error).toMatch(/workingDirectory/);
+      expect(h.rewindSessionFiles).not.toHaveBeenCalled();
     });
   });
 
