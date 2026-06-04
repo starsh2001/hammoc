@@ -24,11 +24,12 @@ import type {
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS, ROOT_BRANCH_KEY } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
 import i18next from '../i18n.js';
-import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
+import { SUPPORTED_LANGUAGES, DEFAULT_ENGINE_MODE } from '@hammoc/shared';
 import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
 import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
-import { ChatService } from '../services/chatService.js';
+import type { ChatEngine } from '../services/chatEngine.js';
+import { createChatEngine } from '../services/chatEngineFactory.js';
 import { SessionService } from '../services/sessionService.js';
 import { parseSDKError, AbortedError, SDKErrorCode } from '../utils/errors.js';
 import { createSessionMiddleware } from '../middleware/session.js';
@@ -146,7 +147,7 @@ interface ActiveStream {
   pendingPermissions: Map<string, PendingPermission>;
   status: 'running' | 'completed' | 'error';
   startedAt: number;
-  chatService?: ChatService;
+  chatService?: ChatEngine;
   resumeSessionAt?: string;
   expectedBranchTotal?: number;
   isFork?: boolean;
@@ -2584,7 +2585,7 @@ async function handleChatSend(
   }
 
   try {
-    const chatService = new ChatService({ workingDirectory, permissionMode });
+    const chatService = createChatEngine(DEFAULT_ENGINE_MODE, { workingDirectory, permissionMode });
     stream.chatService = chatService;
 
     // Load preferences early for advanced settings + timeout

@@ -15,6 +15,7 @@ import { execSync } from 'child_process';
 import { InvalidPathError, parseSDKError } from '../utils/errors.js';
 import { StreamHandler } from './streamHandler.js';
 import { SessionService } from './sessionService.js';
+import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('chatService');
@@ -129,7 +130,7 @@ function extractContextWindow(modelUsage?: { [model: string]: { contextWindow: n
  * ChatService - Wrapper for Claude Agent SDK
  * Handles communication with Claude Code through the official SDK
  */
-export class ChatService {
+export class ChatService implements ChatEngine {
   private workingDirectory: string | undefined;
   private permissionMode: PermissionMode;
   private allowedTools: string[];

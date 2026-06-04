@@ -16,8 +16,9 @@ import type {
   PermissionMode,
   PermissionRequest,
 } from '@hammoc/shared';
-import { ERROR_CODES, SUPPORTED_LANGUAGES } from '@hammoc/shared';
-import { ChatService } from './chatService.js';
+import { ERROR_CODES, SUPPORTED_LANGUAGES, DEFAULT_ENGINE_MODE } from '@hammoc/shared';
+import type { ChatEngine } from './chatEngine.js';
+import { createChatEngine } from './chatEngineFactory.js';
 import { parseSDKError } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel } from '../utils/effortUtils.js';
@@ -60,7 +61,7 @@ export class QueueService {
   private currentModel: string | undefined = undefined;
   private projectSlug: string = '';
   private workingDirectory: string = '';
-  private chatService: ChatService | null = null;
+  private chatService: ChatEngine | null = null;
   private abortController: AbortController | null = null;
   private pauseReason: string | undefined = undefined;
   private resumeSessionId: string | null = null;
@@ -119,7 +120,7 @@ export class QueueService {
     } catch { /* keep default 'en' */ }
 
     this.workingDirectory = await this.projectService.resolveOriginalPath(projectSlug);
-    this.chatService = new ChatService({ workingDirectory: this.workingDirectory, permissionMode });
+    this.chatService = createChatEngine(DEFAULT_ENGINE_MODE, { workingDirectory: this.workingDirectory, permissionMode });
     this.abortController = new AbortController();
     this.items = items;
     this.currentIndex = 0;

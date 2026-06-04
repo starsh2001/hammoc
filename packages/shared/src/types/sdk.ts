@@ -236,6 +236,21 @@ export type ThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'dontAsk';
 
 /**
+ * Conversation engine implementation behind the ChatEngine seam (Epic 32).
+ * `'sdk'` = Claude Agent SDK engine (current default). `'cli'` = Claude Code CLI
+ * (PTY + session JSONL) engine, introduced in a follow-up story. Defined in shared
+ * so the Epic 33 settings schema can reference it; the ChatEngine interface itself
+ * lives server-side (it depends on the SDK `CanUseTool` type).
+ */
+export type EngineMode = 'sdk' | 'cli';
+
+/**
+ * Default conversation engine. Until Epic 33 wires mode selection into settings,
+ * every conversation path passes this constant to the engine factory.
+ */
+export const DEFAULT_ENGINE_MODE: EngineMode = 'sdk';
+
+/**
  * Claude Code authenticated account information.
  * Mirrors the SDK's AccountInfo type from the control-initialize response.
  */
