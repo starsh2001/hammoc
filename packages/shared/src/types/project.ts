@@ -6,7 +6,7 @@
  * [Extended: Story 10.3 - Task 1: Project settings overrides]
  */
 
-import type { PermissionMode } from './sdk.js';
+import type { PermissionMode, EngineMode } from './sdk.js';
 import type { BoardConfig } from './board.js';
 
 /**
@@ -36,6 +36,8 @@ export interface ProjectSettings {
   modelOverride?: string;
   /** undefined = use global */
   permissionModeOverride?: PermissionMode;
+  /** undefined = use global (Epic 33 — only effective when the billing gate is ON) */
+  engineModeOverride?: EngineMode;
   /** Custom board column configuration */
   boardConfig?: BoardConfig;
 }
@@ -48,6 +50,8 @@ export interface UpdateProjectSettingsRequest {
   hidden?: boolean;
   modelOverride?: string | null;
   permissionModeOverride?: PermissionMode | null;
+  /** null = clear override (use global) */
+  engineModeOverride?: EngineMode | null;
   /** null = reset to default board config */
   boardConfig?: BoardConfig | null;
 }
@@ -61,6 +65,8 @@ export interface ProjectSettingsApiResponse extends ProjectSettings {
   effectiveModel: string;
   /** Effective permission mode after merging with global preferences */
   effectivePermissionMode: PermissionMode;
+  /** Effective engine mode after merging with global preferences + billing gate (Epic 33) */
+  effectiveEngineMode: EngineMode;
   /** Which fields have project-level overrides (for UI indicator) */
   _overrides: string[];
 }

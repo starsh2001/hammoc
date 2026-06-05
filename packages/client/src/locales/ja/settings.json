@@ -23,6 +23,15 @@
             "bypass": "すべての権限チェックをスキップします（Bashを含む）",
             "latest": "新しいセッションは前回のセッションの権限モードを引き継ぎます"
         },
+        "engineMode": "会話エンジン",
+        "engineModeOption": {
+            "sdk": "SDK",
+            "cli": "CLI"
+        },
+        "engineModeDesc": {
+            "sdk": "トークン単位のリアルタイムストリーミング · 6/15以降はクレジット課金",
+            "cli": "ブロック単位の配信（トークンタイピングなし） · サブスクリプション課金"
+        },
         "autoApproveSafetyChecks": "Bypassモードで安全チェックを自動承認",
         "autoApproveSafetyChecksDesc": "有効にすると、Bypassモードで安全チェックプロンプトをユーザー確認なしで自動承認します。",
         "permissionSync": "権限モード同期",
@@ -74,6 +83,7 @@
         "themeChanged": "テーマが変更されました",
         "modelChanged": "デフォルトモデルが変更されました",
         "permissionChanged": "権限モードが変更されました",
+        "engineModeChanged": "会話エンジンを変更しました",
         "timeoutChanged": "チャットタイムアウトが変更されました",
         "markdownModeChanged": "Markdownの既定モードが変更されました",
         "fileExplorerViewChanged": "ファイルエクスプローラーの既定表示が変更されました",
@@ -207,6 +217,7 @@
         "projectOverride": "（プロジェクトオーバーライド）",
         "useGlobalDefault": "グローバルデフォルトを使用（現在：{{value}}）",
         "permissionOverride": "権限モードオーバーライド",
+        "engineModeOverride": "会話エンジンの上書き",
         "hideInSidebar": "このプロジェクトをサイドバーから非表示にする",
         "resetToGlobal": "グローバルデフォルトにリセット",
         "noOverrides": "現在、プロジェクトのオーバーライドは設定されていません。"

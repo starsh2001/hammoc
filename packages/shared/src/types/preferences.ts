@@ -3,7 +3,7 @@
  * Server-side persistent settings (replaces localStorage)
  */
 
-import type { PermissionMode, ThinkingEffort } from './sdk.js';
+import type { PermissionMode, ThinkingEffort, EngineMode } from './sdk.js';
 import type { LintRuleId } from './harness.js';
 import type { ObservabilityTokenizer } from './observability.js';
 
@@ -30,6 +30,10 @@ export interface UserPreferences {
   permissionMode?: PermissionMode | 'latest';
   /** Stores the actual last-used mode when permissionMode is 'latest' */
   lastPermissionMode?: PermissionMode;
+  // Conversation engine (Epic 33). 'sdk' (default) | 'cli'. Fallback = DEFAULT_ENGINE_MODE.
+  // Only consumed when the operator billing gate (ENGINE_MODE_TOGGLE_ENABLED) is ON;
+  // otherwise the effective engine is forced to 'sdk' regardless of this value.
+  engineMode?: EngineMode;
   commandFavorites?: Array<string | CommandFavoriteEntry>;
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default
@@ -91,6 +95,9 @@ export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defa
 /** API response type — includes server-only metadata */
 export interface PreferencesApiResponse extends UserPreferences {
   _overrides?: string[]; // fields overridden by environment variables
+  // Epic 33 — operator billing gate (ENGINE_MODE_TOGGLE_ENABLED). Server-only metadata,
+  // not persisted. false/absent → client hides the engine-mode toggle (default SDK only).
+  _engineModeToggleEnabled?: boolean;
 }
 
 /** Telegram notification settings stored in preferences */

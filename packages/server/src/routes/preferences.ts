@@ -181,7 +181,12 @@ router.get('/', async (req: Request, res: Response) => {
     const preferences = await preferencesService.getEffectivePreferences();
     const overrides: string[] = [];
     if (process.env.CHAT_TIMEOUT_MS) overrides.push('chatTimeoutMs');
-    res.json({ ...preferences, _overrides: overrides });
+    res.json({
+      ...preferences,
+      _overrides: overrides,
+      // Epic 33 — operator billing gate (server-only metadata, not persisted).
+      _engineModeToggleEnabled: preferencesService.getEngineModeToggleEnabled(),
+    });
   } catch {
     res.status(500).json({ error: { code: 'PREFERENCES_READ_ERROR', message: req.t!('preferences.readError') } });
   }

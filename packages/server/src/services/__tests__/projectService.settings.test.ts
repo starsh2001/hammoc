@@ -16,6 +16,7 @@ vi.spyOn(fs, 'mkdir');
 
 // Mock preferencesService
 vi.spyOn(preferencesService, 'getEffectivePreferences');
+vi.spyOn(preferencesService, 'getEngineModeToggleEnabled');
 
 const mockGlobalPrefs: UserPreferences = {
   defaultModel: 'sonnet',
@@ -28,6 +29,8 @@ describe('ProjectService Settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(preferencesService.getEffectivePreferences).mockResolvedValue(mockGlobalPrefs);
+    // Default the engine-mode billing gate OFF (Story 33.1); individual tests opt in.
+    vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(false);
   });
 
   describe('readProjectSettings', () => {
@@ -121,6 +124,55 @@ describe('ProjectService Settings', () => {
       expect(result._overrides).toEqual(['permissionModeOverride']);
       expect(result._overrides).not.toContain('hidden');
       expect(result.effectivePermissionMode).toBe('plan');
+    });
+  });
+
+  // Story 33.1 — engineMode billing gate is authoritative for effectiveEngineMode
+  describe('_buildEffectiveResponse — effectiveEngineMode (Story 33.1)', () => {
+    it('gate OFF forces effectiveEngineMode to sdk even with a cli override', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(false);
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({ engineModeOverride: 'cli' }));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (projectService as any)._buildEffectiveResponse('/tmp/test-project');
+
+      // The persisted selection is still surfaced as an override, but the gate forces effective sdk.
+      expect(result._overrides).toContain('engineModeOverride');
+      expect(result.effectiveEngineMode).toBe('sdk');
+    });
+
+    it('gate ON + project override cli → effectiveEngineMode cli', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(true);
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({ engineModeOverride: 'cli' }));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (projectService as any)._buildEffectiveResponse('/tmp/test-project');
+
+      expect(result.effectiveEngineMode).toBe('cli');
+      expect(result._overrides).toContain('engineModeOverride');
+    });
+
+    it('gate ON + no override + global engineMode cli → effectiveEngineMode cli', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(true);
+      vi.mocked(preferencesService.getEffectivePreferences).mockResolvedValue({ ...mockGlobalPrefs, engineMode: 'cli' });
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({}));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (projectService as any)._buildEffectiveResponse('/tmp/test-project');
+
+      expect(result.effectiveEngineMode).toBe('cli');
+      expect(result._overrides).not.toContain('engineModeOverride');
+    });
+
+    it('gate ON + no override + no global → effectiveEngineMode defaults to sdk', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(true);
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({}));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (projectService as any)._buildEffectiveResponse('/tmp/test-project');
+
+      expect(result.effectiveEngineMode).toBe('sdk');
+      expect(result._overrides).not.toContain('engineModeOverride');
     });
   });
 });

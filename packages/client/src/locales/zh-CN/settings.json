@@ -23,6 +23,15 @@
             "bypass": "跳过所有权限检查（包括 Bash）",
             "latest": "新会话保持上一个会话的权限模式"
         },
+        "engineMode": "对话引擎",
+        "engineModeOption": {
+            "sdk": "SDK",
+            "cli": "CLI"
+        },
+        "engineModeDesc": {
+            "sdk": "逐令牌实时流式传输 · （6/15 之后）按额度计费",
+            "cli": "按块传输（无逐字打字） · 订阅计费"
+        },
         "autoApproveSafetyChecks": "在Bypass模式下自动批准安全检查",
         "autoApproveSafetyChecksDesc": "启用后，在Bypass模式下CLI安全检查提示将自动批准，无需用户确认。",
         "permissionSync": "权限模式同步",
@@ -74,6 +83,7 @@
         "themeChanged": "主题已更改",
         "modelChanged": "默认模型已更改",
         "permissionChanged": "权限模式已更改",
+        "engineModeChanged": "对话引擎已更改",
         "timeoutChanged": "聊天超时已更改",
         "markdownModeChanged": "Markdown 默认模式已更改",
         "fileExplorerViewChanged": "文件浏览器默认视图已更改",
@@ -207,6 +217,7 @@
         "projectOverride": "（项目覆盖）",
         "useGlobalDefault": "使用全局默认值（当前：{{value}}）",
         "permissionOverride": "权限模式覆盖",
+        "engineModeOverride": "对话引擎覆盖",
         "hideInSidebar": "在侧边栏中隐藏此项目",
         "resetToGlobal": "重置为全局默认值",
         "noOverrides": "当前没有项目覆盖设置。"

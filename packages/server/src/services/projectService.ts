@@ -21,6 +21,7 @@ import type {
   CreateProjectResponse,
   ValidatePathResponse,
 } from '@hammoc/shared';
+import { DEFAULT_ENGINE_MODE } from '@hammoc/shared';
 import { preferencesService } from './preferencesService.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -341,16 +342,23 @@ class ProjectService {
   private async _buildEffectiveResponse(originalPath: string): Promise<ProjectSettingsApiResponse> {
     const projectSettings = await this.readProjectSettings(originalPath);
     const globalPrefs = await preferencesService.getEffectivePreferences();
+    // Epic 33 — billing gate is authoritative: when OFF, effectiveEngineMode is forced to 'sdk'
+    // even if a 'cli' override is persisted (the 33.3 engine resolver only consumes effective).
+    const engineToggleEnabled = preferencesService.getEngineModeToggleEnabled();
 
     const _overrides: string[] = [];
     if (projectSettings.modelOverride !== undefined) _overrides.push('modelOverride');
     if (projectSettings.permissionModeOverride !== undefined) _overrides.push('permissionModeOverride');
+    if (projectSettings.engineModeOverride !== undefined) _overrides.push('engineModeOverride');
 
     return {
       ...projectSettings,
       effectiveModel: projectSettings.modelOverride ?? globalPrefs.defaultModel ?? '',
       effectivePermissionMode: projectSettings.permissionModeOverride
         ?? (globalPrefs.permissionMode === 'latest' ? (globalPrefs.lastPermissionMode ?? 'default') : (globalPrefs.permissionMode ?? 'default')),
+      effectiveEngineMode: engineToggleEnabled
+        ? (projectSettings.engineModeOverride ?? globalPrefs.engineMode ?? DEFAULT_ENGINE_MODE)
+        : DEFAULT_ENGINE_MODE,
       _overrides,
     };
   }

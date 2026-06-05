@@ -23,6 +23,15 @@
             "bypass": "Omite todas las verificaciones de permisos (incluyendo Bash)",
             "latest": "Las nuevas sesiones mantienen el modo de permiso de la sesión anterior"
         },
+        "engineMode": "Motor de conversación",
+        "engineModeOption": {
+            "sdk": "SDK",
+            "cli": "CLI"
+        },
+        "engineModeDesc": {
+            "sdk": "Transmisión en vivo token a token · facturación por créditos (después del 15/6)",
+            "cli": "Entrega por bloques (sin escritura token a token) · facturación por suscripción"
+        },
         "autoApproveSafetyChecks": "Aprobar automáticamente verificaciones de seguridad en modo Bypass",
         "autoApproveSafetyChecksDesc": "Cuando está habilitado, las solicitudes de verificación de seguridad del CLI se aprueban automáticamente sin confirmación del usuario en modo Bypass.",
         "permissionSync": "Sincronización del modo de permisos",
@@ -74,6 +83,7 @@
         "themeChanged": "Tema cambiado",
         "modelChanged": "Modelo predeterminado cambiado",
         "permissionChanged": "Modo de permisos cambiado",
+        "engineModeChanged": "Motor de conversación cambiado",
         "timeoutChanged": "Tiempo de espera del chat cambiado",
         "markdownModeChanged": "Modo predeterminado de Markdown cambiado",
         "fileExplorerViewChanged": "Vista predeterminada del explorador de archivos cambiada",
@@ -207,6 +217,7 @@
         "projectOverride": "(anulación del proyecto)",
         "useGlobalDefault": "Usar predeterminado global (actual: {{value}})",
         "permissionOverride": "Anulación del modo de permisos",
+        "engineModeOverride": "Anulación del motor de conversación",
         "hideInSidebar": "Ocultar este proyecto de la barra lateral",
         "resetToGlobal": "Restablecer a valores globales predeterminados",
         "noOverrides": "No hay anulaciones de proyecto configuradas actualmente."

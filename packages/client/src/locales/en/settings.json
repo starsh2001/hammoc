@@ -24,6 +24,15 @@
             "acceptEdits": "Automatically performs file edits",
             "bypass": "Skips all permission checks (including Bash)"
         },
+        "engineMode": "Conversation Engine",
+        "engineModeOption": {
+            "sdk": "SDK",
+            "cli": "CLI"
+        },
+        "engineModeDesc": {
+            "sdk": "Token-by-token live streaming · credit billing (after Jun 15)",
+            "cli": "Block-by-block delivery (no token typing) · subscription billing"
+        },
         "autoApproveSafetyChecks": "Auto-approve safety checks in Bypass mode",
         "autoApproveSafetyChecksDesc": "When enabled, CLI safety check prompts are automatically approved without user confirmation in Bypass mode.",
         "permissionSync": "Permission Mode Sync",
@@ -75,6 +84,7 @@
         "themeChanged": "Theme changed",
         "modelChanged": "Default model changed",
         "permissionChanged": "Permission Mode changed",
+        "engineModeChanged": "Conversation engine changed",
         "timeoutChanged": "Chat timeout changed",
         "markdownModeChanged": "Markdown default mode changed",
         "fileExplorerViewChanged": "File explorer default view changed",
@@ -208,6 +218,7 @@
         "projectOverride": "(project override)",
         "useGlobalDefault": "Use global default (current: {{value}})",
         "permissionOverride": "Permission Mode Override",
+        "engineModeOverride": "Conversation Engine Override",
         "hideInSidebar": "Hide this project from sidebar",
         "resetToGlobal": "Reset to Global Defaults",
         "noOverrides": "No project overrides currently set."

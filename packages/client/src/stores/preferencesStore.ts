@@ -107,6 +107,9 @@ function collectLegacyPreferences(): UserPreferences {
 interface PreferencesStore {
   preferences: UserPreferences;
   overrides: string[];
+  /** Epic 33 — operator billing gate from GET /api/preferences (_engineModeToggleEnabled).
+   *  Defaults false so the engine-mode toggle stays hidden until init confirms the gate is ON. */
+  engineModeToggleEnabled: boolean;
   loaded: boolean;
   init: () => Promise<void>;
   updatePreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void;
@@ -139,13 +142,17 @@ function schedulePatch(partial: Partial<UserPreferences>) {
 export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
   preferences: readCache(),
   overrides: [],
+  engineModeToggleEnabled: false,
   loaded: false,
 
   init: async () => {
     if (get().loaded) return;
     try {
       const serverPrefs = await preferencesApi.get();
-      const { _overrides, ...prefs } = serverPrefs;
+      const { _overrides, _engineModeToggleEnabled, ...prefs } = serverPrefs;
+      // Sync the billing gate from server metadata regardless of which prefs branch runs below.
+      // Server-only metadata (_overrides/_engineModeToggleEnabled) is excluded from writeCache (prefs only).
+      set({ engineModeToggleEnabled: _engineModeToggleEnabled ?? false });
       const hasServerData = Object.keys(prefs).length > 0;
 
       if (hasServerData) {

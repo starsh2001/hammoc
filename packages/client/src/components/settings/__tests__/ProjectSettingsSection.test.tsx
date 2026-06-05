@@ -37,6 +37,7 @@ const mockSettingsNoOverride: ProjectSettingsApiResponse = {
   hidden: false,
   effectiveModel: 'sonnet',
   effectivePermissionMode: 'default',
+  effectiveEngineMode: 'sdk',
   _overrides: [],
 };
 
@@ -46,6 +47,7 @@ const mockSettingsWithOverride: ProjectSettingsApiResponse = {
   permissionModeOverride: 'plan',
   effectiveModel: 'opus',
   effectivePermissionMode: 'plan',
+  effectiveEngineMode: 'sdk',
   _overrides: ['modelOverride', 'permissionModeOverride'],
 };
 
@@ -64,6 +66,7 @@ describe('ProjectSettingsSection', () => {
         chatTimeoutMs: 300000,
       },
       overrides: [],
+      engineModeToggleEnabled: false,
       loaded: true,
     });
   });
@@ -140,6 +143,7 @@ describe('ProjectSettingsSection', () => {
       expect(mockUpdateSettings).toHaveBeenCalledWith('project-a', {
         modelOverride: null,
         permissionModeOverride: null,
+        engineModeOverride: null,
         hidden: false,
       });
     });
@@ -197,6 +201,42 @@ describe('ProjectSettingsSection', () => {
     rerender(<ProjectSettingsSection projectSlug="project-b" />);
     await waitFor(() => {
       expect(mockGetSettings).toHaveBeenCalledWith('project-b');
+    });
+  });
+
+  // Story 33.1 — engine-mode override is gated by the operator billing flag
+  it('TC-12: engine override fieldset is hidden when the billing gate is OFF', async () => {
+    render(<ProjectSettingsSection projectSlug="project-a" />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/모델 오버라이드/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('대화 엔진 재정의')).not.toBeInTheDocument();
+  });
+
+  it('TC-13: engine override fieldset renders when the gate is ON', async () => {
+    usePreferencesStore.setState({ engineModeToggleEnabled: true });
+    render(<ProjectSettingsSection projectSlug="project-a" />);
+    await waitFor(() => {
+      expect(screen.getByText('대화 엔진 재정의')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('radio', { name: /CLI/ })).toBeInTheDocument();
+  });
+
+  it('TC-14: selecting the CLI engine override sends engineModeOverride', async () => {
+    usePreferencesStore.setState({ engineModeToggleEnabled: true });
+    mockUpdateSettings.mockResolvedValue({
+      ...mockSettingsNoOverride,
+      engineModeOverride: 'cli',
+      effectiveEngineMode: 'cli',
+      _overrides: ['engineModeOverride'],
+    });
+    render(<ProjectSettingsSection projectSlug="project-a" />);
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: /CLI/ })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('radio', { name: /CLI/ }));
+    await waitFor(() => {
+      expect(mockUpdateSettings).toHaveBeenCalledWith('project-a', { engineModeOverride: 'cli' });
     });
   });
 });
