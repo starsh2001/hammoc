@@ -294,3 +294,31 @@
 - E1. 컨텍스트 데이터 없으면 컴포넌트 렌더링 안 됨 (오해 소지 있는 0% 방지)
 
 > **Thinking 토큰 필드는 툴팁에 없음** — 현재 `ContextUsageDisplay.tsx` 구현([L60-73](../../packages/client/src/components/ContextUsageDisplay.tsx#L60-L73))은 입력/캐시/출력/비용만 표시한다. Thinking 토큰 수치 UI 표시는 미구현이므로 본 시나리오 검증 대상 아님. Thinking 관련 렌더링은 E-02-01의 ThinkingBlock 렌더링 검증 참고.
+
+---
+
+## C11. CLI 엔진 대화 (구독 풀 · 블록 단위 렌더) `[MANUAL]`
+
+> **범위 (Epic 33)**: 운영자 게이트(`ENGINE_MODE_TOGGLE_ENABLED=true`)가 켜지고 전역 설정에서 **CLI** 엔진을 선택한 세션에서, 대화가 SDK 모드와 *동일한 세션 JSONL* 로 렌더·복원되는지. SDK 모드와의 차이는 *블록 단위 렌더*(토큰 단위 타이핑 애니메이션 없음)와 생성 진행률 인디케이터(`↓ N tokens · Ns`).
+
+> **[MANUAL] 사유**: CLI 엔진은 **구독-인증된 실제 `claude` 바이너리 + 인터랙티브 PTY** 를 spawn 한다. 통합 테스트 하네스(헤드리스 production 서버)에는 구독 인증된 claude 가 없고, PTY TUI 화면 파싱은 타이밍에 취약해 자동화가 구조적으로 불안정 → 릴리즈 직전 수동 회귀로 검증한다. (토글·CLI 설정의 UI 게이팅·선택·영속은 자동화됨 — P-06-01.)
+
+### C-11-01: CLI 선택 → 송신 → 블록 렌더 + 진행률 인디케이터 (수동)
+**선행 조건**: 운영자가 게이트를 켠 서버(`ENGINE_MODE_TOGGLE_ENABLED=true`) + 구독 로그인된 `claude` 바이너리가 호스트 PATH(또는 설정한 바이너리 경로)에 존재.
+
+**절차 (수동)**:
+1. 전역 설정 → "Conversation Engine" 에서 **CLI** 선택 (P-06-01 참조)
+2. 새 세션 생성 후 짧은 메시지 송신 (예: `Say hello in one sentence.`)
+3. 생성 중 화면 관찰 (진행률 인디케이터 + 응답 도착 방식)
+4. 응답 완료 후 같은 세션을 새로고침(reload)해 히스토리 복원 관찰
+5. (선택) "CLI Mode Settings" 의 바이너리 경로에 커스텀 claude 경로를 넣고 2~3 단계 재수행
+
+**기대 결과**:
+- 응답이 **블록 단위로** 나타남 — SDK 모드의 토큰 단위 스트리밍과 달리 완성된 블록이 한 번에 렌더. `cliShowGenerationProgress` ON 이면 생성 중 `↓ N tokens · Ns` 진행률 인디케이터 노출 (OFF 면 미노출)
+- 완료된 대화가 SDK 모드와 **동일하게** reload 후 복원 — 동일 세션 JSONL 을 공유 historyParser 가 읽음 (live↔reload 동형)
+- 커스텀 바이너리 경로가 유효하면 그 claude 로 spawn; 무효하면 서버 경고 로그 + auto-detect 폴백 — 대화는 계속됨(하드 실패 없음)
+- SDK 모드로 되돌리면 즉시 토큰 스트리밍 동작 복귀 (회귀-0)
+
+**엣지케이스**:
+- E1. 무효 바이너리 경로 → 턴이 죽지 않고 auto-detect 로 graceful fallback (서버 경고 로그 1줄)
+- E2. 동일 세션을 SDK↔CLI 모드 전환해도 렌더 정합 — 세션 id 사전할당으로 wire 동일(rekey 없음, 스키마 drift 없음)

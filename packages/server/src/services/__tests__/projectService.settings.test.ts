@@ -175,4 +175,42 @@ describe('ProjectService Settings', () => {
       expect(result._overrides).not.toContain('engineModeOverride');
     });
   });
+
+  // Story 33.3 — getEffectiveEngineMode is the engine-side resolver. It shares the gate
+  // helper (computeEffectiveEngineMode) with _buildEffectiveResponse, so the same 4-case
+  // matrix must hold on the bare resolved mode (this is what the engine factory consumes).
+  describe('getEffectiveEngineMode (Story 33.3)', () => {
+    it('gate OFF returns sdk even when a cli override is persisted', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(false);
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({ engineModeOverride: 'cli' }));
+
+      const mode = await projectService.getEffectiveEngineMode('/tmp/test-project');
+      expect(mode).toBe('sdk');
+    });
+
+    it('gate ON + project override cli → cli', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(true);
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({ engineModeOverride: 'cli' }));
+
+      const mode = await projectService.getEffectiveEngineMode('/tmp/test-project');
+      expect(mode).toBe('cli');
+    });
+
+    it('gate ON + no override + global engineMode cli → cli', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(true);
+      vi.mocked(preferencesService.getEffectivePreferences).mockResolvedValue({ ...mockGlobalPrefs, engineMode: 'cli' });
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({}));
+
+      const mode = await projectService.getEffectiveEngineMode('/tmp/test-project');
+      expect(mode).toBe('cli');
+    });
+
+    it('gate ON + no override + no global → sdk (default)', async () => {
+      vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(true);
+      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({}));
+
+      const mode = await projectService.getEffectiveEngineMode('/tmp/test-project');
+      expect(mode).toBe('sdk');
+    });
+  });
 });

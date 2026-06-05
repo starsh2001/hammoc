@@ -116,6 +116,7 @@ function parseArgs(argv) {
       case '--permission-timeout': args.permissionTimeout = parseInt(value, 10); break;
       case '--with-notifications': args.withNotifications = true; break;
       case '--with-terminal-disabled': args.withTerminalDisabled = true; break;
+      case '--engine-mode-toggle': args.engineModeToggle = true; break;
       case '--trust-proxy':      args.trustProxy = true; break;
       case '--bot-api-base':     args.botApiBase = value; break;
       case '--mock-telegram':    args.mockTelegram = true; break;
@@ -142,6 +143,7 @@ Options:
   --permission-timeout=<ms>     Permission auto-deny timeout injected via browser_evaluate
   --with-notifications          Grants browser notification permission in Playwright context
   --with-terminal-disabled      Spawn secondary server on <port+1> with TERMINAL_ENABLED=false
+  --engine-mode-toggle          Set ENGINE_MODE_TOGGLE_ENABLED=true (exposes the SDK/CLI engine toggle — P-06-01)
   --trust-proxy                 Set TRUST_PROXY=true so X-Forwarded-For is honored (L-03-01 requires this)
   --bot-api-base=<url>          Telegram API base URL (use with mock-telegram.mjs)
   --mock-telegram               Auto-spawn mock-telegram.mjs and inject its URL
@@ -168,6 +170,9 @@ function buildEnv(port, opts) {
     // access via header). Off by default: without this, all requests appear as
     // 127.0.0.1 and the IP-filter cannot be exercised.
     ...(opts.trustProxy ? { TRUST_PROXY: 'true' } : {}),
+    // Expose the SDK/CLI engine-mode toggle (Epic 33). Off by default — the operator
+    // billing gate. P-06-01 starts a secondary launcher with --engine-mode-toggle.
+    ...(opts.engineModeToggle ? { ENGINE_MODE_TOGGLE_ENABLED: 'true' } : {}),
   };
   if (opts.botApiBase) {
     env.BOT_API_BASE_URL = opts.botApiBase;

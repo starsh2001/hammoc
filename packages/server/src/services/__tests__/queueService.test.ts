@@ -145,6 +145,9 @@ const mockProjectService = {
   readSessionNames: vi.fn().mockResolvedValue({ 'session-id-1': 'my-session' }),
   updateSessionName: vi.fn().mockResolvedValue(undefined),
   updateSessionNameByPath: vi.fn().mockResolvedValue(undefined),
+  // Story 33.3: the queue now resolves the effective engine mode before creating the
+  // engine. Default to 'sdk' so every existing test keeps the mocked ChatService path.
+  getEffectiveEngineMode: vi.fn().mockResolvedValue('sdk'),
 };
 
 // Mock notificationService
@@ -228,6 +231,15 @@ describe('QueueService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('Story 33.3: engine-mode wiring', () => {
+    it('resolves the effective engine mode for the project before creating the engine', async () => {
+      await queueService.start([createPromptItem('hi')], 'test-project');
+      // The queue consults the SSoT resolver with the project's real path (the same
+      // value the factory receives as workingDirectory).
+      expect(mockProjectService.getEffectiveEngineMode).toHaveBeenCalledWith('/mock/project/path');
+    });
   });
 
   describe('TC-QR-1: Sequential execution of prompt items', () => {

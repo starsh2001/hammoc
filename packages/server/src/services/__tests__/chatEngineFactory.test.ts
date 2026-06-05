@@ -40,4 +40,14 @@ describe('createChatEngine', () => {
     const engine = createChatEngine('cli', { permissionMode: 'bypassPermissions' });
     expect(engine.getPermissionMode()).toBe('bypassPermissions');
   });
+
+  it("accepts cliBinaryPath in config for the 'cli' engine (Story 33.3)", () => {
+    const engine = createChatEngine('cli', { workingDirectory: '/tmp', cliBinaryPath: '/opt/claude/bin/claude' });
+    expect(engine).toBeInstanceOf(CliChatEngine);
+  });
+
+  it("ignores cliBinaryPath for the 'sdk' engine — it stays a ChatService (Story 33.3)", () => {
+    const engine = createChatEngine('sdk', { workingDirectory: '/tmp', cliBinaryPath: '/opt/claude/bin/claude' });
+    expect(engine).toBeInstanceOf(ChatService);
+  });
 });

@@ -165,6 +165,8 @@ vi.mock('../../services/projectService.js', () => ({
     findProjectByPath: vi.fn().mockResolvedValue({ projectSlug: 'test-project' }),
     readChainFailures: vi.fn().mockImplementation(() => Promise.resolve([])),
     writeChainFailures: vi.fn().mockResolvedValue(undefined),
+    // Story 33.3: chat-send resolves the effective engine mode (default 'sdk' here).
+    getEffectiveEngineMode: vi.fn().mockResolvedValue('sdk'),
   },
 }));
 

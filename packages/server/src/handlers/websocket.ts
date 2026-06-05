@@ -24,7 +24,7 @@ import type {
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS, ROOT_BRANCH_KEY, effectiveModelIs1M } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
 import i18next from '../i18n.js';
-import { SUPPORTED_LANGUAGES, DEFAULT_ENGINE_MODE } from '@hammoc/shared';
+import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatEngine } from '../services/chatEngine.js';
@@ -38,6 +38,7 @@ import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
+import { shouldForwardCliProgress } from '../utils/cliEngineUtils.js';
 import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { createMcpCallRecorder } from '../services/observabilityService.js';
@@ -1706,7 +1707,7 @@ export async function initializeWebSocket(
         // mechanism (throwaway resume query + markRewindDirty + close) lives
         // behind the seam in ChatService.rewindFiles. The handler keeps only the
         // transport concerns: result → session:rewind-result mapping.
-        const engine = createChatEngine(DEFAULT_ENGINE_MODE, { workingDirectory });
+        const engine = createChatEngine(await projectService.getEffectiveEngineMode(workingDirectory), { workingDirectory });
         const result = await engine.rewindFiles({ sessionId, messageUuid, dryRun: !!dryRun });
 
         if (result.canRewind) {
@@ -2562,11 +2563,14 @@ async function handleChatSend(
   }
 
   try {
-    const chatService = createChatEngine(DEFAULT_ENGINE_MODE, { workingDirectory, permissionMode });
-    stream.chatService = chatService;
-
     // Load preferences early for advanced settings + timeout
     const effectivePrefs = await preferencesService.getEffectivePreferences();
+    // Story 33.3: resolve the effective engine mode (billing gate OFF → always 'sdk').
+    // Captured once into a local so the progress-callback gating below reuses the same
+    // decision (no second resolve, and `engineMode === 'cli'` stays consistent).
+    const engineMode = await projectService.getEffectiveEngineMode(workingDirectory);
+    const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath });
+    stream.chatService = chatService;
 
     const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
 
@@ -2712,6 +2716,11 @@ async function handleChatSend(
     const onGenerationProgress = (progress: { tokens: number; elapsedSeconds: number }) => {
       emit('generation:progress', progress);
     };
+    // Story 33.3: gate the progress counter on CLI mode + the user's preference (default
+    // ON, Story 33.2). In SDK mode the engine ignores the callback anyway; passing
+    // `undefined` makes the gate explicit so the 'cli' + pref-OFF case emits nothing.
+    const cliProgress = shouldForwardCliProgress(engineMode, effectivePrefs.cliShowGenerationProgress);
+    const generationProgressCb = cliProgress ? onGenerationProgress : undefined;
 
     // Build shared callbacks (common logic for browser & queue paths)
     const { callbacks, sessionIdRef } = buildStreamCallbacks(
@@ -2855,7 +2864,7 @@ async function handleChatSend(
     try {
       const sendResult = await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
-      }, onGenerationProgress);
+      }, generationProgressCb);
       // SDK may return "No conversation found" as an error result (not a thrown exception).
       // Convert to a thrown error so the retry logic below can handle it.
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
@@ -2892,13 +2901,13 @@ async function handleChatSend(
         // Run /compact to shrink context (preserves session file)
         await chatService.sendMessageWithCallbacks('/compact', callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`compact:${messageType}`);
-        }, onGenerationProgress);
+        }, generationProgressCb);
         // Retry the original message after compaction
         log.info(`[AUTO-COMPACT] compaction done, retrying original message: sessionId=${sessionId}`);
         resetTimeout('auto-compact-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`retry:${messageType}`);
-        }, onGenerationProgress);
+        }, generationProgressCb);
       // Resume failed for other unknown reasons — retry without resume (fresh session).
       // Guards:
       //  1. Only when resuming (not a fresh session send)
@@ -2936,7 +2945,7 @@ async function handleChatSend(
         resetTimeout('resume-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, retryOptions, canUseTool, (messageType: string) => {
           resetTimeout(`raw:${messageType}`);
-        }, onGenerationProgress);
+        }, generationProgressCb);
       } else {
         // Not retrying — flush gated error events before re-throwing
         ungateCallbacks();

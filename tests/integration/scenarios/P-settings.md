@@ -1,6 +1,6 @@
 # P. 전역 설정
 
-**범위**: 언어 / 테마 / 채팅 타임아웃 / 고급 설정 / 서버 업데이트.
+**범위**: 언어 / 테마 / 채팅 타임아웃 / 고급 설정 / 서버 업데이트 / 엔진 모드 토글(운영자 게이트).
 **선행 도메인**: A.
 
 ---
@@ -211,3 +211,39 @@ await new Promise(r => setTimeout(r, 1500));
 **엣지케이스**:
 - E1. 네트워크 차단 → 조용히 실패하지 말고 명확히 오류
 - E2. 권한 부족 (glob 설치 경로) → 사용자 가이드 표시
+
+---
+
+## P6. 엔진 모드 토글 & CLI 설정 패널 (운영자 게이트) `[EDGE]`
+
+> **게이팅 (Epic 33)**: "Conversation Engine"(SDK/CLI) 토글과 "CLI Mode Settings" 패널은 운영자 빌링 게이트 `ENGINE_MODE_TOGGLE_ENABLED=true` 일 때만 렌더된다. 게이트 OFF(기본)면 둘 다 숨김이며, 이때 effective 대화 엔진은 **항상 SDK**(저장된 'cli' 선택이 있어도). 본 리프는 *UI 게이팅·선택·영속*만 검증한다 — 실제 CLI 엔진 대화(구독 claude 바이너리 + PTY 필요)는 `[MANUAL]` C11 에서 다룬다.
+
+### P-06-01: 게이트 ON — 토글 + CLI 설정 렌더/선택/영속 `[EDGE]`
+**선행 조건**: 기본 런처는 게이트 OFF 라 토글이 숨겨져 검증 불가 → 보조 런처로 게이트를 켠 서버를 별도 포트에 띄운다.
+
+**절차**:
+1. 보조 런처 백그라운드 기동: `node scripts/run-integration-test.mjs --port=21216 --engine-mode-toggle` (기본 런처는 그대로 유지 — 재기동하면 재로그인 강제됨)
+2. 최대 30초 폴링으로 `http://localhost:21216/api/health` 200 대기. 준비되면 `browser_tabs(action="new")` → **`http://localhost:21216`** 접속 (반드시 `localhost` — `127.0.0.1` 은 쿠키 origin 이 달라 자동 로그인 실패)
+3. `http://localhost:21216/settings` 진입 → 전역 설정에서 **"Conversation Engine"** 라디오그룹(`input[type="radio"][name="engineMode"]`, value `sdk`/`cli`)과 **"CLI Mode Settings"** 패널(`#cli-binary-path` 텍스트 입력 + 진행률 체크박스)이 렌더되는지 확인
+4. CLI 선택: `input[type="radio"][name="engineMode"][value="cli"]` 클릭 → ~0.5초 후 `/api/preferences.engineMode === 'cli'` 확인
+5. 바이너리 경로 주입: `#cli-binary-path` 에 임의 경로(예: `/usr/local/bin/claude`)를 native setter + `input`/`change`/`blur` 3종 이벤트로 입력 → ~1.5초(PATCH debounce) 후 `/api/preferences.cliBinaryPath` 일치 확인
+6. 진행률 토글: `global.cliShowGenerationProgress` 라벨의 체크박스 클릭 → `/api/preferences.cliShowGenerationProgress` 가 토글 반영
+7. 복구: 엔진을 SDK 로 되돌리고(`value="sdk"` 클릭) `#cli-binary-path` 를 빈 문자열로 비움 → `/api/preferences.engineMode === 'sdk'` + `cliBinaryPath` 미설정 확인
+8. 보조 탭 닫기(`browser_tabs(action="close")`) 후 보조 런처 종료 — P-03-01 의 PID 추출(`grep "\[primary\] PID"`) + `taskkill /T /F`(Windows)/`kill`(Unix) 패턴 동일
+
+**기대 결과**:
+- 게이트 ON 서버에서만 엔진 라디오그룹(SDK/CLI) + "CLI Mode Settings" 패널이 DOM 에 존재
+- CLI 선택이 `/api/preferences.engineMode === 'cli'` 로 영속
+- `cliBinaryPath`·`cliShowGenerationProgress` 가 `/api/preferences` 에 영속
+- 종료 시 SDK + 빈 경로로 복구 (런타임에 'cli' 선택을 남기지 않음)
+
+**엣지케이스**:
+- E1. 빈 바이너리 경로 = auto-detect — 저장 시 `cliBinaryPath` 키가 미설정/`undefined`
+- E2. 실 claude 바이너리 불필요 — 본 시나리오는 UI 게이팅·선택·저장만 검증(대화 송신 없음)
+
+### P-06-02: 게이트 OFF(기본) — 토글·CLI 패널 미렌더 `[EDGE]`
+**절차**: 기본 `<TARGET>/settings` 진입 → 전역 설정에서 `input[type="radio"][name="engineMode"]` 와 `#cli-binary-path` 가 **DOM 에 존재하지 않는지** 확인. `/api/preferences._engineModeToggleEnabled` 가 `false`(또는 미포함)인지 교차검증.
+
+**기대 결과**:
+- 기본 런처(게이트 OFF)에서는 엔진 토글·"CLI Mode Settings" 패널이 렌더되지 않음
+- effective 대화 엔진은 SDK 고정 — 저장된 'cli' 가 있어도 엔진은 SDK (회귀-0 권위; 서버 단위테스트 `getEffectiveEngineMode` 게이트-OFF 케이스로 보강)

@@ -232,6 +232,9 @@ vi.mock('../../services/projectService.js', () => ({
     resolveProjectPath: vi.fn().mockResolvedValue('/mock/project/path'),
     resolveOriginalPath: vi.fn().mockResolvedValue('/mock/project/path'),
     findProjectByPath: vi.fn().mockResolvedValue({ projectSlug: 'test-project' }),
+    // Story 33.3: the chat-send + rewind paths resolve the effective engine mode before
+    // creating the engine. Default 'sdk' keeps these tests on the mocked ChatService path.
+    getEffectiveEngineMode: vi.fn().mockResolvedValue('sdk'),
   },
 }));
 
@@ -532,7 +535,7 @@ describe('WebSocket Handler', () => {
         expect.any(Object),
         expect.any(Function),
         expect.any(Function),
-        expect.any(Function) // onGenerationProgress (Story 32.7)
+        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
       );
     });
 
@@ -566,7 +569,7 @@ describe('WebSocket Handler', () => {
         expect.objectContaining({ resume: 'resume-session-id', abortController: expect.any(AbortController) }),
         expect.any(Function),
         expect.any(Function),
-        expect.any(Function) // onGenerationProgress (Story 32.7)
+        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
       );
     });
 
@@ -604,7 +607,7 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        expect.any(Function) // onGenerationProgress (Story 32.7)
+        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
       );
     });
 
@@ -642,7 +645,7 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        expect.any(Function) // onGenerationProgress (Story 32.7)
+        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
       );
     });
 
@@ -673,7 +676,7 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        expect.any(Function) // onGenerationProgress (Story 32.7)
+        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
       );
     });
   });
@@ -909,7 +912,7 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        expect.any(Function) // onGenerationProgress (Story 32.7)
+        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
       );
     });
 

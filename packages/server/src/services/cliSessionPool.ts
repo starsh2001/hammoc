@@ -20,7 +20,7 @@ import { randomUUID } from 'crypto';
 import { execSync } from 'child_process';
 import os from 'os';
 import path from 'path';
-import { existsSync } from 'fs';
+import { existsSync, statSync, accessSync, constants as fsConstants } from 'fs';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('cliSessionPool');
@@ -54,6 +54,12 @@ interface SpawnClaudeOptions {
   args: string[];
   cols?: number;
   rows?: number;
+  /**
+   * Epic 33 (Story 33.3): user-configured `claude` binary path. When set and valid it
+   * takes precedence over auto-detection; an invalid value falls back gracefully (see
+   * `resolveClaudeBinary`). Empty / undefined = auto-detect.
+   */
+  binaryPathOverride?: string;
 }
 
 class CliSessionPool {
@@ -142,12 +148,40 @@ class CliSessionPool {
   }
 
   /**
+   * Best-effort sanity check for a user-supplied binary override (Story 33.3): exists,
+   * is a regular file, and (POSIX only) is executable by this process. Windows has no
+   * comparable execute bit, so `.exe`/file existence is sufficient there. Intentionally
+   * shallow — no signature / "is this really claude" inspection (out of scope).
+   */
+  private isValidBinaryOverride(candidate: string): boolean {
+    try {
+      if (!statSync(candidate).isFile()) return false;
+      if (process.platform !== 'win32') {
+        accessSync(candidate, fsConstants.X_OK);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Resolve an executable path for `claude`. PATH lookup can fail in the server's
    * child process (spike §9-5: `where claude` failed; the fallback resolved it),
    * so known install locations are tried first, then a PATH probe with the
    * corrected env, then a bare name as a last resort (pty resolves via env PATH).
+   *
+   * Story 33.3: when a non-empty `override` is supplied it is checked first and used
+   * if valid. An *invalid* override never hard-fails the turn — it logs a warning and
+   * falls through to the normal chain (auto-detect is the better UX than blocking CLI
+   * mode over a bad path). Empty / undefined skips the override entirely.
    */
-  private resolveClaudeBinary(env: Record<string, string>): string {
+  private resolveClaudeBinary(env: Record<string, string>, override?: string): string {
+    const trimmedOverride = override?.trim();
+    if (trimmedOverride) {
+      if (this.isValidBinaryOverride(trimmedOverride)) return trimmedOverride;
+      log.warn(`Configured claude binary path is invalid (missing / not a file / not executable): "${trimmedOverride}" — falling back to auto-detect.`);
+    }
     const home = os.homedir();
     const isWin = process.platform === 'win32';
     const candidates = isWin
@@ -176,7 +210,7 @@ class CliSessionPool {
    */
   spawnClaude(opts: SpawnClaudeOptions): CliPtyHandle {
     const env = this.buildEnv();
-    const bin = this.resolveClaudeBinary(env);
+    const bin = this.resolveClaudeBinary(env, opts.binaryPathOverride);
     const handle = randomUUID();
 
     const ptyProcess = pty.spawn(bin, opts.args, {

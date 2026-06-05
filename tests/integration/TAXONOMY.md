@@ -62,6 +62,7 @@
 - C8. Summarize & Continue `[SDK] [EDGE]`
 - C9. Code Rewind (파일 체크포인트) `[SDK] [EDGE]`
 - C10. 토큰 사용량 표시 (UsageStatusBar / ContextUsageDisplay) `[SDK] [CORE]`
+- C11. CLI 엔진 대화 (구독 풀 · 블록 단위 렌더) `[MANUAL]`
 
 ### D. 권한 & 인터랙션 ★ SDK 핵심
 - D1. 권한 프롬프트 응답 (Allow/Deny) `[SDK] [CORE]`
@@ -135,6 +136,7 @@
 - P3. 채팅 타임아웃 설정 `[EDGE]`
 - P4. 고급 설정 & 서버 재시작 `[SDK] [EDGE]`
 - P5. 서버 업데이트 체크 & 업데이트 `[EDGE]`
+- P6. 엔진 모드 토글 & CLI 설정 패널 (운영자 게이트) `[EDGE]`
 
 ### Q. BMad Method
 - Q1. BMad 초기화 `[CORE]`
@@ -165,7 +167,7 @@ B9, B18, B19, B20, C1, C2, C3, C4, C5, C7, C8, C9, C10, D1, D2, D3, E1, E2, E3, 
 A1, A2, B1, B2, B4, B5, B7, B16, B19, B20, C1, C2, C6, C10, D1, E1, F1, F3, F4, G1, H1, H4, I1, I2, I4, J1, J2, J5, K1, K2, L1, M1, M2, N1, P1, P2, Q1, Q2, Q3, S1, S2, S3, S4
 
 ### `[EDGE]` (심층 회귀)
-A3, B3, B9, B16, B17, B18, B19, B20, C3, C4, C8, C9, D3, D4, E3, E4, F2, G2, G3, H3, H5, J4, K3, L2, L3, N2, O1, O2, P3, P4, P5, Q4, R3, S5
+A3, B3, B9, B16, B17, B18, B19, B20, C3, C4, C8, C9, D3, D4, E3, E4, F2, G2, G3, H3, H5, J4, K3, L2, L3, N2, O1, O2, P3, P4, P5, P6, Q4, R3, S5
 
 ### `[ASYNC]` (타이밍 · 동시성)
 B1, C1, C2, C5, C7, G2, H2, L1, N1, R1, R2
@@ -177,7 +179,7 @@ F5, I1, S1
 F2, F5, G1
 
 ### `[MANUAL]` (자동화 불가 — 릴리즈 직전 수동 회귀)
-P-05-01, P-05-02, F-02-02, F-05-02, G-01-02, H-03-01, C-04-01
+P-05-01, P-05-02, F-02-02, F-05-02, G-01-02, H-03-01, C-04-01, C-11-01
 
 - P-05-01/02: 실제 최신 릴리즈 패키지 환경 필요
 - F-02-02: HTML5 native DnD 파일 drop — JS `DragEvent` 디스패치로 재현 불가
@@ -185,6 +187,7 @@ P-05-01, P-05-02, F-02-02, F-05-02, G-01-02, H-03-01, C-04-01
 - G-01-02: idle 세션에서 체인 즉시 drain + React DnD 한계 이중 제약
 - H-03-01: 큐 실행 중 Abort 버튼 포착 타이밍 확보 실패 (false FAIL 잦음)
 - C-04-01: 1M 컨텍스트 모델에서 90% 토큰 도달이 비용·시간상 비현실적 (런처 compact 임계값 주입 훅 추가 시 자동화 전환 가능)
+- C-11-01: CLI 엔진은 구독-인증 claude 바이너리 + 인터랙티브 PTY 필요 — 헤드리스 하네스에 구독 claude 부재 + PTY 화면 파싱 타이밍 취약 (토글·CLI 설정 UI 게이팅·선택·영속은 P-06-01 로 자동화)
 
 ### `[SDK_BLOCKED]` (SDK 업스트림 미동작 — 수정 시 자동 PASS 전환)
 _(현재 없음 — H-05-02는 2026-04-21 SDK 0.2.114 재검증으로 PASS 복귀. 자세한 맥락은 [sdk-upstream-issues.md](sdk-upstream-issues.md) 참조.)_

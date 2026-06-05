@@ -13,6 +13,12 @@ export interface ChatServiceConfig {
   workingDirectory?: string;
   /** Permission mode for tool usage */
   permissionMode?: PermissionMode;
+  /**
+   * Epic 33 (CLI mode): manual override for the `claude` binary path. Only the CLI
+   * engine consumes it (passed through to the spawn → binary resolver). An empty
+   * string or `undefined` means auto-detect. The SDK engine ignores this field.
+   */
+  cliBinaryPath?: string;
 }
 
 /**

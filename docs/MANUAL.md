@@ -405,7 +405,7 @@ Browse all conversation branches in a read-only mode:
 
 ### 2.24 Max Budget Warning Banner
 
-When the **Max Budget (USD)** advanced setting (see §13.16) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
+When the **Max Budget (USD)** advanced setting (see §13.17) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
 
 - **Yellow warning** (80% threshold) — "Budget warning: $X.XXXX / $Y.YYYY used (ZZ%) — approaching Max Budget limit."
 - **Red critical warning** (95% threshold) — "Budget critical: $X.XXXX / $Y.YYYY used (ZZ%) — stream will auto-stop when limit is exceeded."
@@ -1997,7 +1997,31 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 > The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install. The `{gitStatus}` block is no longer baked into the default — re-add it via this editor if you want it pre-included.
 
-### 13.16 Advanced Settings
+### 13.16 Conversation Engine (Operator-Gated)
+
+> **Visible only when your operator enables it.** This setting sits behind an administrative switch. If you don't see a "Conversation Engine" choice in Global settings, your deployment uses the standard engine and nothing in this section applies to you.
+
+Hammoc can run conversations through one of two engines:
+
+- **SDK** (default) — The Claude Agent SDK. Responses stream token-by-token as they're generated. This is the standard engine and behaves identically whether or not the toggle is exposed.
+- **CLI** — Routes your conversation through the Claude Code command-line tool instead. Its main draw is billing: it draws on your Claude **subscription** rather than separate API credits.
+
+**Trade-offs of CLI mode:**
+
+| | SDK | CLI |
+|---|---|---|
+| Billing | API credits | Subscription pool |
+| Response rendering | Token-by-token streaming | **Block-by-block** — each completed block appears at once (no per-character typing) |
+| Progress feedback | Live token stream | Optional "↓ N tokens · Ns" counter while generating |
+
+Your conversation history is identical either way — both engines write the same session files, so a chat created in CLI mode reloads and renders exactly like an SDK chat, and you can switch engines between sessions without losing or garbling history. The engine is chosen per session at the moment you send; there is no live mid-conversation switch.
+
+**CLI Mode Settings** appear alongside the toggle when it's enabled, and apply only while the CLI engine is active:
+
+- **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path you enter is invalid, Hammoc logs a warning and falls back to auto-detect rather than failing the turn.
+- **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
+
+### 13.17 Advanced Settings
 
 **Server Management (mode-dependent):**
 
@@ -2015,7 +2039,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 > **Scope (as of v1.3.0)**: these SDK parameters now apply to **both** direct chat sends and Queue Runner executions. Earlier releases silently dropped them in the queue path — if your queue runs started honoring Max Turns or Max Thinking Tokens after upgrading, this is why. Adjust the values if the new behavior surprises you.
 
-### 13.17 Help
+### 13.18 Help
 
 In-app usage guide within the Settings page:
 
@@ -2025,7 +2049,7 @@ In-app usage guide within the Settings page:
 - **BMad Method** — Quick guide to the BMad workflow
 - **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
 
-### 13.18 About
+### 13.19 About
 
 Displays app information:
 

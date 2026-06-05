@@ -15,8 +15,9 @@ import type {
   ChatOptions,
   PermissionMode,
   PermissionRequest,
+  UserPreferences,
 } from '@hammoc/shared';
-import { ERROR_CODES, SUPPORTED_LANGUAGES, DEFAULT_ENGINE_MODE } from '@hammoc/shared';
+import { ERROR_CODES, SUPPORTED_LANGUAGES } from '@hammoc/shared';
 import type { ChatEngine } from './chatEngine.js';
 import { createChatEngine } from './chatEngineFactory.js';
 import { parseSDKError } from '../utils/errors.js';
@@ -112,15 +113,24 @@ export class QueueService {
   async start(items: QueueItem[], projectSlug: string, sessionId?: string, permissionMode?: PermissionMode): Promise<void> {
     // Reset language to default before reading preferences (prevent stale value from prior run)
     this.lang = 'en';
+    // Hoisted to method scope (Story 33.3) so cliBinaryPath is reachable at the engine
+    // factory below — it was previously trapped inside the language-detection try.
+    let prefs: UserPreferences | undefined;
     try {
-      const prefs = await this.preferencesService.readPreferences();
+      prefs = await this.preferencesService.readPreferences();
       if (prefs.language && SUPPORTED_LANGUAGES.includes(prefs.language as typeof SUPPORTED_LANGUAGES[number])) {
         this.lang = prefs.language;
       }
     } catch { /* keep default 'en' */ }
 
     this.workingDirectory = await this.projectService.resolveOriginalPath(projectSlug);
-    this.chatService = createChatEngine(DEFAULT_ENGINE_MODE, { workingDirectory: this.workingDirectory, permissionMode });
+    // Story 33.3: instantiate the effective engine (gate OFF → 'sdk', byte-identical to
+    // before). cliBinaryPath comes from the same global prefs (undefined on read failure
+    // = auto-detect, graceful).
+    this.chatService = createChatEngine(
+      await this.projectService.getEffectiveEngineMode(this.workingDirectory),
+      { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath },
+    );
     this.abortController = new AbortController();
     this.items = items;
     this.currentIndex = 0;

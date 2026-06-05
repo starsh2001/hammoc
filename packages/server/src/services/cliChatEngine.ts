@@ -247,6 +247,12 @@ async function newestNewJsonl(dir: string, baseline: Set<string>): Promise<strin
 export class CliChatEngine implements ChatEngine {
   private workingDirectory: string | undefined;
   private permissionMode: PermissionMode;
+  /**
+   * Story 33.3: user-configured `claude` binary path override (global preference).
+   * Forwarded to every spawn; empty/undefined = auto-detect, invalid = graceful
+   * fallback in `cliSessionPool.resolveClaudeBinary`.
+   */
+  private cliBinaryPath: string | undefined;
 
   /**
    * CLI mode performs no inline rewind-before-send, so this stays null. (Standalone
@@ -257,6 +263,7 @@ export class CliChatEngine implements ChatEngine {
   constructor(config: ChatServiceConfig = {}) {
     this.workingDirectory = config.workingDirectory;
     this.permissionMode = config.permissionMode ?? 'default';
+    this.cliBinaryPath = config.cliBinaryPath;
   }
 
   getPermissionMode(): PermissionMode {
@@ -360,7 +367,7 @@ export class CliChatEngine implements ChatEngine {
       }
     }
 
-    const { handle, pty } = cliSessionPool.spawnClaude({ cwd, args });
+    const { handle, pty } = cliSessionPool.spawnClaude({ cwd, args, binaryPathOverride: this.cliBinaryPath });
 
     return new Promise<ChatResponse>((resolve, reject) => {
       let settled = false;
