@@ -12,6 +12,7 @@ import { usePanelStore } from '../../stores/panelStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
+import { CliModeSettingsPanel } from './CliModeSettingsPanel';
 import type { EngineMode, PermissionMode, PermissionSyncPolicy, SupportedLanguage, ThinkingEffort } from '@hammoc/shared';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
@@ -317,6 +318,9 @@ export function GlobalSettingsSection() {
           </div>
         </fieldset>
       )}
+
+      {/* CLI Mode Sub-settings (Epic 33.2 — self-gated behind the same billing flag) */}
+      <CliModeSettingsPanel />
 
       {/* Auto-approve safety checks in Bypass mode */}
       <div className="flex items-start gap-3">

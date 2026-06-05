@@ -77,7 +77,18 @@
             "5mDefault": "5 min (predeterminado)",
             "10m": "10 min",
             "30m": "30 min"
-        }
+        },
+        "cliSettingsTitle": "Ajustes del modo CLI",
+        "cliSettingsDesc": "Se aplica cuando el motor de conversación CLI está activo.",
+        "cliShowThinkingSummaries": "Mostrar resúmenes de razonamiento",
+        "cliShowThinkingSummariesDesc": "Muestra los resúmenes de razonamiento de Claude mientras el motor CLI genera una respuesta.",
+        "cliShowGenerationProgress": "Mostrar progreso de generación",
+        "cliShowGenerationProgressDesc": "Muestra un indicador en vivo '↓ N tokens · Ns' mientras se genera una respuesta.",
+        "cliSyntheticTyping": "Tecleo sintético",
+        "cliSyntheticTypingDesc": "Anima los bloques completados carácter por carácter al llegar (puramente estético; desactivado por defecto).",
+        "cliBinaryPath": "Ruta del binario de claude",
+        "cliBinaryPathDesc": "Sobrescritura manual de la ruta del ejecutable claude. Déjalo vacío para la detección automática.",
+        "cliBinaryPathPlaceholder": "Detección automática (dejar vacío)"
     },
     "toast": {
         "themeChanged": "Tema cambiado",

@@ -78,7 +78,18 @@
             "5mDefault": "5 min (default)",
             "10m": "10 min",
             "30m": "30 min"
-        }
+        },
+        "cliSettingsTitle": "CLI Mode Settings",
+        "cliSettingsDesc": "Applied when the CLI conversation engine is active.",
+        "cliShowThinkingSummaries": "Show thinking summaries",
+        "cliShowThinkingSummariesDesc": "Surface Claude's thinking summaries while the CLI engine generates a response.",
+        "cliShowGenerationProgress": "Show generation progress",
+        "cliShowGenerationProgressDesc": "Display a live '↓ N tokens · Ns' indicator while a response is being generated.",
+        "cliSyntheticTyping": "Synthetic typing",
+        "cliSyntheticTypingDesc": "Animate completed blocks character-by-character on arrival (purely cosmetic; off by default).",
+        "cliBinaryPath": "Claude binary path",
+        "cliBinaryPathDesc": "Manual override for the claude executable path. Leave empty to auto-detect.",
+        "cliBinaryPathPlaceholder": "Auto-detect (leave empty)"
     },
     "toast": {
         "themeChanged": "Theme changed",

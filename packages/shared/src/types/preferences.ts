@@ -34,6 +34,12 @@ export interface UserPreferences {
   // Only consumed when the operator billing gate (ENGINE_MODE_TOGGLE_ENABLED) is ON;
   // otherwise the effective engine is forced to 'sdk' regardless of this value.
   engineMode?: EngineMode;
+  // CLI engine mode sub-settings (Epic 33.2). Stored globally; consumed by the CLI
+  // engine only when the billing gate is ON and CLI mode is selected (Story 33.3).
+  cliShowThinkingSummaries?: boolean;   // surface claude thinking summaries (default ON)
+  cliShowGenerationProgress?: boolean;  // show the "↓ N tokens · Ns" indicator (default ON)
+  cliSyntheticTyping?: boolean;         // client-side per-block typewriter animation (default OFF)
+  cliBinaryPath?: string;               // manual claude binary path override ('' = auto-detect)
   commandFavorites?: Array<string | CommandFavoriteEntry>;
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default

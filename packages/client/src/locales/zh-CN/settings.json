@@ -77,7 +77,18 @@
             "5mDefault": "5 分钟（默认）",
             "10m": "10 分钟",
             "30m": "30 分钟"
-        }
+        },
+        "cliSettingsTitle": "CLI 模式设置",
+        "cliSettingsDesc": "在 CLI 对话引擎启用时生效。",
+        "cliShowThinkingSummaries": "显示思考摘要",
+        "cliShowThinkingSummariesDesc": "在 CLI 引擎生成响应时显示 Claude 的思考摘要。",
+        "cliShowGenerationProgress": "显示生成进度",
+        "cliShowGenerationProgressDesc": "在生成响应时显示实时的“↓ N tokens · Ns”指示器。",
+        "cliSyntheticTyping": "模拟打字",
+        "cliSyntheticTypingDesc": "在已完成的内容块到达时逐字呈现（纯装饰效果，默认关闭）。",
+        "cliBinaryPath": "claude 可执行文件路径",
+        "cliBinaryPathDesc": "手动指定 claude 可执行文件的路径。留空则自动检测。",
+        "cliBinaryPathPlaceholder": "自动检测（留空）"
     },
     "toast": {
         "themeChanged": "主题已更改",

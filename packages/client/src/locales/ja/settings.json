@@ -77,7 +77,18 @@
             "5mDefault": "5分（デフォルト）",
             "10m": "10分",
             "30m": "30分"
-        }
+        },
+        "cliSettingsTitle": "CLIモード設定",
+        "cliSettingsDesc": "CLI会話エンジンが有効なときに適用されます。",
+        "cliShowThinkingSummaries": "思考サマリーを表示",
+        "cliShowThinkingSummariesDesc": "CLIエンジンが応答を生成している間、Claudeの思考サマリーを表示します。",
+        "cliShowGenerationProgress": "生成の進捗を表示",
+        "cliShowGenerationProgressDesc": "応答の生成中に「↓ N tokens · Ns」のリアルタイムインジケーターを表示します。",
+        "cliSyntheticTyping": "擬似タイピング",
+        "cliSyntheticTypingDesc": "完成したブロックを到着時に1文字ずつ演出します（純粋な装飾。デフォルトはオフ）。",
+        "cliBinaryPath": "claudeバイナリのパス",
+        "cliBinaryPathDesc": "claude実行ファイルのパスを手動で指定します。空欄の場合は自動検出します。",
+        "cliBinaryPathPlaceholder": "自動検出（空欄）"
     },
     "toast": {
         "themeChanged": "テーマが変更されました",
