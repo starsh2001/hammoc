@@ -107,6 +107,23 @@
       "nameError": "更新会话名称时出错。"
     }
   },
+  "systemBrowse": {
+    "validation": {
+      "pathRequired": "缺少 path 参数",
+      "parentPathRequired": "缺少 parentPath 参数",
+      "nameRequired": "缺少 name 参数",
+      "newNameRequired": "缺少 newName 参数"
+    },
+    "error": {
+      "invalidPath": "路径无效。",
+      "notFound": "未找到路径。",
+      "notADirectory": "不是目录。",
+      "permissionDenied": "权限被拒绝。",
+      "alreadyExists": "同名文件夹已存在。",
+      "invalidName": "文件夹名称无效。",
+      "browseError": "文件系统浏览出错。"
+    }
+  },
   "fs": {
     "validation": {
       "slugRequired": "请输入项目标识。",

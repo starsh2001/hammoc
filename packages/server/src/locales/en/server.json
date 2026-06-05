@@ -138,6 +138,23 @@
       "staleWrite": "The file was modified on disk since you opened it. Reload to see the changes, or overwrite to keep yours."
     }
   },
+  "systemBrowse": {
+    "validation": {
+      "pathRequired": "path is required",
+      "parentPathRequired": "parentPath is required",
+      "nameRequired": "name is required",
+      "newNameRequired": "newName is required"
+    },
+    "error": {
+      "invalidPath": "Invalid path.",
+      "notFound": "Path not found.",
+      "notADirectory": "Path is not a directory.",
+      "permissionDenied": "Permission denied.",
+      "alreadyExists": "A folder with that name already exists.",
+      "invalidName": "Invalid folder name.",
+      "browseError": "Filesystem browse error."
+    }
+  },
   "harness": {
     "error": {
       "pathDenied": "Harness path traversal detected.",

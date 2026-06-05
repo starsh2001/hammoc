@@ -107,6 +107,23 @@
       "nameError": "Error al actualizar nombre de sesión."
     }
   },
+  "systemBrowse": {
+    "validation": {
+      "pathRequired": "path es obligatorio",
+      "parentPathRequired": "parentPath es obligatorio",
+      "nameRequired": "name es obligatorio",
+      "newNameRequired": "newName es obligatorio"
+    },
+    "error": {
+      "invalidPath": "Ruta no válida.",
+      "notFound": "Ruta no encontrada.",
+      "notADirectory": "No es un directorio.",
+      "permissionDenied": "Permiso denegado.",
+      "alreadyExists": "Ya existe una carpeta con ese nombre.",
+      "invalidName": "Nombre de carpeta no válido.",
+      "browseError": "Error al explorar el sistema de archivos."
+    }
+  },
   "fs": {
     "validation": {
       "slugRequired": "El identificador del proyecto es obligatorio.",

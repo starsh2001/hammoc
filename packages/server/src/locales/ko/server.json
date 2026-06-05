@@ -107,6 +107,23 @@
       "nameError": "세션 이름 업데이트 중 오류가 발생했습니다."
     }
   },
+  "systemBrowse": {
+    "validation": {
+      "pathRequired": "path가 필요합니다.",
+      "parentPathRequired": "parentPath가 필요합니다.",
+      "nameRequired": "name이 필요합니다.",
+      "newNameRequired": "newName이 필요합니다."
+    },
+    "error": {
+      "invalidPath": "잘못된 경로입니다.",
+      "notFound": "경로를 찾을 수 없습니다.",
+      "notADirectory": "디렉토리가 아닙니다.",
+      "permissionDenied": "권한이 거부되었습니다.",
+      "alreadyExists": "같은 이름의 폴더가 이미 존재합니다.",
+      "invalidName": "잘못된 폴더 이름입니다.",
+      "browseError": "파일시스템 탐색 중 오류가 발생했습니다."
+    }
+  },
   "fs": {
     "validation": {
       "slugRequired": "프로젝트 식별자가 필요합니다.",

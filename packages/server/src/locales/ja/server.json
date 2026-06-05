@@ -107,6 +107,23 @@
       "nameError": "セッション名の更新でエラーが発生しました。"
     }
   },
+  "systemBrowse": {
+    "validation": {
+      "pathRequired": "path が必要です。",
+      "parentPathRequired": "parentPath が必要です。",
+      "nameRequired": "name が必要です。",
+      "newNameRequired": "newName が必要です。"
+    },
+    "error": {
+      "invalidPath": "無効なパスです。",
+      "notFound": "パスが見つかりません。",
+      "notADirectory": "ディレクトリではありません。",
+      "permissionDenied": "アクセスが拒否されました。",
+      "alreadyExists": "同じ名前のフォルダーが既に存在します。",
+      "invalidName": "無効なフォルダー名です。",
+      "browseError": "ファイルシステムの参照中にエラーが発生しました。"
+    }
+  },
   "fs": {
     "validation": {
       "slugRequired": "プロジェクト識別子が必要です。",

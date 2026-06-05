@@ -107,6 +107,23 @@
       "nameError": "Erro ao atualizar nome da sessão."
     }
   },
+  "systemBrowse": {
+    "validation": {
+      "pathRequired": "path é obrigatório",
+      "parentPathRequired": "parentPath é obrigatório",
+      "nameRequired": "name é obrigatório",
+      "newNameRequired": "newName é obrigatório"
+    },
+    "error": {
+      "invalidPath": "Caminho inválido.",
+      "notFound": "Caminho não encontrado.",
+      "notADirectory": "Não é um diretório.",
+      "permissionDenied": "Permissão negada.",
+      "alreadyExists": "Já existe uma pasta com esse nome.",
+      "invalidName": "Nome de pasta inválido.",
+      "browseError": "Erro ao navegar no sistema de arquivos."
+    }
+  },
   "fs": {
     "validation": {
       "slugRequired": "O identificador do projeto é obrigatório.",

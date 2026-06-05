@@ -30,6 +30,7 @@ import imageRoutes from './routes/images.js';
 import serverRoutes from './routes/server.js';
 import harnessRoutes from './routes/harness.js';
 import snippetsRoutes from './routes/snippets.js';
+import systemBrowseRoutes from './routes/systemBrowse.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 import { i18nMiddleware } from './middleware/i18n.js';
@@ -177,6 +178,12 @@ export async function createApp(): Promise<Express> {
   // intentionally separate from `/api/harness/*` so the URL boundary makes
   // the system-of-record obvious.
   app.use('/api/snippets', snippetsRoutes);
+
+  // System browse routes (Story 34.1) — directory-only host filesystem browse
+  // for project-path selection. Mounted under /api/system (not /api/projects)
+  // because it runs before a project exists, so there is no project boundary.
+  // Auth is automatic via authMiddlewareWithExclusions (not in PUBLIC_ROUTES).
+  app.use('/api/system', systemBrowseRoutes);
 
   // Server management routes (restart)
   app.use('/api/server', serverRoutes);
