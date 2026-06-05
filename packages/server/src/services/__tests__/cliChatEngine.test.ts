@@ -9,6 +9,10 @@
  *   - S-1 heartbeat: PTY data → onRawMessage during JSONL silence
  *   - abort cleanup, early-exit failure, resume seeding, arg mapping
  *   - rewindFiles delegation to the shared fileRewind helper + permission-mode store/return
+ *   - permission round-trip (Story 32.6 — constrained): PTY-dialog detection →
+ *     canUseTool reuse → allow/deny key (Enter/Esc) translation, false-positive
+ *     guard, no-callback fallback, and the abort-while-awaiting race. All via mock
+ *     PTY frames + a mock canUseTool (no real claude / real PTY).
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -442,6 +446,181 @@ describe('CliChatEngine', () => {
       expect(emitted).toEqual(['NEW ANSWER']);
       expect(emitted).not.toContain('OLD ANSWER');
       expect(response).toMatchObject({ sessionId: SID, content: 'NEW ANSWER' });
+    });
+  });
+
+  describe('permission round-trip (Story 32.6 — constrained, canUseTool reuse)', () => {
+    // The permission modal the engine sees AFTER its ANSI strip. Strong markers:
+    // a "Do you want to <verb>…?" sentence + the fully-rendered footer.
+    const PERM_DIALOG = [
+      ' ● Write(probe.txt)',
+      ' Create file',
+      ' probe.txt',
+      ' Do you want to create probe.txt?',
+      ' ❯ 1. Yes',
+      '   2. Yes, allow all edits during this session (shift+tab)',
+      '   3. No',
+      ' Esc to cancel · Tab to amend',
+    ].join('\n');
+
+    // Drive the engine to the post-injection state (where dialog detection is live):
+    // feed a boot frame with the ❯ marker, then wait until the prompt was injected.
+    // Returns the turn promise WRAPPED in an object — an async fn auto-flattens a
+    // returned promise, which would make the caller `await` the whole turn (deadlock,
+    // since the turn only completes once the test writes the session afterwards).
+    async function injectThenReady(engine: CliChatEngine, canUseTool: unknown): Promise<{ turn: Promise<unknown> }> {
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        canUseTool as never,
+        vi.fn(),
+      );
+      // sendMessageWithCallbacks is async — wait until it has registered pty.onData
+      // before feeding the boot frame, else the frame is lost (the engine is still in
+      // its async prelude). Matches the existing tests' `await wait(30)` pattern.
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      return { turn };
+    }
+
+    it('detects the dialog, calls the passed canUseTool, and injects Enter on allow', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({ behavior: 'allow', updatedInput: {} });
+      const { turn } = await injectThenReady(engine, canUseTool);
+
+      h.fakePty._onData?.(PERM_DIALOG);
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1));
+      const [toolName, input, opts] = canUseTool.mock.calls[0] as [string, Record<string, unknown>, { toolUseID: string; signal: AbortSignal }];
+      expect(toolName).toBe('Write'); // scraped from "Do you want to create"
+      expect(input).toEqual({ prompt: expect.stringContaining('Do you want to create probe.txt') });
+      expect(opts.toolUseID).toMatch(/^cli-perm-/); // synthesized — no real id in JSONL pre-approval
+      expect(opts.signal).toBeInstanceOf(AbortSignal);
+
+      // allow → Enter ('\r'). The 1s submit-Enter timer has not fired yet, so this
+      // '\r' is the approval key. The deny key ('\x1b') must be absent.
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\r'));
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
+      await turn;
+    });
+
+    it('injects Esc on deny', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({ behavior: 'deny', message: 'nope' });
+      const { turn } = await injectThenReady(engine, canUseTool);
+
+      h.fakePty._onData?.(PERM_DIALOG);
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b')); // deny → Esc (unambiguous)
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('does NOT trigger on non-dialog output (echoed prompt / spinner / half-rendered dialog)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({ behavior: 'allow' });
+      const { turn } = await injectThenReady(engine, canUseTool);
+
+      // (a) echoed prompt + generation footer: has "esc to interrupt" but no perm phrase.
+      h.fakePty._onData?.('❯ run the bash command\n· Actioning…  esc to interrupt');
+      // (b) half-rendered dialog: perm phrase present, but the footer (full render) absent.
+      h.fakePty._onData?.(' Do you want to create probe.txt?\n ❯ 1. Yes');
+      await wait(60);
+
+      expect(canUseTool).not.toHaveBeenCalled();
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('ignores permission dialogs when no canUseTool is provided (launch-flag posture fallback)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+
+      h.fakePty._onData?.(PERM_DIALOG);
+      await wait(60);
+
+      // No callback → the engine cannot decide; it neither approves nor denies.
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('on abort while awaiting the decision, injects no key (abort race — AC3 ②)', async () => {
+      const ac = new AbortController();
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      let resolvePerm: ((v: unknown) => void) | undefined;
+      const canUseTool = vi.fn(() => new Promise((r) => { resolvePerm = r; }));
+      const promise = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { abortController: ac },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+
+      h.fakePty._onData?.(PERM_DIALOG);
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1));
+
+      ac.abort('timeout');
+      await expect(promise).rejects.toThrow(/aborted/i);
+      expect(h.cliSessionPool.interrupt).toHaveBeenCalledWith('h1');
+
+      const writeCountAtAbort = h.fakePty.write.mock.calls.length;
+      resolvePerm?.({ behavior: 'allow' }); // late verdict after teardown
+      await wait(20);
+      expect(h.fakePty.write.mock.calls.length).toBe(writeCountAtAbort); // nothing injected post-abort
+    });
+
+    it('handles a tool_use content block without crashing (rendered on reload; skipped live — AC5)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      const onComplete = vi.fn();
+      const promise = engine.sendMessageWithCallbacks('hi', { onTextChunk, onComplete, onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+
+      await wait(30);
+      await writeSession(SID, [
+        userLine('u1'),
+        JSON.stringify({
+          type: 'assistant', uuid: 'a1', parentUuid: 'u1', timestamp: '2026-06-04T00:00:01.000Z',
+          message: {
+            role: 'assistant', model: 'claude-opus-4-6',
+            content: [{ type: 'tool_use', id: 'toolu_1', name: 'Write', input: { file_path: 'x.txt', content: 'hi' } }],
+            stop_reason: 'tool_use',
+          },
+        }),
+        // tool_result (type=user) — skipped live, merged on reload by historyParser.
+        JSON.stringify({
+          type: 'user', uuid: 'tr1', parentUuid: 'a1', timestamp: '2026-06-04T00:00:02.000Z',
+          message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'done' }] },
+        }),
+        assistantLine('a2', { parentUuid: 'a1', text: 'finished' }),
+      ]);
+
+      const response = await promise;
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(response.content).toBe('finished'); // the tool_use block contributes no live text
+      expect(onTextChunk.mock.calls.map((c) => (c[0] as { content: string }).content)).toEqual(['finished']);
     });
   });
 

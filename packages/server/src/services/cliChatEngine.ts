@@ -18,14 +18,20 @@
  *
  * The CLI engine grows by story: 32.4 built the core happy-path (prompt → block
  * response); 32.5 fills standalone rewind (`rewindFiles`, below — billing-neutral
- * SDK file-rewind reuse). Still deferred: the interactive tool-approval round-trip
- * (`canUseTool` web dialog) is Story 32.6 (spike §10 unobserved); synthetic typing /
- * progress UI is Story 32.7; mode-selection UI is Epic 33.
+ * SDK file-rewind reuse); 32.6 wires the interactive tool-approval round-trip
+ * (`canUseTool` web dialog) — **constrained**: the permission prompt leaves NO
+ * session-JSONL signal (the `tool_use` line is written only *after* approval —
+ * spike §10 closed by Story 32.6 Task 1), so the dialog is detected from the PTY
+ * ANSI *state* (§6.2-class modal, §7.1-sanctioned state-signal use) and driven by
+ * keys (Enter = approve, Esc = deny); the scraped tool name/input are best-effort
+ * and `updatedInput` is unsupported (claude runs its own tool). See
+ * `handlePermission` below for the full constraint list. Still deferred: synthetic
+ * typing / progress UI is Story 32.7; mode-selection UI is Epic 33.
  *
  * [Source: docs/spike-32.1-cli-output-source.md#7.1; docs/prd/epic-32-cli-engine-core.md#Story 32.4+]
  */
 
-import type { CanUseTool, RewindFilesResult } from '@anthropic-ai/claude-agent-sdk';
+import type { CanUseTool, PermissionResult, RewindFilesResult } from '@anthropic-ai/claude-agent-sdk';
 import type {
   ChatServiceConfig,
   ChatOptions,
@@ -77,6 +83,85 @@ const CLI_PROMPT_MARKER = '❯'; // Claude Code interactive input-box prompt gly
 const CLI_BOOT_SETTLE_MS = 400; // quiet after the box marker before typing
 const CLI_MAX_BOOT_WAIT_MS = 4000; // fallback inject if the marker never renders
 const CLI_SUBMIT_GAP_MS = 1000; // Enter sent this long after the prompt text
+
+/**
+ * Tool-approval interception (Story 32.6 — *constrained*; keys verified against
+ * claude v2.1.162 by a real-PTY observation, Task 1). The interactive permission
+ * prompt leaves **no signal in the session JSONL** — the `tool_use` line is written
+ * only *after* the user approves (spike §10 closed: at dialog time the JSONL held
+ * only bookkeeping; the assistant `tool_use` line appeared post-approval). So the
+ * dialog exists only on the PTY ANSI screen — a §6.2-class absolute-coordinate modal
+ * — and detection is an ANSI *state* signal (§7.1-sanctioned, the same channel the
+ * `❯` readiness marker uses), never a content source.
+ *
+ * Verified key mapping (claude permission dialog: "❯ 1. Yes / 2. Yes, allow all
+ * edits… / 3. No · Esc to cancel") — BOTH directions empirically keyed against a
+ * real PTY: **Enter** selects the pre-highlighted "1. Yes" (approve — the file was
+ * created only after Enter); **Esc** ("Esc to cancel") denies — the dialog dismissed,
+ * the file was NOT created, and the JSONL recorded a `tool_result` with
+ * `is_error:true` ("The user doesn't want to proceed…") + "[Request interrupted by
+ * user for tool use]", i.e. the *same* envelope SDK deny (`interrupt:true`) produces,
+ * so a denied tool renders identically on reload. ("3. No" continue-after-deny is the
+ * alternate deny affordance; we map deny→Esc for the interrupt semantics.)
+ */
+const CLI_PERMISSION_ALLOW_KEY = '\r'; // Enter → pre-highlighted "1. Yes"
+const CLI_PERMISSION_DENY_KEY = '\x1b'; // Esc → "Esc to cancel"
+
+/** Rolling post-injection ANSI buffer cap for dialog-state detection. */
+const CLI_DIALOG_BUFFER_CAP = 4000;
+
+// ANSI/control matchers for the dialog *state* strip below. Control chars are
+// intentional (we are literally stripping terminal escapes), so no-control-regex
+// is disabled per-pattern — the same convention as gitController / harness* services.
+// eslint-disable-next-line no-control-regex -- OSC … BEL/ST
+const ANSI_OSC_RE = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+// eslint-disable-next-line no-control-regex -- 2-byte Fe escapes
+const ANSI_FE_RE = /\x1b[@-Z\\-_]/g;
+// eslint-disable-next-line no-control-regex -- CSI … final byte
+const ANSI_CSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
+// eslint-disable-next-line no-control-regex -- stray C0 control bytes (keep \t \n)
+const CTRL_BYTES_RE = /[\x00-\x08\x0b-\x1f]/g;
+
+/** Crude ANSI/control strip — for dialog *state* detection only, not content. */
+function stripAnsiForDetect(s: string): string {
+  return s.replace(ANSI_OSC_RE, '').replace(ANSI_FE_RE, '').replace(ANSI_CSI_RE, '').replace(CTRL_BYTES_RE, ' ');
+}
+
+/**
+ * Conservative permission-dialog matcher. Requires a permission-specific phrase
+ * AND the fully-rendered footer ("Esc to cancel" / "Tab to amend") so a half-drawn
+ * dialog, a spinner, or the echoed prompt can never match — a false positive would
+ * inject a stray Enter/Esc and corrupt the session. The dialog chrome renders in
+ * English regardless of the model's reply language (observed), but a future TUI
+ * revision could change these strings (documented version-fragility).
+ */
+function detectPermissionDialog(text: string): boolean {
+  const hasPermPhrase =
+    /Yes,\s*allow all edits/i.test(text) ||
+    /Do you want to (?:create|make|write|edit|update|apply|run|execute|read|proceed|allow)/i.test(text);
+  const hasFooter = /Esc\b[^\n]{0,16}\bcancel\b/i.test(text) || /Tab\b[^\n]{0,16}\bamend\b/i.test(text);
+  return hasPermPhrase && hasFooter;
+}
+
+/**
+ * Best-effort tool name from the dialog's question verb (ANSI scrape — low
+ * fidelity; the structured tool name is not in the JSONL until after approval).
+ */
+function extractToolName(text: string): string {
+  const verb = (text.match(/Do you want to (\w+)/i)?.[1] ?? '').toLowerCase();
+  if (/^(create|write|make)$/.test(verb)) return 'Write';
+  if (/^(edit|update|apply|modify|change)$/.test(verb)) return 'Edit';
+  if (/^(run|execute)$/.test(verb)) return 'Bash';
+  if (/^(read|view)$/.test(verb)) return 'Read';
+  if (/^(fetch|access)$/.test(verb)) return 'WebFetch';
+  // Secondary hint: the tool header line "● Write(…)".
+  return text.match(/[●·]\s*([A-Z][a-zA-Z]+)\s*\(/)?.[1] ?? 'Tool';
+}
+
+/** Best-effort human-readable prompt sentence (the dialog's own words). */
+function extractPromptSentence(text: string): string {
+  return (text.match(/Do you want to [^?\n]{1,160}\?/i)?.[0] ?? 'Claude is requesting tool permission').trim();
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -185,15 +270,16 @@ export class CliChatEngine implements ChatEngine {
   /**
    * Core: inject `content` into an interactive claude PTY, watch the session JSONL,
    * and re-emit completed assistant blocks through `callbacks`. Resolves with the
-   * assembled `ChatResponse` on `stop_reason:"end_turn"`. `canUseTool` is accepted
-   * to satisfy the interface surface but **not invoked** (tool-approval interception
-   * is out of scope — AC7). `onRawMessage` is the inactivity-timeout heartbeat (S-1).
+   * assembled `ChatResponse` on `stop_reason:"end_turn"`. When `canUseTool` is
+   * provided, an interactive permission dialog detected on the PTY screen is routed
+   * through it (Story 32.6 — reuses the existing web round-trip; see
+   * `handlePermission`). `onRawMessage` is the inactivity-timeout heartbeat (S-1).
    */
   async sendMessageWithCallbacks(
     content: string,
     callbacks: StreamCallbacks,
     options: ChatOptions = {},
-    _canUseTool?: CanUseTool,
+    canUseTool?: CanUseTool,
     onRawMessage?: (messageType: string) => void,
   ): Promise<ChatResponse> {
     const cwd = this.workingDirectory;
@@ -261,6 +347,10 @@ export class CliChatEngine implements ChatEngine {
       let bootSettleTimer: ReturnType<typeof setTimeout> | null = null;
       let bootFallbackTimer: ReturnType<typeof setTimeout> | null = null;
       let submitTimer: ReturnType<typeof setTimeout> | null = null;
+      // Permission-dialog state (Story 32.6 — post-injection only).
+      let dialogBuffer = ''; // rolling stripped PTY output, scanned for the dialog
+      let permissionPending = false; // guards re-entry while awaiting the user's decision
+      let permCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-approval)
 
       const teardown = () => {
         if (pollTimer) {
@@ -369,18 +459,61 @@ export class CliChatEngine implements ChatEngine {
         }
       };
 
+      /**
+       * Permission round-trip (Story 32.6 — *constrained*). The dialog is detected
+       * from the PTY screen (no JSONL signal exists pre-approval). We reuse the
+       * **already-passed** `canUseTool` (same closure that drives SDK-mode web
+       * permissions — `websocket.ts` / `queueService.ts`) so the wire contract,
+       * client, and `@hammoc/shared` are unchanged: the engine only *calls* it and
+       * translates the verdict to a key. Honest constraints:
+       *   - Detection is ANSI-state-only (version-fragile) — no structured JSONL.
+       *   - `toolName`/`input` are best-effort scrapes; `toolUseID` is synthesized
+       *     (the real id is not in JSONL until after approval).
+       *   - `updatedInput` is unsupported — claude runs its own tool, so allow/deny
+       *     (a keypress) is the only channel (vs SDK mode rewriting tool input).
+       *   - `AskUserQuestion` (claude's own TUI question UI) is a *separate* modal,
+       *     not intercepted here — out of scope (SDK mode retains it).
+       * Fired fire-and-forget from `onData`; guarded by `permissionPending` (no
+       * re-entry on dialog re-renders) and by `settled` (abort race — AC3 ②).
+       */
+      const handlePermission = (toolName: string, sentence: string, toolUseID: string): void => {
+        void (async () => {
+          let result: PermissionResult;
+          try {
+            const signal = options.abortController?.signal ?? new AbortController().signal;
+            result = await canUseTool!(toolName, { prompt: sentence }, { signal, toolUseID, title: sentence });
+          } catch (err) {
+            log.warn(`canUseTool threw, denying: ${err instanceof Error ? err.message : String(err)}`);
+            result = { behavior: 'deny', message: 'permission callback error' };
+          }
+          // Abort race (AC3 ②): if the turn ended/aborted while we awaited the user's
+          // decision, the PTY is being torn down (onAbort sends Ctrl+C, which cancels
+          // the dialog) — do nothing rather than write a stray key to a dead PTY.
+          if (settled) return;
+          try {
+            pty.write(result.behavior === 'allow' ? CLI_PERMISSION_ALLOW_KEY : CLI_PERMISSION_DENY_KEY);
+          } catch (err) {
+            log.warn(`permission key injection failed: ${err instanceof Error ? err.message : String(err)}`);
+          }
+          // Allow a subsequent permission in the same turn to be detected afresh.
+          permissionPending = false;
+        })();
+      };
+
       // S-1 heartbeat: during generation the session JSONL is silent until a block
       // completes (§4.5), so onTextChunk/onThinking can't keep the caller's
       // inactivity timer alive. The ONLY real-time signal is PTY data (spinner /
       // "↓ N tokens" frames, §4.7) — forward each frame through onRawMessage so the
-      // timer is reset, exactly as the SDK engine resets it per SDK message. This is
-      // the timer-reset channel wired in BOTH call sites (websocket.ts:2843-2845);
-      // StreamCallbacks.onActivity is browser-only and would miss the queue path.
+      // timer is reset. This timer-reset channel is wired **only on the browser path**
+      // (websocket.ts:2843-2845, which has the activity-based inactivity timeout); the
+      // queue path passes no `onRawMessage` and has no inactivity timeout (only the
+      // inter-prompt `delayMs`), so a permission `await` there simply blocks naturally.
       //
-      // The same data stream drives injection readiness: accumulate boot output
-      // (pre-injection only) and inject once the input-box marker has rendered and
-      // output then goes quiet — see CLI_PROMPT_MARKER. (Trusted-folder happy-path —
-      // a new/untrusted folder's trust dialog is deferred, §7.3.)
+      // The same data stream drives injection readiness (pre-injection: accumulate
+      // boot output, inject once the `❯` box marker renders and output goes quiet —
+      // CLI_PROMPT_MARKER) and, post-injection, permission-dialog detection (above).
+      // (Trusted-folder happy-path — a new/untrusted folder's trust dialog is
+      // deferred, §7.3.)
       pty.onData((data: string) => {
         onRawMessage?.('cli-pty-activity');
         if (!injected) {
@@ -388,6 +521,16 @@ export class CliChatEngine implements ChatEngine {
           if (bootBuffer.includes(CLI_PROMPT_MARKER)) {
             if (bootSettleTimer) clearTimeout(bootSettleTimer);
             bootSettleTimer = setTimeout(injectPrompt, CLI_BOOT_SETTLE_MS);
+          }
+        } else if (canUseTool && !permissionPending) {
+          // Post-injection: scan a rolling stripped buffer for the permission modal.
+          dialogBuffer = (dialogBuffer + stripAnsiForDetect(data)).slice(-CLI_DIALOG_BUFFER_CAP);
+          if (detectPermissionDialog(dialogBuffer)) {
+            permissionPending = true;
+            const toolName = extractToolName(dialogBuffer);
+            const sentence = extractPromptSentence(dialogBuffer);
+            dialogBuffer = ''; // consume — don't re-match the same dialog text
+            handlePermission(toolName, sentence, `cli-perm-${++permCounter}`);
           }
         }
       });
@@ -442,8 +585,13 @@ export class CliChatEngine implements ChatEngine {
                 });
               }
             }
-            // tool_use blocks render naturally on history reload (envelope-compatible),
-            // but the interactive approval round-trip is out of scope (AC7).
+            // tool_use blocks render naturally on history reload (envelope-compatible
+            // — verified in the Story 32.6 observation: thinking → tool_use →
+            // tool_result → text on reload). A *live* onToolUse emit here was weighed
+            // (AC5) and deliberately skipped: it adds no core value (the approval
+            // round-trip is the real gap) and risks ordering races with the
+            // permission flow — regression-0 takes precedence. The interactive
+            // approval itself is handled out-of-band by handlePermission (PTY).
           }
         } else if (typeof blockContent === 'string') {
           const text = blockContent;
