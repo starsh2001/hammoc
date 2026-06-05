@@ -5,8 +5,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, FolderPlus, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, FolderPlus, FolderSearch, AlertTriangle, Loader2 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
+import { DirectoryBrowserDialog } from './files/DirectoryBrowserDialog';
 
 interface NewProjectDialogProps {
   /** Dialog open state */
@@ -23,6 +24,9 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
   const [setupBmad, setSetupBmad] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  // "Browse" opens a directory tree dialog that fills the path input (AC1) — a
+  // secondary input path; typing remains the primary flow.
+  const [browserOpen, setBrowserOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -65,6 +69,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
       setSetupBmad(true);
       setSelectedVersion('');
       setLocalError(null);
+      setBrowserOpen(false);
       clearCreateError();
       clearPathValidation();
     }
@@ -190,6 +195,7 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
   const displayError = localError || createError || validationError;
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
       onClick={handleBackdropClick}
@@ -229,12 +235,26 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
         <div className="p-4 space-y-4">
           {/* Path Input */}
           <div>
-            <label
-              htmlFor="project-path"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-            >
-              {t('newProjectDialog.pathLabel')}
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label
+                htmlFor="project-path"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+              >
+                {t('newProjectDialog.pathLabel')}
+              </label>
+              <button
+                type="button"
+                onClick={() => setBrowserOpen(true)}
+                disabled={isCreating}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400
+                           hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded
+                           disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                aria-label={t('newProjectDialog.browseAria')}
+              >
+                <FolderSearch className="w-3.5 h-3.5" aria-hidden="true" />
+                {t('newProjectDialog.browse')}
+              </button>
+            </div>
             <input
               ref={inputRef}
               id="project-path"
@@ -368,5 +388,18 @@ export function NewProjectDialog({ isOpen, onClose, onSuccess }: NewProjectDialo
         </div>
       </div>
     </div>
+
+    {/* Directory browser — secondary path picker. Selecting a path flows through
+        the existing handlePathChange (set + debounced validatePath), so AC7's
+        validation path is reused, not duplicated. The dialog closes itself after
+        onSelect, so onClose handles dismissal. */}
+    {browserOpen && (
+      <DirectoryBrowserDialog
+        isOpen={browserOpen}
+        onClose={() => setBrowserOpen(false)}
+        onSelect={(p) => handlePathChange(p)}
+      />
+    )}
+    </>
   );
 }

@@ -6,12 +6,23 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { BrowseResponse } from '@hammoc/shared';
 import { NewProjectDialog } from '../NewProjectDialog';
 import { useProjectStore } from '../../stores/projectStore';
+import { systemBrowseApi } from '../../services/api/systemBrowse.js';
 
 // Mock the project store
 vi.mock('../../stores/projectStore', () => ({
   useProjectStore: vi.fn(),
+}));
+
+// Mock the system browse API consumed by the directory browser dialog (Story 34.2)
+vi.mock('../../services/api/systemBrowse.js', () => ({
+  systemBrowseApi: {
+    browse: vi.fn(),
+    mkdir: vi.fn(),
+    rename: vi.fn(),
+  },
 }));
 
 describe('NewProjectDialog', () => {
@@ -426,6 +437,71 @@ describe('NewProjectDialog', () => {
             button.className.includes('min-w-[44px]') ||
             button.className.includes('p-2')
         ).toBe(true);
+      });
+    });
+  });
+
+  describe('Directory Browser Integration (Story 34.2)', () => {
+    const browseHome: BrowseResponse = {
+      path: '/home/u',
+      parent: '/home',
+      home: '/home/u',
+      isDriveRoots: false,
+      entries: [{ name: 'proj', path: '/home/u/proj', hasChildren: false }],
+    };
+
+    beforeEach(() => {
+      vi.mocked(systemBrowseApi.browse).mockImplementation((p?: string) => {
+        // no-arg → drive-roots view (only the home field is consumed by the dialog)
+        if (!p) {
+          return Promise.resolve({
+            ...browseHome,
+            path: null,
+            parent: null,
+            isDriveRoots: true,
+            entries: [],
+          });
+        }
+        return Promise.resolve(browseHome);
+      });
+    });
+
+    it('renders the Browse button (AC1)', () => {
+      render(<NewProjectDialog isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />);
+
+      expect(screen.getByText('찾아보기')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '디렉토리 찾아보기' })).toBeInTheDocument();
+    });
+
+    it('opens the directory browser dialog on Browse click (AC1)', async () => {
+      const user = userEvent.setup();
+      render(<NewProjectDialog isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />);
+
+      await user.click(screen.getByRole('button', { name: '디렉토리 찾아보기' }));
+
+      expect(await screen.findByText('디렉토리 선택')).toBeInTheDocument();
+      // Let the dialog's async load settle (tree content) before the test ends.
+      await screen.findByText('proj');
+    });
+
+    it('fills the path input and runs existing validation when a path is selected (AC7)', async () => {
+      const user = userEvent.setup();
+      mockValidatePath.mockResolvedValue({ valid: true, exists: true, isProject: false });
+      render(<NewProjectDialog isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />);
+
+      await user.click(screen.getByRole('button', { name: '디렉토리 찾아보기' }));
+
+      // Pick a folder in the browser tree, then confirm.
+      await user.click(await screen.findByText('proj'));
+      await user.click(screen.getByRole('button', { name: '이 경로 선택' }));
+
+      // Selection flows through the existing handlePathChange → input is filled...
+      await waitFor(() =>
+        expect((screen.getByLabelText('프로젝트 경로') as HTMLInputElement).value).toBe('/home/u/proj'),
+      );
+      // ...and the existing debounced validatePath runs on the selected path (AC7).
+      await waitFor(() => expect(mockValidatePath).toHaveBeenCalledWith('/home/u/proj'), {
+        timeout: 1500,
       });
     });
   });

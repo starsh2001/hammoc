@@ -121,7 +121,23 @@
     "versionLoading": "Loading version list...",
     "noVersions": "No BMad versions available.",
     "cancelCreating": "Project creation is in progress. Cancel?",
-    "closeAria": "Close"
+    "closeAria": "Close",
+    "browse": "Browse",
+    "browseAria": "Browse for a directory"
+  },
+  "directoryBrowser": {
+    "title": "Select directory",
+    "myPc": "My PC",
+    "selectPath": "Select this path",
+    "newFolder": "New folder",
+    "rename": "Rename",
+    "loading": "Loading...",
+    "emptyFolder": "No subfolders",
+    "loadError": "Failed to load directory.",
+    "treeAria": "Directory tree",
+    "breadcrumbAria": "Path breadcrumb",
+    "closeAria": "Close",
+    "selectedLabel": "Selected:"
   },
   "pendingTools": {
     "clickToScroll": "Click to scroll to this card",

@@ -121,7 +121,23 @@
     "versionLoading": "バージョン一覧を読み込み中...",
     "noVersions": "利用可能なBMadバージョンがありません。",
     "cancelCreating": "プロジェクト作成中です。キャンセルしますか？",
-    "closeAria": "閉じる"
+    "closeAria": "閉じる",
+    "browse": "参照",
+    "browseAria": "ディレクトリを参照"
+  },
+  "directoryBrowser": {
+    "title": "ディレクトリを選択",
+    "myPc": "PC",
+    "selectPath": "このパスを選択",
+    "newFolder": "新しいフォルダー",
+    "rename": "名前を変更",
+    "loading": "読み込み中...",
+    "emptyFolder": "サブフォルダーなし",
+    "loadError": "ディレクトリの読み込みに失敗しました。",
+    "treeAria": "ディレクトリツリー",
+    "breadcrumbAria": "パスのパンくず",
+    "closeAria": "閉じる",
+    "selectedLabel": "選択中:"
   },
   "pendingTools": {
     "clickToScroll": "クリックしてこのカードにスクロール",

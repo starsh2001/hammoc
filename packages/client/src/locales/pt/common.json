@@ -121,7 +121,23 @@
     "versionLoading": "Carregando lista de versões...",
     "noVersions": "Nenhuma versão do BMad disponível.",
     "cancelCreating": "A criação do projeto está em andamento. Cancelar?",
-    "closeAria": "Fechar"
+    "closeAria": "Fechar",
+    "browse": "Procurar",
+    "browseAria": "Procurar um diretório"
+  },
+  "directoryBrowser": {
+    "title": "Selecionar diretório",
+    "myPc": "Meu PC",
+    "selectPath": "Selecionar este caminho",
+    "newFolder": "Nova pasta",
+    "rename": "Renomear",
+    "loading": "Carregando...",
+    "emptyFolder": "Sem subpastas",
+    "loadError": "Falha ao carregar o diretório.",
+    "treeAria": "Árvore de diretórios",
+    "breadcrumbAria": "Caminho de navegação",
+    "closeAria": "Fechar",
+    "selectedLabel": "Selecionado:"
   },
   "pendingTools": {
     "clickToScroll": "Clique para rolar até este cartão",

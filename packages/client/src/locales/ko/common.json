@@ -121,7 +121,23 @@
     "versionLoading": "버전 목록 로딩 중...",
     "noVersions": "사용 가능한 BMad 버전이 없습니다.",
     "cancelCreating": "프로젝트 생성이 진행 중입니다. 취소하시겠습니까?",
-    "closeAria": "닫기"
+    "closeAria": "닫기",
+    "browse": "찾아보기",
+    "browseAria": "디렉토리 찾아보기"
+  },
+  "directoryBrowser": {
+    "title": "디렉토리 선택",
+    "myPc": "내 PC",
+    "selectPath": "이 경로 선택",
+    "newFolder": "새 폴더",
+    "rename": "이름 바꾸기",
+    "loading": "불러오는 중...",
+    "emptyFolder": "하위 폴더 없음",
+    "loadError": "디렉토리를 불러오지 못했습니다.",
+    "treeAria": "디렉토리 트리",
+    "breadcrumbAria": "경로 탐색",
+    "closeAria": "닫기",
+    "selectedLabel": "선택됨:"
   },
   "pendingTools": {
     "clickToScroll": "클릭하여 해당 카드로 이동",

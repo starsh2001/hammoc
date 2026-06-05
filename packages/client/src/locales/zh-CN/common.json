@@ -121,7 +121,23 @@
     "versionLoading": "正在加载版本列表...",
     "noVersions": "没有可用的 BMad 版本。",
     "cancelCreating": "正在创建项目。确定要取消吗？",
-    "closeAria": "关闭"
+    "closeAria": "关闭",
+    "browse": "浏览",
+    "browseAria": "浏览目录"
+  },
+  "directoryBrowser": {
+    "title": "选择目录",
+    "myPc": "我的电脑",
+    "selectPath": "选择此路径",
+    "newFolder": "新建文件夹",
+    "rename": "重命名",
+    "loading": "加载中...",
+    "emptyFolder": "无子文件夹",
+    "loadError": "无法加载目录。",
+    "treeAria": "目录树",
+    "breadcrumbAria": "路径导航",
+    "closeAria": "关闭",
+    "selectedLabel": "已选择："
   },
   "pendingTools": {
     "clickToScroll": "点击滚动到此卡片",
