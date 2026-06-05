@@ -165,6 +165,13 @@ interface ChatState {
   streamingSegments: StreamingSegment[];
   /** When streaming started */
   streamingStartedAt: Date | null;
+  /**
+   * Story 32.7: transient CLI-engine generation progress ("↓ N tokens · Ns" parsed
+   * from the claude TUI spinner). Live-only — never persisted to messages or the
+   * replay buffer; cleared when streaming starts/completes/aborts. null when no
+   * progress signal is active (SDK mode never sets it).
+   */
+  generationProgress: { tokens: number; elapsedSeconds: number } | null;
   /** Current permission mode for Agent SDK */
   permissionMode: PermissionMode;
   /** Current context usage data from last SDK response */
@@ -324,6 +331,8 @@ interface ChatActions {
   rewindFiles: (sessionId: string, workingDirectory: string, messageUuid: string, dryRun?: boolean) => void;
   /** Set isRewinding state */
   setIsRewinding: (isRewinding: boolean) => void;
+  /** Story 32.7: set/clear the transient CLI generation-progress signal (null clears) */
+  setGenerationProgress: (progress: { tokens: number; elapsedSeconds: number } | null) => void;
   /** Set last dryRun result for confirmation dialog */
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => void;
   /** Clear last dryRun result (dialog close/cancel) */
@@ -357,6 +366,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingMessageId: null,
   streamingSegments: [],
   streamingStartedAt: null,
+  generationProgress: null,
   lastResultError: null,
   selectedModel: '',
   // Seed from cached preferences so a fresh chatStore (page reload, first mount) immediately
@@ -444,9 +454,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Pre-check: warn if current context exceeds the target model's max context window
     const contextUsage = get().contextUsage;
     if (contextUsage && resume) {
-      const globalDefault = usePreferencesStore.getState().preferences.defaultModel || '';
-      const effectiveDefault = projectSettings?.modelOverride ?? globalDefault;
-      const targetModel = get().selectedModel || effectiveDefault || get().activeModel || '';
       const maxCtx = contextUsage.contextWindow;
       if (maxCtx > 0) {
         const currentTokens = contextUsage.inputTokens + contextUsage.cacheCreationInputTokens + contextUsage.cacheReadInputTokens;
@@ -523,6 +530,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: messageId,
       streamingSegments: [],
       streamingStartedAt: new Date(),
+      generationProgress: null,
       lastResultError: null,
     });
   },
@@ -665,6 +673,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      generationProgress: null,
       streamCompleteCount: get().streamCompleteCount + 1,
     });
   },
@@ -689,6 +698,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      generationProgress: null,
     });
   },
 
@@ -1020,6 +1030,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   setIsRewinding: (isRewinding: boolean) => set({ isRewinding }),
+
+  setGenerationProgress: (progress) => set({ generationProgress: progress }),
 
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => set({ lastDryRunResult: result }),
 

@@ -444,6 +444,14 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   const streamingMessageId = useChatStore((s) => s.streamingMessageId);
   const isRestoringStream = isStreaming && streamingMessageId === 'restoring';
 
+  // Story 32.7: transient CLI generation progress ("↓ N tokens · Ns"). Additive next
+  // to the streaming indicators below — null in SDK mode (real token streaming), so the
+  // indicators keep their existing text unchanged.
+  const generationProgress = useChatStore((s) => s.generationProgress);
+  const generationProgressLabel = generationProgress
+    ? t('streaming.generationProgress', { tokens: generationProgress.tokens, seconds: generationProgress.elapsedSeconds })
+    : null;
+
   // Show compaction hint when waiting too long with high context usage
   const isWaitingWithNoContent = isStreaming && !isCompacting && !isRestoringStream && streamingSegments.length === 0;
   const [showCompactionHint, setShowCompactionHint] = useState(false);
@@ -745,6 +753,9 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
               <div className="flex items-center gap-2">
                 <StreamingIndicator />
                 <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.generating')}</span>
+                {generationProgressLabel && (
+                  <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums">{generationProgressLabel}</span>
+                )}
               </div>
             </div>
           </div>
@@ -762,6 +773,9 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                     <span className="text-amber-600 dark:text-amber-400"> ({t('streaming.compactionHint')})</span>
                   )}
                 </span>
+                {generationProgressLabel && (
+                  <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums">{generationProgressLabel}</span>
+                )}
               </div>
             </div>
           </div>

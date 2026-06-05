@@ -292,7 +292,8 @@
     "waiting": "思考中...",
     "generating": "生成中...",
     "restoring": "正在恢复对话...",
-    "compactionHint": "可能正在进行上下文压缩"
+    "compactionHint": "可能正在进行上下文压缩",
+    "generationProgress": "↓ {{tokens}} 个令牌 · {{seconds}}秒"
   },
   "markdown": {
     "openFile": "打开文件：{{href}}"

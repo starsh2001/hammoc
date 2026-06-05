@@ -624,6 +624,147 @@ describe('CliChatEngine', () => {
     });
   });
 
+  describe('generation progress (Story 32.7 — spinner "↓ N tokens" parsing)', () => {
+    // Drive the engine to the post-injection state (where progress parsing is live):
+    // feed a boot frame with the ❯ marker, then wait until the prompt was injected.
+    // Returns the turn promise WRAPPED (an async fn would auto-flatten and deadlock —
+    // same pattern as the permission block's helper).
+    async function injectThenReady(
+      engine: CliChatEngine,
+      onProgress?: (p: { tokens: number; elapsedSeconds: number }) => void,
+    ): Promise<{ turn: Promise<unknown> }> {
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined, // canUseTool
+        vi.fn(), // onRawMessage
+        onProgress, // 6th arg (Story 32.7)
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      return { turn };
+    }
+
+    it('parses the real-PTY literal "↓ N tokens" + elapsed and emits on value change (throttle)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      // Task 1 literal: "<glyph> Verb… (Es · ↓ N tokens [· thinking with <effort> effort])".
+      h.fakePty._onData?.('✢ Moseying… (6s · ↓ 246 tokens · thinking with high effort)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 246, elapsedSeconds: 6 }));
+
+      // Same value re-render (spinner glyph cycles but counter unchanged) → no re-emit.
+      const callsAfterFirst = onProgress.mock.calls.length;
+      h.fakePty._onData?.('✶ Moseying… (6s · ↓ 246 tokens · thinking with high effort)');
+      await wait(20);
+      expect(onProgress.mock.calls.length).toBe(callsAfterFirst);
+
+      // Counter climbs → emit. (Also covers the counter-only form, no thinking suffix.)
+      h.fakePty._onData?.('✻ Moseying… (8s · ↓ 312 tokens)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 312, elapsedSeconds: 8 }));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('forwards a segment-boundary reset (high→low) as a change so the indicator never freezes (Task 1)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      h.fakePty._onData?.('Moseying… (16s · ↓ 614 tokens)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 614, elapsedSeconds: 16 }));
+      // A new generation segment (after a tool use) resets BOTH counter and clock to a
+      // low base — change-detection forwards it (increase-only would have suppressed it).
+      h.fakePty._onData?.('Moseying… (2s · ↓ 79 tokens)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 79, elapsedSeconds: 2 }));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('survives a frame split across two onData calls (rolling buffer)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      // The counter is split mid-number across frames; the rolling buffer rejoins it.
+      h.fakePty._onData?.('Moseying… (9s · ↓ 36');
+      await wait(15);
+      expect(onProgress).not.toHaveBeenCalled(); // "↓ 36" alone is not yet "N tokens"
+      h.fakePty._onData?.('5 tokens · thinking with high effort)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 365, elapsedSeconds: 9 }));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('ignores frames with no counter (false-0 guard) — never emits a phantom 0', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      // A spinner with no "↓ N tokens" (early thinking phase / interrupt footer only).
+      h.fakePty._onData?.('✢ Deliberating…  esc to interrupt');
+      await wait(30);
+      expect(onProgress).not.toHaveBeenCalled();
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('is a no-op when no onGenerationProgress is provided (queue path)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      // 6th arg omitted — mirrors queueService (no live progress UI there).
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+
+      // A spinner frame must not crash when there is no callback to call.
+      expect(() => h.fakePty._onData?.('Moseying… (6s · ↓ 246 tokens)')).not.toThrow();
+      await wait(20);
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('emits no progress after abort (settled guard)', async () => {
+      const ac = new AbortController();
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { abortController: ac },
+        undefined,
+        vi.fn(),
+        onProgress,
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+
+      ac.abort('timeout');
+      await expect(turn).rejects.toThrow(/aborted/i);
+
+      const callsAtAbort = onProgress.mock.calls.length;
+      // A late spinner frame after teardown must not emit.
+      h.fakePty._onData?.('Moseying… (9s · ↓ 400 tokens)');
+      await wait(20);
+      expect(onProgress.mock.calls.length).toBe(callsAtAbort);
+    });
+  });
+
   describe('guards', () => {
     it('throws when no workingDirectory is configured', async () => {
       const engine = new CliChatEngine({});

@@ -37,6 +37,7 @@ describe('useChatStore', () => {
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      generationProgress: null,
     });
     useMessageStore.setState({
       messages: [],
@@ -853,6 +854,39 @@ describe('useChatStore', () => {
       useChatStore.setState({ forkedSessionId: 'some-id' });
       useChatStore.getState().clearForkedSessionId();
       expect(useChatStore.getState().forkedSessionId).toBeNull();
+    });
+  });
+
+  describe('generationProgress (Story 32.7 — transient CLI progress)', () => {
+    it('initial state is null', () => {
+      expect(useChatStore.getState().generationProgress).toBeNull();
+    });
+
+    it('setGenerationProgress stores the value and clears with null', () => {
+      useChatStore.getState().setGenerationProgress({ tokens: 246, elapsedSeconds: 6 });
+      expect(useChatStore.getState().generationProgress).toEqual({ tokens: 246, elapsedSeconds: 6 });
+      useChatStore.getState().setGenerationProgress(null);
+      expect(useChatStore.getState().generationProgress).toBeNull();
+    });
+
+    it('startStreaming clears any stale progress', () => {
+      useChatStore.getState().setGenerationProgress({ tokens: 100, elapsedSeconds: 3 });
+      useChatStore.getState().startStreaming('session-1', 'msg-1');
+      expect(useChatStore.getState().generationProgress).toBeNull();
+    });
+
+    it('completeStreaming clears progress (no leak)', () => {
+      useChatStore.getState().startStreaming('session-1', 'msg-1');
+      useChatStore.getState().setGenerationProgress({ tokens: 500, elapsedSeconds: 12 });
+      useChatStore.getState().completeStreaming();
+      expect(useChatStore.getState().generationProgress).toBeNull();
+    });
+
+    it('abortStreaming clears progress', () => {
+      useChatStore.getState().startStreaming('session-1', 'msg-1');
+      useChatStore.getState().setGenerationProgress({ tokens: 500, elapsedSeconds: 12 });
+      useChatStore.getState().abortStreaming();
+      expect(useChatStore.getState().generationProgress).toBeNull();
     });
   });
 });

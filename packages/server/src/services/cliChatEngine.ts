@@ -25,8 +25,13 @@
  * ANSI *state* (§6.2-class modal, §7.1-sanctioned state-signal use) and driven by
  * keys (Enter = approve, Esc = deny); the scraped tool name/input are best-effort
  * and `updatedInput` is unsupported (claude runs its own tool). See
- * `handlePermission` below for the full constraint list. Still deferred: synthetic
- * typing / progress UI is Story 32.7; mode-selection UI is Epic 33.
+ * `handlePermission` below for the full constraint list. 32.7 adds the generation
+ * *progress* signal (the spinner's "↓ N tokens · Ns", parsed from the same PTY frames
+ * and emitted on value change via `onGenerationProgress` — see `emitProgress`) and
+ * *verifies* thinking display (mechanism-complete; see the thinking branch in
+ * `handleAssistantLine`). Still deferred to Epic 33: synthetic typing (the client
+ * frame-coalescing path is shared with SDK mode, so per-block animation needs the
+ * Epic 33 mode toggle), the on/off toggles for all three, and mode-selection UI.
  *
  * [Source: docs/spike-32.1-cli-output-source.md#7.1; docs/prd/epic-32-cli-engine-core.md#Story 32.4+]
  */
@@ -126,6 +131,26 @@ const CTRL_BYTES_RE = /[\x00-\x08\x0b-\x1f]/g;
 function stripAnsiForDetect(s: string): string {
   return s.replace(ANSI_OSC_RE, '').replace(ANSI_FE_RE, '').replace(ANSI_CSI_RE, '').replace(CTRL_BYTES_RE, ' ');
 }
+
+/**
+ * Generation-progress parser (Story 32.7). During generation the ONLY real-time PTY
+ * signal is the spinner's "↓ N tokens" counter + elapsed seconds (spike §4.7). This is
+ * an ANSI *state* signal (§7.1-sanctioned — the same channel as the `❯` readiness
+ * marker and the permission dialog), version-fragile (a TUI revision could change the
+ * wording), and never a content source — token *text* streaming stays impossible
+ * (§4.5/§9-2; SDK mode keeps real streaming).
+ *
+ * The regex matches an optional leading "(Ns · " elapsed clock then the "↓ N tokens"
+ * counter, capturing both. Verified against a real PTY (claude v2.1.162 — Story 32.7
+ * Task 1): "Moseying… (9s · ↓ 365 tokens · thinking with high effort)" and the
+ * counter-only "↓ 246 tokens" form, structurally identical to the §4.7 baseline
+ * "✢ Elucidating… (5s · ↓ 212 tokens · thinking with low effort)". The middot `·`,
+ * `↓`, and `…` are printable multi-byte chars that survive `stripAnsiForDetect`.
+ * Global so the *last* (freshest) match in a rolling buffer wins.
+ */
+const CLI_PROGRESS_RE = /(?:\((\d+)\s*s\b[^↓\n]{0,40})?↓\s*([\d,]+)\s*tokens/g;
+/** Rolling stripped-PTY buffer cap for progress parsing (survives frame splits). */
+const CLI_PROGRESS_BUFFER_CAP = 2048;
 
 /**
  * Conservative permission-dialog matcher. Requires a permission-specific phrase
@@ -274,6 +299,8 @@ export class CliChatEngine implements ChatEngine {
    * provided, an interactive permission dialog detected on the PTY screen is routed
    * through it (Story 32.6 — reuses the existing web round-trip; see
    * `handlePermission`). `onRawMessage` is the inactivity-timeout heartbeat (S-1).
+   * `onGenerationProgress` (Story 32.7) is the transient "↓ N tokens · Ns" signal
+   * parsed from the same spinner frames — emitted on value change (see `emitProgress`).
    */
   async sendMessageWithCallbacks(
     content: string,
@@ -281,6 +308,7 @@ export class CliChatEngine implements ChatEngine {
     options: ChatOptions = {},
     canUseTool?: CanUseTool,
     onRawMessage?: (messageType: string) => void,
+    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
   ): Promise<ChatResponse> {
     const cwd = this.workingDirectory;
     if (!cwd) {
@@ -351,6 +379,9 @@ export class CliChatEngine implements ChatEngine {
       let dialogBuffer = ''; // rolling stripped PTY output, scanned for the dialog
       let permissionPending = false; // guards re-entry while awaiting the user's decision
       let permCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-approval)
+      // Generation-progress state (Story 32.7 — post-injection only).
+      let progressBuffer = ''; // rolling stripped PTY output, scanned for the spinner counter
+      let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
 
       const teardown = () => {
         if (pollTimer) {
@@ -500,6 +531,29 @@ export class CliChatEngine implements ChatEngine {
         })();
       };
 
+      /**
+       * Parse the freshest "↓ N tokens" counter from the rolling progress buffer and
+       * emit it through `onGenerationProgress` — but only when the value *changed*
+       * (Story 32.7). Throttling on *change* (not increase) is deliberate: Task 1
+       * observed the counter resetting at generation-segment boundaries (tool use →
+       * next API call: 614→79), so a reset is forwarded as just another change and the
+       * indicator never freezes at the prior segment's peak. Frames without a counter
+       * (e.g. a "Deliberating…" thinking-phase spinner) produce no match → no emit
+       * (false-0 guard). `matchAll` is used so the shared global regex's lastIndex is
+       * never mutated across engine instances.
+       */
+      const emitProgress = (buf: string): void => {
+        if (!onGenerationProgress || settled) return; // no stray emit after finish/abort
+        const matches = [...buf.matchAll(CLI_PROGRESS_RE)];
+        const last = matches[matches.length - 1];
+        if (!last) return; // no counter on this frame → don't emit a phantom 0
+        const tokens = parseInt(last[2].replace(/,/g, ''), 10);
+        if (!Number.isFinite(tokens) || tokens === lastProgressTokens) return; // change-only throttle
+        lastProgressTokens = tokens;
+        const elapsedSeconds = last[1] ? parseInt(last[1], 10) : 0;
+        onGenerationProgress({ tokens, elapsedSeconds });
+      };
+
       // S-1 heartbeat: during generation the session JSONL is silent until a block
       // completes (§4.5), so onTextChunk/onThinking can't keep the caller's
       // inactivity timer alive. The ONLY real-time signal is PTY data (spinner /
@@ -522,9 +576,22 @@ export class CliChatEngine implements ChatEngine {
             if (bootSettleTimer) clearTimeout(bootSettleTimer);
             bootSettleTimer = setTimeout(injectPrompt, CLI_BOOT_SETTLE_MS);
           }
-        } else if (canUseTool && !permissionPending) {
-          // Post-injection: scan a rolling stripped buffer for the permission modal.
-          dialogBuffer = (dialogBuffer + stripAnsiForDetect(data)).slice(-CLI_DIALOG_BUFFER_CAP);
+          return;
+        }
+        // Post-injection: strip ANSI once and reuse the same frame for two *state*
+        // signals — generation progress (32.7) and permission dialog (32.6). They are
+        // independent (progress is always useful; the dialog branch needs canUseTool),
+        // and they co-exist per §7.1 (both are PTY state, never content).
+        const stripped = stripAnsiForDetect(data);
+        // Generation progress (Story 32.7): roll a capped buffer (survives frame
+        // splits) and emit the freshest counter on change.
+        if (onGenerationProgress) {
+          progressBuffer = (progressBuffer + stripped).slice(-CLI_PROGRESS_BUFFER_CAP);
+          emitProgress(progressBuffer);
+        }
+        // Permission modal (Story 32.6): scan a rolling stripped buffer for the dialog.
+        if (canUseTool && !permissionPending) {
+          dialogBuffer = (dialogBuffer + stripped).slice(-CLI_DIALOG_BUFFER_CAP);
           if (detectPermissionDialog(dialogBuffer)) {
             permissionPending = true;
             const toolName = extractToolName(dialogBuffer);
@@ -571,6 +638,17 @@ export class CliChatEngine implements ChatEngine {
           let textIdx = 0;
           for (const block of blockContent) {
             if (block.type === 'thinking') {
+              // Thinking display (verified Story 32.7 Task 1, real-PTY): the thinking
+              // block flows through the SAME onThinking → thinking:chunk path as SDK mode
+              // (envelope-identical; renders the same live and on reload). When populated
+              // it renders at parity; the empty-thinking guard below is load-bearing
+              // because claude writes thinking blocks EMPTY by default — surfacing the
+              // *summary* content requires the global `showThinkingSummaries` Claude Code
+              // setting (no per-session spawn flag exists: `--effort` controls thinking
+              // depth, not summary surfacing; `MAX_THINKING_TOKENS` is the budget). So
+              // thinking-display is mechanism-complete here; the on/off toggle + a
+              // per-mode "surface summaries" lever are Epic 33 (not synthesized to avoid
+              // a false success — spike §4.6/§4.7).
               const thinking = (block as ThinkingContentBlock).thinking;
               if (thinking && thinking.trim()) callbacks.onThinking?.(thinking);
             } else if (block.type === 'text') {

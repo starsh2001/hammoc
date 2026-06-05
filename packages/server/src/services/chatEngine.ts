@@ -30,13 +30,20 @@ export interface ChatEngine {
   /**
    * Send a message and stream events back through the provided callbacks.
    * Cancellation is delivered via `options.abortController`.
+   *
+   * `onGenerationProgress` (Story 32.7) is the CLI engine's transient generation
+   * heartbeat — the spinner's "↓ N tokens · Ns" counter, emitted on value change.
+   * It is server-side and `@hammoc/shared`-independent (mirrors `onRawMessage`'s
+   * placement). Only the CLI engine calls it; the SDK engine ignores it (real token
+   * streaming makes a progress counter unnecessary — regression-0).
    */
   sendMessageWithCallbacks(
     content: string,
     callbacks: StreamCallbacks,
     options?: ChatOptions,
     canUseTool?: CanUseTool,
-    onRawMessage?: (messageType: string) => void
+    onRawMessage?: (messageType: string) => void,
+    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void
   ): Promise<ChatResponse>;
 
   /** Update the permission mode mid-conversation (propagates to the live query). */

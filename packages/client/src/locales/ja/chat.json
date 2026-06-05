@@ -292,7 +292,8 @@
     "waiting": "考え中...",
     "generating": "生成中...",
     "restoring": "会話を復元中...",
-    "compactionHint": "コンテキスト圧縮中の可能性があります"
+    "compactionHint": "コンテキスト圧縮中の可能性があります",
+    "generationProgress": "↓ {{tokens}} トークン · {{seconds}}秒"
   },
   "markdown": {
     "openFile": "ファイルを開く：{{href}}"

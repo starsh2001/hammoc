@@ -46,6 +46,7 @@ describe('useStreaming', () => {
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      generationProgress: null,
 
       isCompacting: false,
       isSessionLocked: false,
@@ -375,6 +376,39 @@ describe('useStreaming', () => {
       unmount();
 
       expect(mockSocket.off).toHaveBeenCalledWith('context:usage', expect.any(Function));
+    });
+  });
+
+  describe('generation:progress event (Story 32.7 — transient CLI progress)', () => {
+    it('stores the progress payload on a live generation:progress event', () => {
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('generation:progress', { tokens: 246, elapsedSeconds: 6 });
+
+      expect(useChatStore.getState().generationProgress).toEqual({ tokens: 246, elapsedSeconds: 6 });
+    });
+
+    it('registers and cleans up the generation:progress listener', () => {
+      const { unmount } = renderHook(() => useStreaming());
+
+      expect(mockSocket.on).toHaveBeenCalledWith('generation:progress', expect.any(Function));
+
+      unmount();
+
+      expect(mockSocket.off).toHaveBeenCalledWith('generation:progress', expect.any(Function));
+    });
+
+    it('skips generation:progress during buffer replay (transient, live-only)', () => {
+      renderHook(() => useStreaming());
+
+      // currentSessionId is 'session-1' (beforeEach), so the replay is not session-dropped;
+      // the event still must be skipped (it falls through to the replay switch default).
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [{ event: 'generation:progress', data: { tokens: 999, elapsedSeconds: 9 } }],
+      });
+
+      expect(useChatStore.getState().generationProgress).toBeNull();
     });
   });
 

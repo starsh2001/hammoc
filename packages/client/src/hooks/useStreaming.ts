@@ -523,6 +523,13 @@ export function useStreaming() {
       updateToolProgress(data.toolUseId, data.elapsedTimeSeconds);
     };
 
+    // Story 32.7: handle generation:progress — store the transient CLI "↓ N tokens · Ns"
+    // signal. Live-only (not buffered/replayed); cleared by start/complete/abort.
+    // getState() avoids adding to the effect's dependency array (matches handleSessionForked).
+    const handleGenerationProgress = (data: { tokens: number; elapsedSeconds: number }) => {
+      useChatStore.getState().setGenerationProgress(data);
+    };
+
     // Handle system:task-notification — add task notification segment
     const handleTaskNotification = (data: TaskNotificationData) => {
       flushChunkQueue();
@@ -1231,6 +1238,7 @@ export function useStreaming() {
             break;
           }
           // Skip tool:progress during replay (only elapsed times, final state is in tool:result)
+          // Skip generation:progress during replay (Story 32.7 — transient live-only counter)
           // Skip permission:already-resolved (no toast during replay)
           default:
             break;
@@ -1345,6 +1353,7 @@ export function useStreaming() {
     socket.on('context:estimate', handleContextEstimate);
     socket.on('system:compact', handleCompact);
     socket.on('tool:progress', handleToolProgress);
+    socket.on('generation:progress', handleGenerationProgress);
     socket.on('system:task-notification', handleTaskNotification);
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
@@ -1549,6 +1558,7 @@ export function useStreaming() {
       socket.off('context:estimate', handleContextEstimate);
       socket.off('system:compact', handleCompact);
       socket.off('tool:progress', handleToolProgress);
+      socket.off('generation:progress', handleGenerationProgress);
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);

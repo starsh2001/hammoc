@@ -299,7 +299,8 @@
     "forking": "Forking session...",
     "generating": "Generating...",
     "restoring": "Restoring conversation...",
-    "compactionHint": "context compaction may be in progress"
+    "compactionHint": "context compaction may be in progress",
+    "generationProgress": "↓ {{tokens}} tokens · {{seconds}}s"
   },
   "markdown": {
     "openFile": "Open file: {{href}}"

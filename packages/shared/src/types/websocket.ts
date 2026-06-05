@@ -139,6 +139,9 @@ export interface ServerToClientEvents {
   'thinking:chunk': (data: { content: string }) => void;
   'system:compact': (data: CompactMetadata) => void;
   'tool:progress': (data: { toolUseId: string; elapsedTimeSeconds: number; toolName: string }) => void;
+  // Story 32.7: CLI-engine generation progress — transient "↓ N tokens · Ns" signal
+  // parsed from the claude TUI spinner (live-only; skipped on buffer replay).
+  'generation:progress': (data: { tokens: number; elapsedSeconds: number }) => void;
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;

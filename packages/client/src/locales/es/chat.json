@@ -292,7 +292,8 @@
     "waiting": "Pensando...",
     "generating": "Generando...",
     "restoring": "Restaurando conversación...",
-    "compactionHint": "es posible que se esté compactando el contexto"
+    "compactionHint": "es posible que se esté compactando el contexto",
+    "generationProgress": "↓ {{tokens}} tokens · {{seconds}} s"
   },
   "markdown": {
     "openFile": "Abrir archivo: {{href}}"

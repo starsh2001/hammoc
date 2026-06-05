@@ -531,7 +531,8 @@ describe('WebSocket Handler', () => {
         expect.any(Object),
         expect.any(Object),
         expect.any(Function),
-        expect.any(Function)
+        expect.any(Function),
+        expect.any(Function) // onGenerationProgress (Story 32.7)
       );
     });
 
@@ -564,7 +565,8 @@ describe('WebSocket Handler', () => {
         expect.any(Object),
         expect.objectContaining({ resume: 'resume-session-id', abortController: expect.any(AbortController) }),
         expect.any(Function),
-        expect.any(Function)
+        expect.any(Function),
+        expect.any(Function) // onGenerationProgress (Story 32.7)
       );
     });
 
@@ -601,7 +603,8 @@ describe('WebSocket Handler', () => {
           rewindToMessageUuid: 'user-uuid-456',
         }),
         expect.any(Function),
-        expect.any(Function)
+        expect.any(Function),
+        expect.any(Function) // onGenerationProgress (Story 32.7)
       );
     });
 
@@ -638,7 +641,8 @@ describe('WebSocket Handler', () => {
           enableFileCheckpointing: true,
         }),
         expect.any(Function),
-        expect.any(Function)
+        expect.any(Function),
+        expect.any(Function) // onGenerationProgress (Story 32.7)
       );
     });
 
@@ -668,7 +672,8 @@ describe('WebSocket Handler', () => {
           enableFileCheckpointing: true,
         }),
         expect.any(Function),
-        expect.any(Function)
+        expect.any(Function),
+        expect.any(Function) // onGenerationProgress (Story 32.7)
       );
     });
   });
@@ -903,7 +908,8 @@ describe('WebSocket Handler', () => {
           abortController: expect.any(AbortController),
         }),
         expect.any(Function),
-        expect.any(Function)
+        expect.any(Function),
+        expect.any(Function) // onGenerationProgress (Story 32.7)
       );
     });
 

@@ -436,7 +436,14 @@ export class ChatService implements ChatEngine {
     options: ChatOptions = {},
     canUseTool?: CanUseTool,
     /** Called for every raw SDK message yielded — use for timeout reset */
-    onRawMessage?: (messageType: string) => void
+    onRawMessage?: (messageType: string) => void,
+    /**
+     * Story 32.7: CLI-engine generation-progress callback. Accepted to satisfy the
+     * `ChatEngine` interface but intentionally UNUSED here — SDK mode streams real
+     * tokens, so a derived "↓ N tokens" counter adds nothing (regression-0). `_`-prefixed
+     * so eslint no-unused-vars stays clean.
+     */
+    _onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void
   ): Promise<ChatResponse> {
     const streamHandler = new StreamHandler();
     const generator = this.sendMessage(content, options, canUseTool);

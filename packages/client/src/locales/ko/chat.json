@@ -299,7 +299,8 @@
     "forking": "세션 포크 중...",
     "generating": "응답 생성 중...",
     "restoring": "대화 복원 중...",
-    "compactionHint": "컨텍스트 압축 중일 수 있음"
+    "compactionHint": "컨텍스트 압축 중일 수 있음",
+    "generationProgress": "↓ {{tokens}} 토큰 · {{seconds}}초"
   },
   "markdown": {
     "openFile": "파일 열기: {{href}}"
