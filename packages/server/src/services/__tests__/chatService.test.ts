@@ -655,6 +655,41 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
     expect(callArgs.options).not.toHaveProperty('effort');
   });
 
+  // 1M-context suffix resolution at the SDK boundary (resolveEffectiveModel).
+  // Opus auto-upgrades (free on Max); Sonnet stays bare unless explicitly opted
+  // in — forcing Sonnet to 1M is what tripped the "usage credits required" gate.
+  const modelSentToQuery = async (model: string): Promise<unknown> => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result', subtype: 'success', result: 'Done', session_id: 'test-session',
+          uuid: 'msg-1', is_error: false,
+          usage: { input_tokens: 10, output_tokens: 5 }, total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+    await service.sendMessageWithCallbacks('Test message', { onComplete: vi.fn() }, { model });
+    const callArgs = vi.mocked(query).mock.calls[0][0] as { options: Record<string, unknown> };
+    return callArgs.options.model;
+  };
+
+  it('leaves Sonnet bare (200K) so it does not trip the 1M credits gate', async () => {
+    expect(await modelSentToQuery('claude-sonnet-4-6')).toBe('claude-sonnet-4-6');
+  });
+
+  it('honors an explicit Sonnet [1m] opt-in', async () => {
+    expect(await modelSentToQuery('claude-sonnet-4-6[1m]')).toBe('claude-sonnet-4-6[1m]');
+  });
+
+  it('auto-applies [1m] for Opus (free on Max)', async () => {
+    expect(await modelSentToQuery('claude-opus-4-8')).toBe('claude-opus-4-8[1m]');
+  });
+
   it('should pass forkSession option to SDK queryOptions (Story 25.11)', async () => {
     const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const mockIterator = {

@@ -18,6 +18,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Cpu, Check } from 'lucide-react';
 import type { ThinkingEffort } from '@hammoc/shared';
+import { stripNative1MSuffix, isNative1MModel, isAutoNative1MModel, hasNative1MSuffix } from '@hammoc/shared';
 
 interface ModelSelectorProps {
   model: string;
@@ -67,7 +68,7 @@ export const MODEL_GROUPS: ModelGroup[] = [
       { value: 'claude-opus-4-8', label: 'Opus 4.8', description: 'Most capable · 1M ctx' },
       { value: 'claude-opus-4-7', label: 'Opus 4.7', description: '1M ctx' },
       { value: 'claude-opus-4-6', label: 'Opus 4.6', description: '1M ctx' },
-      { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6', description: '1M ctx' },
+      { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6', description: '200K · 1M opt-in' },
       { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5', description: '2025-11-01' },
       { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5', description: '2025-09-29' },
       { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4', description: '2025-05-14' },
@@ -76,25 +77,27 @@ export const MODEL_GROUPS: ModelGroup[] = [
   },
 ];
 
-/** Find display label for any model value */
+/** Find display label for any model value (ignoring a trailing `[1m]` opt-in suffix) */
 function getModelDisplayLabel(value: string): string {
   if (!value) return 'Default';
+  const base = stripNative1MSuffix(value);
   for (const group of MODEL_GROUPS) {
-    const found = group.models.find((m) => m.value === value);
+    const found = group.models.find((m) => m.value === base);
     if (found) return found.label;
   }
   // Show raw value for unknown/custom models
-  return value;
+  return base;
 }
 
 /** Extract a short display name from a full model ID (e.g. "claude-sonnet-4-5-20250929" → "Sonnet 4.5") */
 function formatModelId(modelId: string): string {
+  const base = stripNative1MSuffix(modelId);
   for (const group of MODEL_GROUPS) {
-    const found = group.models.find((m) => m.value === modelId);
+    const found = group.models.find((m) => m.value === base);
     if (found) return found.label;
   }
   // Fallback: strip "claude-" prefix and date suffix for readability
-  return modelId
+  return base
     .replace(/^claude-/, '')
     .replace(/-\d{8}$/, '')
     .replace(/-/g, ' ');
@@ -115,7 +118,8 @@ function getButtonLabel(model: string, activeModel: string | null | undefined): 
  * (SDK-reported) only when selection is Default (empty).
  */
 function effectiveModelId(model: string | null | undefined, activeModel: string | null | undefined): string {
-  return (model && model.length > 0 ? model : activeModel) ?? '';
+  const raw = (model && model.length > 0 ? model : activeModel) ?? '';
+  return stripNative1MSuffix(raw);
 }
 
 /** Check if model supports 'max' effort (Opus 4.6+, Sonnet 4.6, aliases) */
@@ -264,6 +268,26 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
   const bars = xhighAvailable ? BARS_5 : maxAvailable ? BARS_4 : BARS_3;
   const selectedIdx = LEVEL_INDEX[displayEffort];
 
+  // 1M context toggle state. Only meaningful for 1M-capable models. Opus auto-1M
+  // is shown locked-ON (free on Max); Sonnet defaults OFF (its 1M needs credits)
+  // and the user opts in by appending the `[1m]` suffix to the model value.
+  const oneMBase = stripNative1MSuffix(model);
+  const show1MToggle = !!model && isNative1MModel(oneMBase);
+  const oneMLocked = isAutoNative1MModel(oneMBase);
+  const oneMOn = hasNative1MSuffix(model) || oneMLocked;
+  // Always show the caveat for capable models so the cost is visible *before*
+  // opting in: Opus = "included with Max", Sonnet = "requires usage credits".
+  const oneMHint = oneMLocked
+    ? t('model.oneMIncludedMax')
+    : t('model.oneMCreditsWarning');
+  // Amber only when the paid 1M is actually engaged (Sonnet opted in); muted otherwise.
+  const oneMHintWarn = oneMOn && !oneMLocked;
+  const handleToggle1M = () => {
+    if (oneMLocked) return;
+    onModelChange(oneMOn ? oneMBase : `${oneMBase}[1m]`);
+    // Do NOT close dropdown (same as effort bar)
+  };
+
   return (
     <div ref={containerRef} className="relative flex-shrink-0">
       {/* Icon trigger button */}
@@ -348,6 +372,42 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
             </div>
           )}
 
+          {/* 1M context toggle — only rendered for 1M-capable models */}
+          {show1MToggle && (
+            <div className="border-b border-gray-300 dark:border-[#3a4d5e]">
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                {t('model.oneMContext')}
+              </div>
+              <div className="px-3 py-2.5 flex items-center gap-2">
+                {/* Spacer matching checkmark column (w-4) in model items */}
+                <span className="w-4 shrink-0" />
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={oneMOn}
+                  aria-label={t('model.oneMAria')}
+                  disabled={oneMLocked}
+                  onClick={handleToggle1M}
+                  onPointerDown={handlePointerDown}
+                  title={oneMHint}
+                  className={`relative inline-flex h-[18px] w-[32px] flex-shrink-0 items-center rounded-full transition-colors
+                    ${oneMOn ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}
+                    ${oneMLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  <span
+                    className={`inline-block h-[14px] w-[14px] transform rounded-full bg-white shadow transition-transform
+                      ${oneMOn ? 'translate-x-[16px]' : 'translate-x-[2px]'}
+                    `}
+                  />
+                </button>
+                <span className={`text-xs select-none ${oneMHintWarn ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                  {oneMHint}
+                </span>
+              </div>
+            </div>
+          )}
+
           {MODEL_GROUPS.map((group, gi) => {
             const groupLabel = group.labelKey ? t(group.labelKey) : group.label;
             return (
@@ -362,7 +422,7 @@ export function ModelSelector({ model, onModelChange, disabled, activeModel, eff
 
               {/* Model items */}
               {group.models.map((opt) => {
-                const isSelected = opt.value === model;
+                const isSelected = opt.value === stripNative1MSuffix(model);
                 return (
                   <button
                     key={opt.value}

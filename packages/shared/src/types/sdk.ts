@@ -147,41 +147,85 @@ export const CONTEXT_TOKEN_RESERVES = {
 
 /**
  * Models whose native context window is 1M but SDK may under-report as 200K.
+ * Capability gate — includes Sonnet 4.6, which *can* run at 1M but only as a
+ * paid usage-credit opt-in (not part of the subscription). Use this to decide
+ * whether to offer a 1M control for a model at all.
  * See: https://github.com/anthropics/claude-code/issues/24208
  */
 const NATIVE_1M_MODELS = ['claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'opus', 'sonnet'];
 
 /**
- * True when the model is known to natively support a 1M token context window.
+ * Models that auto-upgrade to 1M context for free on a Max subscription (Opus
+ * family). Sonnet is deliberately excluded: its 1M window bills to usage credits,
+ * so it must be an explicit opt-in rather than a silent default — otherwise
+ * selecting Sonnet trips a "usage credits required for 1M context" gate.
+ */
+const AUTO_NATIVE_1M_MODELS = ['claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'opus'];
+
+/** True when the model id already carries the `[1m]` opt-in suffix. */
+export function hasNative1MSuffix(model?: string): boolean {
+  return !!model && /\[1m\]$/i.test(model);
+}
+
+/** Strip a trailing `[1m]` opt-in suffix, returning the bare model id. */
+export function stripNative1MSuffix(model: string): string {
+  return model.replace(/\[1m\]$/i, '');
+}
+
+/**
+ * True when the model is known to natively support a 1M token context window
+ * (capability check — includes Sonnet). Use to decide whether to offer 1M at all.
  */
 export function isNative1MModel(model?: string): boolean {
   if (!model) return false;
-  const base = model.replace(/\[1m\]$/i, '');
+  const base = stripNative1MSuffix(model);
   return NATIVE_1M_MODELS.some(m => base === m || base.startsWith(`${m}-`));
 }
 
 /**
- * Appends the `[1m]` suffix that the Claude Code CLI uses to opt a model into
- * its native 1M context window. Without this suffix, the SDK's internal
- * auto-compact logic caps the effective window at ~200K regardless of the
- * model's real capacity or the `autoCompactWindow` setting.
+ * True when the model auto-upgrades to 1M for free on a Max subscription (Opus
+ * family only). Sonnet returns false — its 1M is a paid opt-in.
  */
-export function withNative1MSuffix(model?: string): string | undefined {
-  if (!model) return model;
-  if (/\[1m\]$/i.test(model)) return model;
-  if (!isNative1MModel(model)) return model;
-  return `${model}[1m]`;
+export function isAutoNative1MModel(model?: string): boolean {
+  if (!model) return false;
+  const base = stripNative1MSuffix(model);
+  return AUTO_NATIVE_1M_MODELS.some(m => base === m || base.startsWith(`${m}-`));
 }
 
 /**
- * Correct SDK-reported contextWindow for known 1M models.
- * Returns max(reported, 1M) when the model is known to support 1M natively.
+ * Resolve the model id actually sent to an engine, applying the `[1m]` suffix
+ * that opts into the native 1M context window. Without the suffix the SDK's
+ * internal auto-compact logic caps the effective window at ~200K.
+ *
+ * - Already suffixed (explicit opt-in): kept as-is, for any 1M-capable model.
+ * - Opus family: auto-upgraded to 1M (free on Max).
+ * - Sonnet / non-1M without opt-in: left bare (200K) — forcing Sonnet to 1M would
+ *   otherwise trigger a "usage credits required" gate for subscription users.
+ *
+ * This is the single source of truth for the suffix and must be called at the
+ * engine boundary only; everywhere else the model id stays bare.
  */
-export function correctContextWindow(reported: number, model?: string): number {
-  if (isNative1MModel(model)) {
-    return Math.max(reported, 1_000_000);
-  }
-  return reported;
+export function resolveEffectiveModel(model?: string): string | undefined {
+  if (!model) return model;
+  if (hasNative1MSuffix(model)) return model;
+  if (isAutoNative1MModel(model)) return `${model}[1m]`;
+  return model;
+}
+
+/** True when the effective sent model runs at 1M (opt-in suffix or Opus auto). */
+export function effectiveModelIs1M(model?: string): boolean {
+  return hasNative1MSuffix(model) || isAutoNative1MModel(model);
+}
+
+/**
+ * Correct the SDK-reported contextWindow. The SDK under-reports 1M models as
+ * 200K, so when the request actually ran at 1M (`is1M`) bump the floor to 1M.
+ * When it didn't (e.g. Sonnet at its 200K default) trust the report, keeping the
+ * usage meter honest. `is1M` must be derived from the *effective sent* model
+ * (see {@link effectiveModelIs1M}), not the SDK-reported usage key which is bare.
+ */
+export function correctContextWindow(reported: number, is1M: boolean): number {
+  return is1M ? Math.max(reported, 1_000_000) : reported;
 }
 
 /**

@@ -7,7 +7,7 @@ import type {
   StreamCallbacks,
   ImageAttachment,
 } from '@hammoc/shared';
-import { correctContextWindow, withNative1MSuffix } from '@hammoc/shared';
+import { correctContextWindow, resolveEffectiveModel, effectiveModelIs1M } from '@hammoc/shared';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
@@ -221,6 +221,10 @@ export class ChatService implements ChatEngine {
       };
     })();
 
+    // Whether this request actually runs at 1M — drives both the `[1m]` suffix
+    // applied below and the contextWindow meter correction at the result message.
+    const is1M = effectiveModelIs1M(options.model);
+
     const queryOptions: Options = {
       cwd: this.workingDirectory,
       permissionMode: this.permissionMode,
@@ -229,10 +233,10 @@ export class ChatService implements ChatEngine {
       disallowedTools: resolvedDisallowed.length > 0 ? resolvedDisallowed : undefined,
       maxTurns: options.maxTurns,
       abortController: options.abortController,
-      // Append `[1m]` for native 1M models — the SDK caps the auto-compact
-      // window at the model's native size, and only recognizes 1M capacity
-      // when the model string carries this suffix (see `fX()` in claude.exe).
-      model: withNative1MSuffix(options.model) || undefined,
+      // Resolve the `[1m]` suffix that opts into the native 1M window. Centralized
+      // in resolveEffectiveModel: Opus auto-upgrades (free on Max), Sonnet stays
+      // bare unless the user explicitly opted in (Sonnet 1M bills to usage credits).
+      model: resolveEffectiveModel(options.model) || undefined,
       resume: options.resume,
       sessionId: options.sessionId,
       includePartialMessages: true, // Enable real-time streaming
@@ -366,7 +370,7 @@ export class ChatService implements ChatEngine {
               cacheReadInputTokens: msg.usage.cache_read_input_tokens ?? 0,
               cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
               totalCostUSD: msg.total_cost_usd,
-              contextWindow: correctContextWindow(extractContextWindow(msg.modelUsage), msg.modelUsage ? Object.keys(msg.modelUsage)[0] : undefined),
+              contextWindow: correctContextWindow(extractContextWindow(msg.modelUsage), is1M),
             },
           };
         }
@@ -445,7 +449,7 @@ export class ChatService implements ChatEngine {
      */
     _onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void
   ): Promise<ChatResponse> {
-    const streamHandler = new StreamHandler();
+    const streamHandler = new StreamHandler(effectiveModelIs1M(options.model));
     const generator = this.sendMessage(content, options, canUseTool);
 
     // Wrapper generator: calls onRawMessage for every SDK message,

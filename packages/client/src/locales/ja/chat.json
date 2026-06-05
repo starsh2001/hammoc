@@ -330,7 +330,11 @@
     "claude3x": "Claude 3.x",
     "mostCapable": "最高性能",
     "selectorAria": "モデル：{{label}}。クリックしてモデルを変更",
-    "selectAria": "モデルを選択"
+    "selectAria": "モデルを選択",
+    "oneMContext": "1M コンテキスト",
+    "oneMIncludedMax": "Max に含まれる",
+    "oneMCreditsWarning": "使用クレジットが必要",
+    "oneMAria": "1M コンテキストウィンドウの切り替え"
   },
   "branch": {
     "prev": "前のブランチ",

@@ -330,7 +330,11 @@
     "claude3x": "Claude 3.x",
     "mostCapable": "最强大",
     "selectorAria": "模型：{{label}}。点击更改模型",
-    "selectAria": "选择模型"
+    "selectAria": "选择模型",
+    "oneMContext": "1M 上下文",
+    "oneMIncludedMax": "Max 订阅包含",
+    "oneMCreditsWarning": "需要使用额度",
+    "oneMAria": "切换 1M 上下文窗口"
   },
   "branch": {
     "prev": "上一个分支",

@@ -276,7 +276,7 @@
 ### E-04-01: 1M 모델 사용 시 contextWindow 표시
 **절차**:
 1. 새 세션 시작.
-2. **채팅 입력바 하단**의 모델 버튼 (`aria-label^="모델:"`) 클릭 → 드롭다운에서 `Opus 4.8` 명시 선택. Opus 4.8이 드롭다운에 없으면 다른 `1M ctx` 표시 모델(Opus 4.7, Opus 4.6, Sonnet 4.6)로 대체.
+2. **채팅 입력바 하단**의 모델 버튼 (`aria-label^="모델:"`) 클릭 → 드롭다운에서 `Opus 4.8` 명시 선택. Opus 4.8이 드롭다운에 없으면 다른 **Opus** 계열(Opus 4.7, Opus 4.6)로 대체. **Sonnet 4.6은 이제 기본 200K이므로 1M 자동 대체 대상이 아니다** — Sonnet에서 1M을 보려면 1M 토글을 켜야 한다(E-04-03 참조).
 3. 짧은 메시지 `"hi"` 전송 → 응답 완료 대기 (10-30s).
 4. ContextUsageDisplay 상태 조회:
    ```js
@@ -292,7 +292,7 @@
 6. `ariaLabel`은 `"컨텍스트 사용량 <pct>%"` 형식.
 
 **기대 결과**:
-- 툴팁 `title`에 `"전체 윈도우: 1,000,000"` 리터럴 존재 — SDK가 잘못된 값을 돌려줘도 `correctContextWindow`([packages/server/src/utils/correctContextWindow.ts](../../packages/server/src/utils/correctContextWindow.ts)) 가 1M로 고정
+- 툴팁 `title`에 `"전체 윈도우: 1,000,000"` 리터럴 존재 — SDK가 잘못된 값을 돌려줘도 `correctContextWindow`([packages/shared/src/types/sdk.ts](../../packages/shared/src/types/sdk.ts))가 1M로 고정. 단 이 보정은 **실제 1M로 보낸 경우만**(Opus 자동 또는 Sonnet 1M 옵트인) — `is1M` 신호 기준이라, 200K로 보낸 Sonnet은 200K로 정직하게 표기된다(E-04-03)
 - 유효 한도는 967K (1M - 출력 예약 20K - 버퍼 13K)
 - 200K 수준 부근에서 잘못된 "곧 compact" 경고가 뜨지 않는다 (E-04-02에서 추가 검증)
 
@@ -404,3 +404,62 @@
 - E1. **압축 임계 진입**: ROUNDS를 128로 늘리면 ~100K 토큰 / 1M의 10% — 자동 compact 근접 경고 확인 가능. 비용은 두 배로 늘어나므로 별도 시나리오(C-04)에서 다룸.
 - E2. **AUP 거절 재발**: 셔플에도 불구하고 거절되면 paragraphs 배열을 수정해 주제/문체 다양성을 더 키우거나 실제 공개 문서(예: `docs/MANUAL.md` 페치) 사용으로 대체.
 - E3. **응답이 비어있거나 숫자 아님**: SDK가 context overflow로 답 포기 시 `parsedCount=null`. 이 경우 ContextUsageDisplay에서 실제 토큰 집계만 확인하고 응답 내용 검증은 건너뛰는 degraded PASS도 허용.
+
+### E-04-03: Sonnet 기본 200K + 1M 명시적 옵트인 토글 `[SDK] [EDGE]`
+**배경**: Sonnet의 1M 컨텍스트는 구독에 포함되지 않고 사용량 크레딧으로 과금된다(Opus의 1M만 Max 구독에 무료 포함). 따라서 Hammoc은 Sonnet을 **기본 200K**(맨 모델명)로 보내고, 1M은 모델 선택기의 **"1M context" 토글**(`role="switch"`)로만 켠다(`[1m]` 접미사 부착). Opus 계열은 자동 1M(토글 ON+잠금). 과거에는 Sonnet에도 1M을 강제로 붙여 `Usage credits required for 1M context` 게이트가 떴다 — 본 시나리오가 그 회귀를 감시한다. 접미사 부착·해제는 [resolveEffectiveModel](../../packages/shared/src/types/sdk.ts) 단일 출처.
+
+**절차**:
+1. 새 세션 시작 → 모델 버튼 클릭 → 드롭다운에서 `Sonnet 4.6` 명시 선택.
+2. 드롭다운을 다시 열어 **1M 토글 상태** 확인:
+   ```js
+   browser_evaluate(`() => {
+     const sw = document.querySelector('[role="switch"]');
+     const hint = [...document.querySelectorAll('*')].find(e => e.children.length === 0 && /크레딧 필요|Requires usage credits/i.test(e.textContent || ''));
+     return { present: !!sw, checked: sw?.getAttribute('aria-checked'), disabled: sw?.hasAttribute('disabled'), hint: hint?.textContent };
+   }`)
+   ```
+   기대: `present=true`, `checked="false"`, `disabled=false`, `hint`에 "크레딧 필요".
+3. 드롭다운 닫기(Escape) → `"hi"` 전송 → 응답 완료 대기.
+4. **게이트 에러 부재** 확인 — `Usage credits required for 1M context` 류 에러 카드가 없어야 한다:
+   ```js
+   browser_evaluate(`() => {
+     const cells = [...document.querySelectorAll('*')].filter(e => e.children.length === 0).map(e => e.textContent || '');
+     return cells.some(t => /Usage credits required|크레딧.*필요.*1M/i.test(t));
+   }`)
+   // 기대: false
+   ```
+5. ContextUsageDisplay 툴팁이 **200K 기준**(1,000,000 아님)인지 확인:
+   ```js
+   browser_evaluate(`() => document.querySelector('[aria-label*="컨텍스트"]')?.getAttribute('title')`)
+   // 기대: "전체 윈도우: 200,000" 포함, "1,000,000" 미포함
+   ```
+6. **1M 옵트인**: 드롭다운 재오픈 → 1M 토글 클릭(React 커스텀 버튼이라 pointer 시퀀스 포함) → `aria-checked="true"` 전환 + 모델 버튼 라벨이 여전히 "Sonnet"(접미사 정규화):
+   ```js
+   browser_evaluate(`() => {
+     const sw = document.querySelector('[role="switch"]');
+     ['pointerdown','mousedown','pointerup','mouseup','click'].forEach(t => sw.dispatchEvent(new MouseEvent(t, { bubbles: true })));
+     return { checked: sw.getAttribute('aria-checked'), btn: document.querySelector('button[aria-label^="모델:"]')?.getAttribute('aria-label') };
+   }`)
+   // 기대: checked="true", btn에 "Sonnet 4.6" (raw "[1m]" 노출 안 됨)
+   ```
+7. (크레딧 보유 계정에서만) Escape → `"hi"` 재전송 → 툴팁이 `"전체 윈도우: 1,000,000"`으로 전환 확인. **크레딧 미보유 계정**에서는 이 단계에서 게이트가 정상 동작하는 게 맞으므로 게이트 에러 노출만 확인하고 degraded PASS.
+8. **Opus 대조**: 새 세션 → Opus 4.8 선택 → 드롭다운 → 1M 토글이 ON+잠금(disabled) + "Max 구독 포함" 힌트:
+   ```js
+   browser_evaluate(`() => {
+     const sw = document.querySelector('[role="switch"]');
+     const hint = [...document.querySelectorAll('*')].find(e => e.children.length === 0 && /Max 구독 포함|Included with Max/i.test(e.textContent || ''));
+     return { checked: sw?.getAttribute('aria-checked'), disabled: sw?.hasAttribute('disabled'), hint: hint?.textContent };
+   }`)
+   // 기대: checked="true", disabled=true, hint에 "Max 구독 포함"
+   ```
+
+**기대 결과**:
+- Sonnet 4.6 선택 시 1M 토글이 OFF·편집 가능·"크레딧 필요" 고지
+- Sonnet 200K 전송이 `Usage credits required` 게이트 없이 정상 응답, 툴팁 `"전체 윈도우: 200,000"`
+- 1M 토글 ON 시 모델 값에 `[1m]` 부착(버튼 라벨은 "Sonnet"으로 정규화), 크레딧 보유 시 툴팁 1,000,000으로 전환
+- Opus 4.8은 토글 ON+잠금 + "Max 구독 포함" (자동 1M 유지)
+
+**엣지케이스**:
+- E1. **크레딧 미보유 계정**: 7단계 옵트인 후 전송 시 게이트 에러가 뜨는 것이 정상 — 토글이 200K↔1M 의도를 올바로 전달한다는 증거. 게이트 노출 확인으로 degraded PASS.
+- E2. **Default 선택**: 모델 미선택(Default)에서는 1M 토글이 노출되지 않는다(보낼 모델이 비어 접미사를 실을 곳 없음). 서버 기본 동작(Opus 기본→자동1M / Sonnet 기본→200K) 상속.
+- E3. **비-1M 모델**: Haiku/Sonnet 4.5/Opus 4.5 등 선택 시 1M 토글 자체가 렌더되지 않는다(`isNative1MModel=false`).

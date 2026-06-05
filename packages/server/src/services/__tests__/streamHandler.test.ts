@@ -370,6 +370,34 @@ describe('StreamHandler', () => {
         const resultMsg = parsed as ParsedResultMessage;
         expect(resultMsg.usage?.contextWindow).toBe(0);
       });
+
+      // The SDK reports the bare model id in modelUsage even when the query ran
+      // with `[1m]`, so the StreamHandler is told up-front whether it's a 1M run.
+      const makeResult = (modelKey: string, contextWindow: number) => ({
+        type: 'result',
+        subtype: 'success',
+        result: 'done',
+        session_id: 'session-123',
+        uuid: 'msg-1m',
+        is_error: false,
+        usage: { input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+        total_cost_usd: 0.01,
+        modelUsage: {
+          [modelKey]: { contextWindow, inputTokens: 80, outputTokens: 40, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: 0.008, webSearchRequests: 0 },
+        },
+      } as unknown as SDKMessage);
+
+      it('bumps an under-reported 200K window to 1M when constructed for a 1M run', () => {
+        const oneMHandler = new StreamHandler(true);
+        const parsed = oneMHandler.parseMessage(makeResult('claude-sonnet-4-6', 200000)) as ParsedResultMessage;
+        expect(parsed.usage?.contextWindow).toBe(1_000_000);
+      });
+
+      it('keeps the real 200K window for a non-1M run (Sonnet meter stays honest)', () => {
+        const bareHandler = new StreamHandler(false);
+        const parsed = bareHandler.parseMessage(makeResult('claude-sonnet-4-6', 200000)) as ParsedResultMessage;
+        expect(parsed.usage?.contextWindow).toBe(200000);
+      });
     });
 
     describe('system message', () => {

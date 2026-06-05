@@ -330,7 +330,11 @@
     "claude3x": "Claude 3.x",
     "mostCapable": "Más capaz",
     "selectorAria": "Modelo: {{label}}. Haz clic para cambiar el modelo",
-    "selectAria": "Seleccionar modelo"
+    "selectAria": "Seleccionar modelo",
+    "oneMContext": "Contexto de 1M",
+    "oneMIncludedMax": "Incluido con Max",
+    "oneMCreditsWarning": "Requiere créditos de uso",
+    "oneMAria": "Alternar ventana de contexto de 1M"
   },
   "branch": {
     "prev": "Rama anterior",

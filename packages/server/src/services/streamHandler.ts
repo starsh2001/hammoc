@@ -63,7 +63,13 @@ export class StreamHandler {
   /** Known context window size from modelUsage (0 until first result arrives) */
   private contextWindowSize = 0;
 
-  constructor() {
+  /**
+   * @param is1M Whether the request runs at a 1M context window (Opus auto or an
+   *   explicit Sonnet `[1m]` opt-in). Drives the contextWindow meter correction —
+   *   the SDK's modelUsage key is always the bare id, so it cannot tell 200K from
+   *   1M on its own. Defaults to false so non-1M paths report the real window.
+   */
+  constructor(private readonly is1M: boolean = false) {
     this.state = createInitialStreamingState();
   }
 
@@ -343,7 +349,7 @@ export class StreamHandler {
             cacheReadInputTokens: msg.usage.cache_read_input_tokens ?? 0,
             cacheCreationInputTokens: msg.usage.cache_creation_input_tokens ?? 0,
             totalCostUSD: msg.total_cost_usd ?? 0,
-            contextWindow: correctContextWindow(extractContextWindow(msg.modelUsage), msg.modelUsage ? Object.keys(msg.modelUsage)[0] : undefined),
+            contextWindow: correctContextWindow(extractContextWindow(msg.modelUsage), this.is1M),
             model: msg.modelUsage ? Object.keys(msg.modelUsage)[0] : undefined,
           }
         : undefined,

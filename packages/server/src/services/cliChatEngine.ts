@@ -50,6 +50,7 @@ import type {
   TextContentBlock,
   ThinkingContentBlock,
 } from '@hammoc/shared';
+import { resolveEffectiveModel } from '@hammoc/shared';
 import path from 'path';
 import fs from 'fs/promises';
 import { watch, type FSWatcher } from 'fs';
@@ -334,7 +335,9 @@ export class CliChatEngine implements ChatEngine {
     }
     // AC7 best-effort permission posture (all Hammoc modes are valid CLI values).
     args.push('--permission-mode', this.permissionMode);
-    if (options.model) args.push('--model', options.model);
+    // Apply the same 1M policy as SDK mode (resolveEffectiveModel): Opus auto-1M,
+    // Sonnet bare unless explicitly opted in. Keeps both engines consistent.
+    if (options.model) args.push('--model', resolveEffectiveModel(options.model)!);
     if (options.effort) args.push('--effort', options.effort);
 
     // New-session detection: snapshot existing JSONL before spawn (§7.2-1).

@@ -30,6 +30,10 @@ vi.mock('react-i18next', () => ({
       if (key === 'model.selectorAria' && params) return `Model: ${params.label}`;
       if (key === 'model.selectAria') return 'Select model';
       if (key === 'model.defaultLabel') return 'Default';
+      if (key === 'model.oneMContext') return '1M context';
+      if (key === 'model.oneMIncludedMax') return 'Included with Max';
+      if (key === 'model.oneMCreditsWarning') return 'Requires usage credits';
+      if (key === 'model.oneMAria') return 'Toggle 1M context window';
       return key;
     },
   }),
@@ -228,6 +232,62 @@ describe('ModelSelector', () => {
 
       const triggerButton = screen.getByRole('button', { name: /Model/i });
       expect(triggerButton).toHaveAttribute('title', 'Default · Default (High)');
+    });
+  });
+
+  describe('1M context toggle', () => {
+    const renderOpen = (model: string, onModelChange = vi.fn()) => {
+      render(<ModelSelector model={model} onModelChange={onModelChange} activeModel={null} />);
+      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
+      return onModelChange;
+    };
+
+    it('is hidden for the Default selection', () => {
+      renderOpen('');
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    });
+
+    it('is hidden for non-1M models (Haiku)', () => {
+      renderOpen('claude-haiku-4-5-20251001');
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    });
+
+    it('is ON and locked for Opus (auto-1M, free on Max)', () => {
+      const onModelChange = renderOpen('claude-opus-4-8');
+      const sw = screen.getByRole('switch');
+      expect(sw).toHaveAttribute('aria-checked', 'true');
+      expect(sw).toBeDisabled();
+      expect(screen.getByText('Included with Max')).toBeInTheDocument();
+      fireEvent.click(sw);
+      expect(onModelChange).not.toHaveBeenCalled(); // locked → no-op
+    });
+
+    it('defaults OFF and editable for Sonnet; opting in appends [1m]', () => {
+      const onModelChange = renderOpen('claude-sonnet-4-6');
+      const sw = screen.getByRole('switch');
+      expect(sw).toHaveAttribute('aria-checked', 'false');
+      expect(sw).not.toBeDisabled();
+      expect(screen.getByText('Requires usage credits')).toBeInTheDocument();
+      fireEvent.click(sw);
+      expect(onModelChange).toHaveBeenCalledWith('claude-sonnet-4-6[1m]');
+    });
+
+    it('shows ON for an opted-in Sonnet; toggling off strips [1m]', () => {
+      const onModelChange = renderOpen('claude-sonnet-4-6[1m]');
+      const sw = screen.getByRole('switch');
+      expect(sw).toHaveAttribute('aria-checked', 'true');
+      fireEvent.click(sw);
+      expect(onModelChange).toHaveBeenCalledWith('claude-sonnet-4-6');
+    });
+
+    it('normalizes [1m] for the button label and selected-row checkmark', () => {
+      render(<ModelSelector model="claude-sonnet-4-6[1m]" onModelChange={vi.fn()} activeModel={null} />);
+      // Trigger aria-label uses the bare display name, not the raw `[1m]` value
+      expect(screen.getByRole('button', { name: /Model: Sonnet 4\.6/i })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Model/i }));
+      // The Sonnet 4.6 option is marked selected despite the `[1m]` suffix
+      const option = screen.getByRole('option', { name: /Sonnet 4\.6/i });
+      expect(option).toHaveAttribute('aria-selected', 'true');
     });
   });
 });

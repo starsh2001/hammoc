@@ -21,7 +21,7 @@ import type {
   ThinkingEffort,
   ChatUsage,
 } from '@hammoc/shared';
-import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS, ROOT_BRANCH_KEY } from '@hammoc/shared';
+import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS, ROOT_BRANCH_KEY, effectiveModelIs1M } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
 import i18next from '../i18n.js';
 import { SUPPORTED_LANGUAGES, DEFAULT_ENGINE_MODE } from '@hammoc/shared';
@@ -2838,8 +2838,11 @@ async function handleChatSend(
     // 1M context silently falls back to ~200K (long sessions then compact early and
     // can break on resume). Warn once per model so the fallback isn't invisible.
     // Non-blocking: the binary scan must not delay the query.
+    // Only warn when 1M is actually intended (Opus auto, or an explicit `[1m]`
+    // opt-in). A bare Sonnet now runs at 200K by design — warning there would be
+    // a false alarm about a window the user never asked for.
     const warnModel = model;
-    if (warnModel && !warnedMissing1M.has(warnModel)) {
+    if (warnModel && effectiveModelIs1M(warnModel) && !warnedMissing1M.has(warnModel)) {
       void modelMissingNative1MSupport(warnModel).then((missing) => {
         if (missing && !warnedMissing1M.has(warnModel)) {
           warnedMissing1M.add(warnModel);
