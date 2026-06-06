@@ -17,6 +17,10 @@ const { mockState } = vi.hoisted(() => {
     // Story 32.3: the rewind handler now delegates to the engine's rewindFiles
     rewindImpl: vi.fn(),
     lastCtorArgs: undefined as unknown,
+    // Story 35.1: lets a test drive the engine's permission mode so the
+    // auto-approve branches in canUseTool (ExitPlanMode / safety-check in
+    // bypassPermissions) can be exercised. Defaults to 'default'.
+    permissionMode: 'default' as string,
   };
   return { mockState };
 });
@@ -53,7 +57,7 @@ vi.mock('../../services/chatService.js', () => ({
     constructor(...args: unknown[]) { mockState.lastCtorArgs = args[0]; }
     sendMessageWithCallbacks(...args: unknown[]) { return mockState.sendImpl(...args); }
     setPermissionMode() {}
-    getPermissionMode() { return 'default'; }
+    getPermissionMode() { return mockState.permissionMode; }
     rewindFiles(...args: unknown[]) { return mockState.rewindImpl(...args); }
   },
 }));
@@ -127,6 +131,9 @@ vi.mock('../../config/index.js', () => ({
 // Mock notificationService (Story 10.4)
 vi.mock('../../services/notificationService.js', () => ({
   notificationService: {
+    // Story 35.1: canUseTool consults shouldNotify before notifying; default to
+    // false so the permission-wait tests don't branch into Telegram formatting.
+    shouldNotify: vi.fn().mockReturnValue(false),
     notifyInputRequired: vi.fn().mockResolvedValue(undefined),
     notifyComplete: vi.fn().mockResolvedValue(undefined),
     notifyError: vi.fn().mockResolvedValue(undefined),
@@ -285,6 +292,7 @@ describe('WebSocket Handler', () => {
     // Reset shared ChatService mock state
     mockState.sendImpl = vi.fn().mockResolvedValue({});
     mockState.lastCtorArgs = undefined;
+    mockState.permissionMode = 'default';
 
     // Create HTTP server
     httpServer = createServer();
@@ -1230,6 +1238,175 @@ describe('WebSocket Handler', () => {
       // This implicitly tests that config.chat.timeoutMs (300000ms) is being used
       // If timeout was 0 or very small, the call would abort immediately
       expect(mockState.sendImpl).toHaveBeenCalled();
+    });
+  });
+
+  describe('Story 35.1: inactivity timer pause/resume during input wait', () => {
+    // The chat inactivity timer is a setTimeout/clearTimeout pair. We fake ONLY those
+    // so it becomes deterministically advanceable, while socket.io I/O (setImmediate,
+    // ping setInterval, Date, microtasks) stays real — letting chat:send / permission
+    // events still flow over the live socket. We connect first (real timers), then
+    // switch to fake timers right before chat:send so the handler's own timer is faked.
+    const TIMEOUT_MS = 300000; // mirrors mocked config.chat.timeoutMs
+
+    // canUseTool as the handler passes it to the engine (4th arg of sendMessageWithCallbacks).
+    type TestCanUseTool = (
+      tool: string,
+      input: Record<string, unknown>,
+      opts: { toolUseID?: string; signal?: AbortSignal; title?: string },
+    ) => Promise<{ behavior: string; updatedInput?: unknown }>;
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // Drive real macrotasks (setImmediate is NOT faked) until `predicate` holds, so
+    // socket delivery + the handler's mocked-async chain progress even though the
+    // chat timer's setTimeout is frozen.
+    const flushUntil = async (predicate: () => boolean, maxTicks = 300): Promise<void> => {
+      for (let i = 0; i < maxTicks && !predicate(); i++) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+    };
+
+    const connect = async (): Promise<void> => {
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, { transports: ['websocket'] });
+      await new Promise<void>((resolve) => clientSocket.on('connect', () => resolve()));
+    };
+
+    it('pauses the timer while awaiting permission — no abort past the timeout (AC1)', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      let captured: AbortController | null = null;
+      let enteredWait = false;
+      let releaseSend!: () => void;
+      const sendHeld = new Promise<void>((r) => { releaseSend = r; });
+
+      mockState.sendImpl = vi.fn().mockImplementation(
+        async (_c: string, _cb: unknown, options: { abortController?: AbortController }, canUseTool: TestCanUseTool) => {
+          captured = options.abortController ?? null;
+          // Entering the wait synchronously pauses the timer before the await yields.
+          void canUseTool('Bash', { command: 'ls' }, { toolUseID: 'perm-1', signal: options.abortController?.signal });
+          enteredWait = true;
+          await sendHeld; // keep the SDK call open so the paused state persists
+          return {};
+        },
+      );
+
+      await connect();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      clientSocket.emit('chat:send', { content: 'Hi', workingDirectory: '/valid/path' });
+      await flushUntil(() => enteredWait);
+
+      // Timer was cleared on wait-entry. Advancing well past the timeout must NOT abort.
+      vi.advanceTimersByTime(TIMEOUT_MS * 3);
+      expect(captured).toBeInstanceOf(AbortController);
+      expect(captured!.signal.aborted).toBe(false);
+
+      releaseSend();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    });
+
+    it('resumes the timer after the user responds — aborts on later inactivity (AC2)', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      let captured: AbortController | null = null;
+      let enteredWait = false;
+      let resolved = false;
+      let releaseSend!: () => void;
+      const sendHeld = new Promise<void>((r) => { releaseSend = r; });
+
+      mockState.sendImpl = vi.fn().mockImplementation(
+        async (_c: string, _cb: unknown, options: { abortController?: AbortController }, canUseTool: TestCanUseTool) => {
+          captured = options.abortController ?? null;
+          // .then fires AFTER canUseTool's finally re-armed the timer.
+          void canUseTool('Bash', { command: 'ls' }, { toolUseID: 'perm-2', signal: options.abortController?.signal })
+            .then(() => { resolved = true; });
+          enteredWait = true;
+          await sendHeld; // keep the SDK call open so the re-armed timer can fire
+          return {};
+        },
+      );
+
+      await connect();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      clientSocket.emit('chat:send', { content: 'Hi', workingDirectory: '/valid/path' });
+      await flushUntil(() => enteredWait);
+
+      // Respond — the finally clears the pause and re-arms the timer.
+      clientSocket.emit('permission:respond', { requestId: 'perm-2', approved: true, interactionType: 'permission' });
+      await flushUntil(() => resolved);
+
+      // Re-armed but not yet elapsed → not aborted.
+      expect(captured!.signal.aborted).toBe(false);
+      // Elapse the resumed timer with no further activity → hang detection fires.
+      vi.advanceTimersByTime(TIMEOUT_MS + 1000);
+      expect(captured!.signal.aborted).toBe(true);
+      expect(captured!.signal.reason).toBe('timeout');
+
+      releaseSend();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    });
+
+    it('still fires during generation when no wait is entered — hang detection intact (AC4)', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      let captured: AbortController | null = null;
+      let started = false;
+      let releaseSend!: () => void;
+      const sendHeld = new Promise<void>((r) => { releaseSend = r; });
+
+      mockState.sendImpl = vi.fn().mockImplementation(
+        async (_c: string, _cb: unknown, options: { abortController?: AbortController }) => {
+          captured = options.abortController ?? null;
+          started = true;
+          await sendHeld; // a generation that produces no activity (hang)
+          return {};
+        },
+      );
+
+      await connect();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      clientSocket.emit('chat:send', { content: 'Hi', workingDirectory: '/valid/path' });
+      await flushUntil(() => started);
+
+      // No wait entered → the initial timer is live. Elapsing it aborts (hang).
+      vi.advanceTimersByTime(TIMEOUT_MS + 1000);
+      expect(captured!.signal.aborted).toBe(true);
+      expect(captured!.signal.reason).toBe('timeout');
+
+      releaseSend();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    });
+
+    it('does not pause for auto-approved tools (ExitPlanMode in bypass) — timer still fires', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      mockState.permissionMode = 'bypassPermissions';
+      let captured: AbortController | null = null;
+      let autoApproved = false;
+      let releaseSend!: () => void;
+      const sendHeld = new Promise<void>((r) => { releaseSend = r; });
+
+      mockState.sendImpl = vi.fn().mockImplementation(
+        async (_c: string, _cb: unknown, options: { abortController?: AbortController }, canUseTool: TestCanUseTool) => {
+          captured = options.abortController ?? null;
+          const result = await canUseTool('ExitPlanMode', {}, { toolUseID: 'perm-4', signal: options.abortController?.signal });
+          autoApproved = result?.behavior === 'allow';
+          await sendHeld;
+          return {};
+        },
+      );
+
+      await connect();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      clientSocket.emit('chat:send', { content: 'Hi', workingDirectory: '/valid/path' });
+      await flushUntil(() => autoApproved);
+
+      // Auto-approve returned immediately without entering the wait → timer never paused.
+      expect(autoApproved).toBe(true);
+      vi.advanceTimersByTime(TIMEOUT_MS + 1000);
+      expect(captured!.signal.aborted).toBe(true);
+      expect(captured!.signal.reason).toBe('timeout');
+
+      releaseSend();
+      await new Promise<void>((resolve) => setImmediate(resolve));
     });
   });
 

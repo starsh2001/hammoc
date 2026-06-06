@@ -2546,6 +2546,11 @@ async function handleChatSend(
   }
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  // Story 35.1: when true the inactivity timer is paused because we're awaiting
+  // user input (permission approval / AskUserQuestion selection). resetTimeout()
+  // short-circuits while this is set so no activity can re-arm the timer, and
+  // canUseTool clears it + re-arms once the user responds.
+  let permissionWaiting = false;
 
   // Snapshot JSONL files before SDK query to detect phantom checkpoint files.
   // The SDK's file checkpointing creates separate JSONL files (new UUIDs) with
@@ -2654,40 +2659,59 @@ async function handleChatSend(
         notificationService.notifyInputRequired(stream.sessionId, toolName, prompt);
       }
 
-      // Wait for user response — Promise stays pending if no socket connected
-      const userResponse = await new Promise<{ approved: boolean; response?: string | string[] | Record<string, string | string[]> }>((resolve) => {
-        stream.pendingPermissions.set(requestId, {
-          resolve,
-          interactionType: isAskUserQuestion ? 'question' : 'permission',
+      // Story 35.1: pause the inactivity timer for the input-wait. Waiting on a human
+      // (permission approval / AskUserQuestion selection) is by-design indefinite —
+      // "respond when you can" — so the activity-based timeout must not fire here. Stop
+      // it on the way in; the finally below resumes it on EVERY exit path. Generation-hang
+      // detection is unaffected: the timer still governs all activity outside this wait.
+      permissionWaiting = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      try {
+        // Wait for user response — Promise stays pending if no socket connected
+        const userResponse = await new Promise<{ approved: boolean; response?: string | string[] | Record<string, string | string[]> }>((resolve) => {
+          stream.pendingPermissions.set(requestId, {
+            resolve,
+            interactionType: isAskUserQuestion ? 'question' : 'permission',
+          });
         });
-      });
 
-      if (isAskUserQuestion) {
-        const questions = (input as Record<string, unknown>).questions as Array<{ question: string }>;
-        let answers: Record<string, string | string[]>;
+        if (isAskUserQuestion) {
+          const questions = (input as Record<string, unknown>).questions as Array<{ question: string }>;
+          let answers: Record<string, string | string[]>;
 
-        if (typeof userResponse.response === 'object' && !Array.isArray(userResponse.response) && userResponse.response !== null) {
-          answers = userResponse.response as Record<string, string | string[]>;
-        } else {
-          const answer = typeof userResponse.response === 'string'
-            ? userResponse.response
-            : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
-          answers = { [questions[0].question]: answer };
+          if (typeof userResponse.response === 'object' && !Array.isArray(userResponse.response) && userResponse.response !== null) {
+            answers = userResponse.response as Record<string, string | string[]>;
+          } else {
+            const answer = typeof userResponse.response === 'string'
+              ? userResponse.response
+              : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
+            answers = { [questions[0].question]: answer };
+          }
+
+          return {
+            behavior: 'allow',
+            updatedInput: {
+              questions,
+              answers,
+            },
+          };
         }
 
-        return {
-          behavior: 'allow',
-          updatedInput: {
-            questions,
-            answers,
-          },
-        };
-      }
-
-      if (userResponse.approved) {
-        return { behavior: 'allow', updatedInput: input };
-      } else {
-        return { behavior: 'deny', message: 'User denied permission', interrupt: true };
+        if (userResponse.approved) {
+          return { behavior: 'allow', updatedInput: input };
+        } else {
+          return { behavior: 'deny', message: 'User denied permission', interrupt: true };
+        }
+      } finally {
+        // Story 35.1: resume on EVERY exit path (resolve / throw / early return). Clear
+        // the pause FIRST so resetTimeout's guard lets this call re-arm the timer; later
+        // SDK activity then resets it normally. Skipping this would leave hang-detection
+        // disabled for the rest of the turn.
+        permissionWaiting = false;
+        resetTimeout('permission-resolved');
       }
     };
 
@@ -2698,6 +2722,11 @@ async function handleChatSend(
     const timeoutMs = (rawTimeoutMs >= 5000 && rawTimeoutMs <= 1800000) ? rawTimeoutMs : 300000;
     let lastResetSource = 'initial';
     const resetTimeout = (source?: string) => {
+      // Story 35.1: while awaiting user input (permission / AskUserQuestion) the timer
+      // is paused — ignore every activity-driven reset (onActivity, raw PTY frames,
+      // compact/retry) so the wait stays indefinite. canUseTool clears the pause and
+      // calls this once to re-arm when the user responds.
+      if (permissionWaiting) return;
       if (source) lastResetSource = source;
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {

@@ -479,7 +479,9 @@ export class CliChatEngine implements ChatEngine {
    * assembled `ChatResponse` on `stop_reason:"end_turn"`. When `canUseTool` is
    * provided, an interactive permission dialog detected on the PTY screen is routed
    * through it (Story 32.6 — reuses the existing web round-trip; see
-   * `handlePermission`). `onRawMessage` is the inactivity-timeout heartbeat (S-1).
+   * `handlePermission`). `onRawMessage` is the *generation-activity* signal (S-1): it
+   * resets the browser path's inactivity timer while a turn streams. It no longer keeps
+   * an input-wait alive — Story 35.1 pauses that timer for the whole input-wait.
    * `onGenerationProgress` (Story 32.7) is the transient "↓ N tokens · Ns" signal
    * parsed from the same spinner frames — emitted on value change (see `emitProgress`).
    */
@@ -738,10 +740,12 @@ export class CliChatEngine implements ChatEngine {
        *     modal, or an answer that maps to no listed option (custom "Other") is **not
        *     driven** — the modal is cancelled with **Esc** so the turn ends cleanly instead
        *     of hanging (AC4 deadlock guard; the response-path is restored, never frozen).
-       *   - The wait inherits the same inactivity-timeout posture as 32.6 until Story 35.1
-       *     stops the timer during input-wait (the existing S-1 heartbeat is unchanged —
-       *     degrade-to-32.6; a static modal emits no frames, so a very slow answer still
-       *     times out cleanly, never a permanent hang).
+       *   - The wait no longer times out: Story 35.1 pauses the browser path's inactivity
+       *     timer for the whole input-wait, so even a static modal (which emits no PTY
+       *     frames) waits indefinitely — "respond when you can". The S-1 onRawMessage
+       *     heartbeat is now only a generation-activity signal, not what keeps the modal
+       *     alive; the deadlock guard below (Esc on any non-drivable case) is what still
+       *     ends the turn cleanly.
        * Fired fire-and-forget from `onData` (after a paint settle); guarded by
        * `questionPending` (no re-entry on modal re-renders) and by `settled` (abort race).
        */
@@ -845,10 +849,18 @@ export class CliChatEngine implements ChatEngine {
       // completes (§4.5), so onTextChunk/onThinking can't keep the caller's
       // inactivity timer alive. The ONLY real-time signal is PTY data (spinner /
       // "↓ N tokens" frames, §4.7) — forward each frame through onRawMessage so the
-      // timer is reset. This timer-reset channel is wired **only on the browser path**
-      // (websocket.ts:2843-2845, which has the activity-based inactivity timeout); the
-      // queue path passes no `onRawMessage` and has no inactivity timeout (only the
-      // inter-prompt `delayMs`), so a permission `await` there simply blocks naturally.
+      // timer is reset *while generating*. This timer-reset channel is wired **only on
+      // the browser path** (the `onRawMessage` argument of websocket.ts's
+      // `sendMessageWithCallbacks` call, which owns the activity-based inactivity
+      // timeout); the queue path passes no `onRawMessage` and has no inactivity timeout
+      // (only the inter-prompt `delayMs`), so a permission `await` there simply blocks
+      // naturally.
+      //
+      // Story 35.1: the browser path now *pauses* that inactivity timer for the whole
+      // input-wait (permission / AskUserQuestion), so onRawMessage no longer has any role
+      // in keeping an input-wait alive — it is purely a generation-activity signal. The
+      // browser-vs-queue asymmetry above is moot during the wait (both now block
+      // indefinitely); it still describes generation-time behavior.
       //
       // The same data stream drives injection readiness (pre-injection: accumulate
       // boot output, inject once the `❯` box marker renders and output goes quiet —

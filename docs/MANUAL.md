@@ -1899,7 +1899,7 @@ How long to wait for Claude's response:
 - 10 minutes
 - 30 minutes
 
-The timeout resets on every activity. If overridden by an environment variable, the field is disabled with an amber warning.
+The timeout resets on every activity, and it only guards Claude's own generation. Waiting for **your** input — approving a permission prompt or answering an `AskUserQuestion` selection — pauses the timer, so those prompts never time out; step away and respond whenever you're back. If overridden by an environment variable, the field is disabled with an amber warning.
 
 ### 13.10 Default Thinking Effort
 
