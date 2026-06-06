@@ -29,9 +29,16 @@
  * *progress* signal (the spinner's "↓ N tokens · Ns", parsed from the same PTY frames
  * and emitted on value change via `onGenerationProgress` — see `emitProgress`) and
  * *verifies* thinking display (mechanism-complete; see the thinking branch in
- * `handleAssistantLine`). Still deferred to Epic 33: synthetic typing (the client
+ * `handleAssistantLine`). 32.8 wires the last interactive flow — the `AskUserQuestion`
+ * selection modal (`canUseTool` web question card) — also **constrained**: like the
+ * permission dialog it leaves no pre-answer JSONL signal (verified Task 1), so the modal
+ * is detected from the PTY ANSI state and its questions/options are scraped, the reused
+ * `canUseTool` answer is translated to menu keys (single-select ↓+Enter; multiSelect
+ * Space-toggle + → Submit), and any non-drivable case (multi-question, unparseable,
+ * custom "Other") is Esc-cancelled so the modal can never deadlock the response path.
+ * See `handleQuestion` below. Still deferred to Epic 33: synthetic typing (the client
  * frame-coalescing path is shared with SDK mode, so per-block animation needs the
- * Epic 33 mode toggle), the on/off toggles for all three, and mode-selection UI.
+ * Epic 33 mode toggle), the on/off toggles, and mode-selection UI.
  *
  * [Source: docs/spike-32.1-cli-output-source.md#7.1; docs/prd/epic-32-cli-engine-core.md#Story 32.4+]
  */
@@ -116,6 +123,54 @@ const CLI_PERMISSION_DENY_KEY = '\x1b'; // Esc → "Esc to cancel"
 /** Rolling post-injection ANSI buffer cap for dialog-state detection. */
 const CLI_DIALOG_BUFFER_CAP = 4000;
 
+/**
+ * AskUserQuestion selection-modal interception (Story 32.8 — *constrained*; the JSONL/ANSI
+ * behavior and EVERY key were verified against claude v2.1.162 by a real-PTY observation,
+ * Task 1). Like the permission dialog (32.6), the question modal leaves **no structured
+ * signal in the session JSONL before the user answers** — the `tool_use(AskUserQuestion)`
+ * line (carrying the full questions/options) is written only *after* selection (Task 1 (a):
+ * at modal-display time the JSONL held only bookkeeping; the assistant `tool_use` +
+ * `tool_result(type=user)` + `text(end_turn)` appeared post-selection, the *same*
+ * envelope SDK mode produces, so it renders on reload — AC5, no code). So the modal lives
+ * only on the PTY ANSI screen (a §6.2-class absolute-coordinate box), detection is an ANSI
+ * *state* signal (§7.1-sanctioned, the channel the `❯` readiness marker uses), and the
+ * questions/options are *scraped* from that screen — low fidelity, the documented constraint.
+ *
+ * Verified key model (claude v2.1.162; Task 1 (b)) — the highlight starts on the first
+ * option (row 0):
+ *   - **Single-select:** `↓` × targetIndex, then **Enter** — selects AND submits in one
+ *     keypress (Task 1: ↓ moved Red→Green, Enter confirmed `=Green`).
+ *   - **multiSelect:** **Space** toggles the highlighted `[ ]` checkbox; after toggling,
+ *     **→** (right) moves to the header "✔ Submit" tab and **Enter** submits — count-
+ *     independent (Task 1: Space on Cat, →, Enter confirmed `=Cat`).
+ *   - **Esc** cancels the modal — the deadlock guard for an unparseable modal, a
+ *     multi-question (tabbed) modal, or an answer that maps to no listed option.
+ *
+ * Scope (*constrained*) = **single-question** only. A multi-question modal is *tabbed*
+ * (one question's options visible at a time → `←  ☐ Q1  ☐ Q2  ✔ Submit  →`), so a faithful
+ * single-round-trip card cannot be built from the first frame; those are cancelled (Esc)
+ * rather than half-answered. The web card/round-trip (`canUseTool('AskUserQuestion')` →
+ * `updatedInput.answers`) is reused verbatim (client + `@hammoc/shared` unchanged — the
+ * engine only *calls* it and translates the answer to keys). See `handleQuestion` below.
+ */
+const CLI_QUESTION_DOWN_KEY = '\x1b[B'; // ↓ — move highlight to the next option
+const CLI_QUESTION_RIGHT_KEY = '\x1b[C'; // → — move to the header "✔ Submit" tab (multiSelect)
+const CLI_QUESTION_SPACE_KEY = ' '; // toggle the highlighted multiSelect checkbox
+const CLI_QUESTION_ENTER_KEY = '\r'; // select+submit (single) / activate Submit (multi)
+const CLI_QUESTION_ESC_KEY = '\x1b'; // cancel the modal (deadlock guard — AC4)
+/** Let the modal finish painting after the footer first appears, before scrape + drive. */
+const CLI_QUESTION_SETTLE_MS = 400;
+/**
+ * Gap between injected menu keys. Arrow/Space/Enter are *discrete* key events — not the
+ * typed-text-then-Enter pair that bracketed-paste coalesces (§32.4) — and Task 1 drove
+ * them reliably at 500–700ms spacing; 350ms keeps each a distinct keypress while bounding
+ * the post-answer latency (correctness over speed — a dropped arrow would mis-select).
+ */
+const CLI_QUESTION_KEY_GAP_MS = 350;
+/** "Chat about this" is auto-appended to every AskUserQuestion modal — a marker unique to
+ *  it (absent from the permission dialog and other selection menus), used to disambiguate. */
+const CLI_QUESTION_AFFORDANCE_RE = /Chat about this/i;
+
 // ANSI/control matchers for the dialog *state* strip below. Control chars are
 // intentional (we are literally stripping terminal escapes), so no-control-regex
 // is disabled per-pattern — the same convention as gitController / harness* services.
@@ -187,6 +242,124 @@ function extractToolName(text: string): string {
 /** Best-effort human-readable prompt sentence (the dialog's own words). */
 function extractPromptSentence(text: string): string {
   return (text.match(/Do you want to [^?\n]{1,160}\?/i)?.[0] ?? 'Claude is requesting tool permission').trim();
+}
+
+/** A single scraped AskUserQuestion choice (Story 32.8 — single-question scope). */
+interface ParsedQuestion {
+  question: string;
+  header?: string;
+  multiSelect: boolean;
+  options: Array<{ label: string }>;
+}
+
+/**
+ * Conservative AskUserQuestion-modal matcher (Story 32.8). Requires the selection footer
+ * ("Enter to select" + "↑/↓ to navigate") AND the auto-appended "Chat about this"
+ * affordance — together unique to the question modal and absent from a permission dialog
+ * ("Do you want to…" / "Yes, allow all edits", which has no list navigation) and from
+ * ordinary output, so neither can false-trigger a stray keypress. `detectPermissionDialog`
+ * is checked first and is mutually exclusive (it needs a permission phrase this modal lacks;
+ * this needs "to navigate" the dialog lacks), so the two never cross-fire. Version-fragile
+ * (a TUI revision could reword these) — the documented constrained surface.
+ */
+function detectQuestionModal(text: string): boolean {
+  const hasNavFooter = /Enter\b[^\n]{0,12}\bselect\b/i.test(text) && /to\s+navigate/i.test(text);
+  return hasNavFooter && CLI_QUESTION_AFFORDANCE_RE.test(text);
+}
+
+/**
+ * Scrape one question + its options from the modal's ANSI *state* (Story 32.8 — low
+ * fidelity, the documented constraint). Reads the LAST modal render (from its header tab
+ * to the footer) so earlier spinner frames are excluded, and keeps the last label seen per
+ * option number (the rolling buffer repeats the modal). Returns null when it cannot build a
+ * usable *single*-question structure — no options, or a **multi-question** tabbed modal
+ * (more than one header ballot-box tab) which this constrained bridge does not drive (the
+ * caller then cancels with Esc). Crucially the scrape order equals the modal row order,
+ * which equals the ↓-count used to drive the answer, so the option↔index mapping is
+ * self-consistent even when a label's text is imperfectly captured.
+ */
+function parseQuestionModal(buf: string): ParsedQuestion | null {
+  const navIdx = buf.lastIndexOf('to navigate');
+  if (navIdx < 0) return null;
+  const region = buf.slice(Math.max(0, navIdx - 2500), navIdx);
+  // Multi-question modals show >1 ballot-box tab in the header (☐ Q1 ☐ Q2 ✔ Submit) — not
+  // a single round-trip, so guard rather than half-answer.
+  if ((region.match(/[☐☒]/g) || []).length > 1) return null;
+  const multiSelect = /\[\s*[✔x ]?\s*\]/.test(region); // [ ] / [✔] checkboxes ⇒ multiSelect
+  // Numbered option rows; last label wins per number, then order by number.
+  const byNum = new Map<number, string>();
+  for (const m of region.matchAll(/(\d{1,2})\.\s+(?:\[[✔x ]?\s*\]\s*)?([^\n]*\S)/g)) {
+    byNum.set(parseInt(m[1], 10), m[2].trim());
+  }
+  const options = [...byNum.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map((e) => e[1])
+    // Drop the auto-appended affordance rows — not real answer options (they trail the
+    // real options in every observed render).
+    .filter((l) => !/^Type something\.?$/i.test(l) && !/^Chat about this\.?$/i.test(l))
+    .map((label) => ({ label }));
+  if (options.length === 0) return null;
+  const headerMatch = region.match(/[☐☒]\s*([^✔→\n]+?)(?:\s{2,}|\n|$)/);
+  const header = headerMatch ? headerMatch[1].trim() : undefined;
+  // Question = the last meaningful line between the header tab and the first option
+  // (best-effort; the question may not end in '?' — e.g. "Which pets? Choose any.").
+  // Strip tab/cursor glyphs and drop the header line itself.
+  const question = (
+    region
+      .slice(0, Math.max(0, region.search(/\d{1,2}\.\s/)))
+      .split('\n')
+      .map((l) => l.replace(/[←→✔☐☒❯]/g, '').trim())
+      .filter((l) => l && l !== header)
+      .pop() ??
+    header ??
+    'Claude is asking a question'
+  ).trim();
+  return { question, header, multiSelect, options };
+}
+
+/**
+ * Translate the user's answer (canUseTool `updatedInput.answers`) into the TUI menu key
+ * sequence (Story 32.8). The highlight starts on option 0 (verified Task 1). Returns null
+ * when the answer maps to no scraped option (e.g. a custom "Other" entry) — not safely
+ * drivable, so the caller cancels (Esc) rather than risk a wrong selection.
+ */
+function buildQuestionKeys(parsed: ParsedQuestion, answer: string | string[] | undefined): string[] | null {
+  const labels = parsed.options.map((o) => o.label);
+  // Normalize the answer into individual option tokens. A multiSelect answer arrives here as a
+  // single ", "-joined string, because the reused canUseTool('AskUserQuestion') branch joins the
+  // web card's bare answer array on that separator (websocket.ts:2674 / queueService.ts:845).
+  // Split it back on the same separator so every chosen label is recovered — otherwise the joined
+  // string ("Cat, Fish") matches no single option label, `selected` is empty, and the modal is
+  // silently Esc-cancelled (the 32.8-MULTISELECT-DROP defect). A single-select answer is one label
+  // and must NOT be split (a label may itself contain ", ").
+  const tokens = Array.isArray(answer)
+    ? answer
+    : answer == null
+      ? []
+      : parsed.multiSelect
+        ? answer.split(', ')
+        : [answer];
+  const selected = tokens
+    .map((a) => labels.indexOf(a))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+  if (selected.length === 0) return null;
+  const keys: string[] = [];
+  if (!parsed.multiSelect) {
+    // Single-select: ↓ to the option, Enter selects + submits.
+    for (let i = 0; i < selected[0]; i++) keys.push(CLI_QUESTION_DOWN_KEY);
+    keys.push(CLI_QUESTION_ENTER_KEY);
+    return keys;
+  }
+  // multiSelect: walk down toggling each selected checkbox, then → to Submit + Enter.
+  let cur = 0;
+  for (const idx of selected) {
+    for (let i = cur; i < idx; i++) keys.push(CLI_QUESTION_DOWN_KEY);
+    keys.push(CLI_QUESTION_SPACE_KEY);
+    cur = idx;
+  }
+  keys.push(CLI_QUESTION_RIGHT_KEY, CLI_QUESTION_ENTER_KEY);
+  return keys;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -389,6 +562,12 @@ export class CliChatEngine implements ChatEngine {
       let dialogBuffer = ''; // rolling stripped PTY output, scanned for the dialog
       let permissionPending = false; // guards re-entry while awaiting the user's decision
       let permCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-approval)
+      // AskUserQuestion-modal state (Story 32.8 — post-injection only; SEPARATE buffer from
+      // the permission path so the verified 32.6 detection is byte-for-byte untouched).
+      let questionBuffer = ''; // rolling stripped PTY output, scanned for the question modal
+      let questionPending = false; // guards re-entry while awaiting the user's answer
+      let questionSettleTimer: ReturnType<typeof setTimeout> | null = null; // modal paint settle
+      let questionCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-answer)
       // Generation-progress state (Story 32.7 — post-injection only).
       let progressBuffer = ''; // rolling stripped PTY output, scanned for the spinner counter
       let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
@@ -409,6 +588,10 @@ export class CliChatEngine implements ChatEngine {
         if (submitTimer) {
           clearTimeout(submitTimer);
           submitTimer = null;
+        }
+        if (questionSettleTimer) {
+          clearTimeout(questionSettleTimer);
+          questionSettleTimer = null;
         }
         try {
           dirWatcher?.close();
@@ -513,7 +696,7 @@ export class CliChatEngine implements ChatEngine {
        *   - `updatedInput` is unsupported — claude runs its own tool, so allow/deny
        *     (a keypress) is the only channel (vs SDK mode rewriting tool input).
        *   - `AskUserQuestion` (claude's own TUI question UI) is a *separate* modal,
-       *     not intercepted here — out of scope (SDK mode retains it).
+       *     handled by `handleQuestion` below (Story 32.8) — also *constrained*.
        * Fired fire-and-forget from `onData`; guarded by `permissionPending` (no
        * re-entry on dialog re-renders) and by `settled` (abort race — AC3 ②).
        */
@@ -538,6 +721,100 @@ export class CliChatEngine implements ChatEngine {
           }
           // Allow a subsequent permission in the same turn to be detected afresh.
           permissionPending = false;
+        })();
+      };
+
+      /**
+       * AskUserQuestion round-trip (Story 32.8 — *constrained*; verified Task 1). The
+       * selection modal is detected from the PTY screen (no JSONL signal exists pre-answer,
+       * same as the permission dialog) and the question/options are scraped from it. We
+       * reuse the **already-passed** `canUseTool` — the SAME closure that drives SDK-mode
+       * web question cards (`websocket.ts` / `queueService.ts`, `interactionType:'question'`)
+       * — so the wire contract, client, and `@hammoc/shared` are unchanged: the engine only
+       * *calls* it with the scraped questions/options, then translates the returned
+       * `updatedInput.answers` into TUI menu keys (`buildQuestionKeys`). Honest constraints:
+       *   - Detection + the questions/options are ANSI scrapes (version-fragile, low fidelity).
+       *   - Scope is **single-question**; a multi-question (tabbed) modal, an unparseable
+       *     modal, or an answer that maps to no listed option (custom "Other") is **not
+       *     driven** — the modal is cancelled with **Esc** so the turn ends cleanly instead
+       *     of hanging (AC4 deadlock guard; the response-path is restored, never frozen).
+       *   - The wait inherits the same inactivity-timeout posture as 32.6 until Story 35.1
+       *     stops the timer during input-wait (the existing S-1 heartbeat is unchanged —
+       *     degrade-to-32.6; a static modal emits no frames, so a very slow answer still
+       *     times out cleanly, never a permanent hang).
+       * Fired fire-and-forget from `onData` (after a paint settle); guarded by
+       * `questionPending` (no re-entry on modal re-renders) and by `settled` (abort race).
+       */
+      const handleQuestion = (parsed: ParsedQuestion | null, toolUseID: string): void => {
+        void (async () => {
+          // Esc-cancel + clear the guard: the single exit for every non-drivable case, so a
+          // detected modal never leaves the turn without a response path (AC4 — root-cause
+          // fix of the response-path deadlock, not a new freeze hidden behind a workaround).
+          const cancel = (why: string) => {
+            log.warn(`AskUserQuestion: ${why} — cancelling modal (Esc) to keep the turn responsive`);
+            if (!settled) {
+              try {
+                pty.write(CLI_QUESTION_ESC_KEY);
+              } catch {
+                /* PTY may already be gone */
+              }
+            }
+            questionPending = false;
+          };
+
+          if (!parsed) {
+            cancel('modal not parseable as a single-question choice (or it is multi-question)');
+            return;
+          }
+
+          let result: PermissionResult;
+          const input = {
+            questions: [
+              { question: parsed.question, header: parsed.header, multiSelect: parsed.multiSelect, options: parsed.options },
+            ],
+          };
+          try {
+            const signal = options.abortController?.signal ?? new AbortController().signal;
+            result = await canUseTool!('AskUserQuestion', input as unknown as Record<string, unknown>, {
+              signal,
+              toolUseID,
+              title: parsed.question,
+            });
+          } catch (err) {
+            cancel(`canUseTool threw (${err instanceof Error ? err.message : String(err)})`);
+            return;
+          }
+
+          // Abort race: if the turn ended/aborted while awaiting the answer, the PTY is being
+          // torn down (onAbort sends Ctrl+C, which cancels the modal) — write nothing.
+          if (settled) return;
+
+          const answers =
+            result.behavior === 'allow' && result.updatedInput
+              ? ((result.updatedInput as Record<string, unknown>).answers as Record<string, string | string[]> | undefined)
+              : undefined;
+          const answer = answers ? (answers[parsed.question] ?? Object.values(answers)[0]) : undefined;
+          const keys = buildQuestionKeys(parsed, answer);
+          if (!keys) {
+            cancel('answer did not map to a listed option (custom/Other is not drivable)');
+            return;
+          }
+
+          // Drive the menu keys spaced out (each a discrete keypress — CLI_QUESTION_KEY_GAP_MS),
+          // re-checking the abort guard before each write.
+          for (const key of keys) {
+            if (settled) return;
+            try {
+              pty.write(key);
+            } catch (err) {
+              log.warn(`question key injection failed: ${err instanceof Error ? err.message : String(err)}`);
+              questionPending = false;
+              return;
+            }
+            await new Promise((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
+          }
+          // Allow a subsequent question in the same turn to be detected afresh.
+          questionPending = false;
         })();
       };
 
@@ -575,9 +852,9 @@ export class CliChatEngine implements ChatEngine {
       //
       // The same data stream drives injection readiness (pre-injection: accumulate
       // boot output, inject once the `❯` box marker renders and output goes quiet —
-      // CLI_PROMPT_MARKER) and, post-injection, permission-dialog detection (above).
-      // (Trusted-folder happy-path — a new/untrusted folder's trust dialog is
-      // deferred, §7.3.)
+      // CLI_PROMPT_MARKER) and, post-injection, permission-dialog (32.6) and
+      // AskUserQuestion-modal (32.8) detection (below). (Trusted-folder happy-path — a
+      // new/untrusted folder's trust dialog is deferred, §7.3.)
       pty.onData((data: string) => {
         onRawMessage?.('cli-pty-activity');
         if (!injected) {
@@ -608,6 +885,24 @@ export class CliChatEngine implements ChatEngine {
             const sentence = extractPromptSentence(dialogBuffer);
             dialogBuffer = ''; // consume — don't re-match the same dialog text
             handlePermission(toolName, sentence, `cli-perm-${++permCounter}`);
+          }
+        }
+        // AskUserQuestion modal (Story 32.8): a SEPARATE rolling buffer + guard so the
+        // verified 32.6 permission path above stays byte-for-byte untouched. Rolling is
+        // gated on !questionPending so the buffer freezes at detection (the full modal —
+        // the footer marker implies a finished paint) and the same modal cannot re-fire
+        // after it is answered. The settle delay then lets the on-screen modal stabilize
+        // before keys are driven into it.
+        if (canUseTool && !permissionPending && !questionPending) {
+          questionBuffer = (questionBuffer + stripped).slice(-CLI_DIALOG_BUFFER_CAP);
+          if (detectQuestionModal(questionBuffer)) {
+            questionPending = true;
+            questionSettleTimer = setTimeout(() => {
+              questionSettleTimer = null;
+              const parsed = parseQuestionModal(questionBuffer);
+              questionBuffer = ''; // consume — don't re-match the same modal text
+              handleQuestion(parsed, `cli-q-${++questionCounter}`);
+            }, CLI_QUESTION_SETTLE_MS);
           }
         }
       });

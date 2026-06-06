@@ -624,6 +624,295 @@ describe('CliChatEngine', () => {
     });
   });
 
+  describe('AskUserQuestion round-trip (Story 32.8 — constrained, canUseTool reuse)', () => {
+    // The selection modal the engine sees AFTER its ANSI strip — verified shape (Task 1):
+    // a header tab, the question, numbered options, the auto-appended "Type something" /
+    // "Chat about this" rows, and the nav footer ("Enter to select · ↑/↓ to navigate")
+    // which (with "Chat about this") is distinct from a permission dialog.
+    const Q_MODAL_SINGLE = [
+      ' ☐ Color',
+      ' Which color do you want?',
+      ' ❯ 1. Red',
+      '      The color red.',
+      '   2. Green',
+      '      The color green.',
+      '   3. Blue',
+      '      The color blue.',
+      '   4. Type something.',
+      '   5. Chat about this',
+      ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+    ].join('\n');
+
+    // multiSelect: checkboxes "[ ]" + a header "✔ Submit" tab reached with → (Task 1).
+    const Q_MODAL_MULTI = [
+      ' ←  ☐ Pets  ✔ Submit  →',
+      ' Which pets do you want? Choose any.',
+      ' ❯ 1. [ ] Cat',
+      '   A cat.',
+      '   2. [ ] Dog',
+      '   A dog.',
+      '   3. [ ] Fish',
+      '   A fish.',
+      '   4. [ ] Type something',
+      '      Submit',
+      '   5. Chat about this',
+      ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+    ].join('\n');
+
+    // A 2-question (tabbed) modal: >1 ballot-box tab in the header → NOT a single
+    // round-trip, so the constrained bridge guards it (Esc) rather than half-answering.
+    const Q_MODAL_MULTIQ = [
+      ' ←  ☐ Color  ☐ Size  ✔ Submit  →',
+      ' Which color do you want?',
+      ' ❯ 1. Red',
+      '   2. Green',
+      '   4. Type something.',
+      '   5. Chat about this',
+      ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+    ].join('\n');
+
+    async function injectThenReady(engine: CliChatEngine, canUseTool: unknown): Promise<{ turn: Promise<unknown> }> {
+      const turn = engine.sendMessageWithCallbacks(
+        'ask me something',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('ask me something'), { timeout: 2000 });
+      return { turn };
+    }
+
+    const countWrites = (key: string): number => h.fakePty.write.mock.calls.filter((c) => c[0] === key).length;
+
+    it('detects the modal, scrapes questions/options, calls canUseTool, and drives ↓+Enter for the choice', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({
+        behavior: 'allow',
+        updatedInput: { questions: [], answers: { 'Which color do you want?': 'Green' } },
+      });
+      const { turn } = await injectThenReady(engine, canUseTool);
+
+      h.fakePty._onData?.(Q_MODAL_SINGLE);
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      const [toolName, input, opts] = canUseTool.mock.calls[0] as [string, Record<string, unknown>, { toolUseID: string; signal: AbortSignal }];
+      expect(toolName).toBe('AskUserQuestion');
+      // Scraped single question — options in modal-row order (self-consistent with the ↓-count).
+      expect(input).toEqual({
+        questions: [
+          { question: 'Which color do you want?', header: 'Color', multiSelect: false, options: [{ label: 'Red' }, { label: 'Green' }, { label: 'Blue' }] },
+        ],
+      });
+      expect(opts.toolUseID).toMatch(/^cli-q-/); // synthesized — no real id in JSONL pre-answer
+      expect(opts.signal).toBeInstanceOf(AbortSignal);
+
+      // Green = index 1 → exactly one ↓, then Enter. The ↓/→/Space keys are unambiguous
+      // (only the question drive writes them); Enter is shared with the prompt-submit so
+      // we assert an Enter FOLLOWS the down rather than counting it.
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b[B'), { timeout: 2000 });
+      await vi.waitFor(() => {
+        const writes = h.fakePty.write.mock.calls.map((c) => c[0]);
+        const di = writes.indexOf('\x1b[B');
+        expect(writes.slice(di + 1)).toContain('\r');
+      });
+      expect(countWrites('\x1b[B')).toBe(1); // single ↓ (index 1)
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[C'); // single-select: no → Submit
+      expect(h.fakePty.write).not.toHaveBeenCalledWith(' '); // single-select: no Space toggle
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b'); // not cancelled
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Picked Green' })]);
+      await turn;
+    });
+
+    it('drives N ↓ presses for a later option (index 2 → two ↓)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({
+        behavior: 'allow',
+        updatedInput: { answers: { 'Which color do you want?': 'Blue' } }, // index 2
+      });
+      const { turn } = await injectThenReady(engine, canUseTool);
+      h.fakePty._onData?.(Q_MODAL_SINGLE);
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      // Two downs to reach Blue, then Enter. Wait until both downs are in, then until the
+      // Enter (sent CLI_QUESTION_KEY_GAP_MS after the last down) follows it.
+      await vi.waitFor(() => expect(countWrites('\x1b[B')).toBe(2), { timeout: 2000 });
+      await vi.waitFor(() => {
+        const writes = h.fakePty.write.mock.calls.map((c) => c[0]);
+        expect(writes.slice(writes.lastIndexOf('\x1b[B') + 1)).toContain('\r');
+      }, { timeout: 2000 });
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Picked Blue' })]);
+      await turn;
+    });
+
+    it('multiSelect: Space-toggles each pick, then → to Submit + Enter', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({
+        behavior: 'allow',
+        // Cat (idx 0) + Fish (idx 2) selected. This is the REAL single-question multiSelect form:
+        // the web card returns a bare array which the reused canUseTool branch joins with ", " into
+        // one string (websocket.ts:2674 / queueService.ts:845). Inject THAT joined string — not a
+        // { question: [...] } object, which only the multi-question path (Esc-guarded by the CLI)
+        // ever produces and is therefore unreachable in this pipeline (QA 32.8-TEST-FIDELITY).
+        updatedInput: { answers: { 'Which pets do you want? Choose any.': 'Cat, Fish' } },
+      });
+      const { turn } = await injectThenReady(engine, canUseTool);
+      h.fakePty._onData?.(Q_MODAL_MULTI);
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      const [, input] = canUseTool.mock.calls[0] as [string, Record<string, unknown>];
+      expect(input).toEqual({
+        questions: [
+          {
+            question: 'Which pets do you want? Choose any.',
+            header: 'Pets',
+            multiSelect: true,
+            options: [{ label: 'Cat' }, { label: 'Dog' }, { label: 'Fish' }],
+          },
+        ],
+      });
+
+      // Drive ends with → (right) then Enter — wait for the unambiguous right key.
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b[C'), { timeout: 3000 });
+      // Cat at idx 0 (Space, no down) + Fish at idx 2 (two downs, Space) → then → Submit.
+      expect(countWrites(' ')).toBe(2); // two checkbox toggles
+      expect(countWrites('\x1b[B')).toBe(2); // two downs to reach Fish
+      expect(countWrites('\x1b[C')).toBe(1); // one → to the Submit tab
+      // Enter submits after → (sent CLI_QUESTION_KEY_GAP_MS later — poll for it).
+      await vi.waitFor(() => {
+        const writes = h.fakePty.write.mock.calls.map((c) => c[0]);
+        expect(writes.slice(writes.indexOf('\x1b[C') + 1)).toContain('\r');
+      }, { timeout: 2000 });
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Picked Cat+Fish' })]);
+      await turn;
+    });
+
+    it('guards a multi-question (tabbed) modal: Esc-cancels WITHOUT calling canUseTool', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn();
+      const { turn } = await injectThenReady(engine, canUseTool);
+      h.fakePty._onData?.(Q_MODAL_MULTIQ);
+
+      // Detected (footer + affordance) but unparseable as ONE round-trip → Esc, no card.
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 });
+      expect(canUseTool).not.toHaveBeenCalled();
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[B');
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[C');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'cancelled' })]);
+      await turn;
+    });
+
+    it('guards an answer that maps to no listed option (custom/Other): canUseTool called, then Esc', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({
+        behavior: 'allow',
+        updatedInput: { answers: { 'Which color do you want?': 'Purple' } }, // not a listed option
+      });
+      const { turn } = await injectThenReady(engine, canUseTool);
+      h.fakePty._onData?.(Q_MODAL_SINGLE);
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 }); // Esc — not drivable
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[B'); // no wrong selection driven
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[C');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'cancelled' })]);
+      await turn;
+    });
+
+    it('does NOT detect a selection menu lacking the "Chat about this" affordance (false-positive guard)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn();
+      const { turn } = await injectThenReady(engine, canUseTool);
+
+      // Footer present, but no "Chat about this" (e.g. a different list UI) → not a question.
+      h.fakePty._onData?.([' ❯ 1. Option A', '   2. Option B', ' Enter to select · ↑/↓ to navigate · Esc to cancel'].join('\n'));
+      await wait(80);
+
+      expect(canUseTool).not.toHaveBeenCalled();
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[B');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('ignores question modals when no canUseTool is provided (launch-flag posture fallback)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'ask me something',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('ask me something'), { timeout: 2000 });
+
+      h.fakePty._onData?.(Q_MODAL_SINGLE);
+      await wait(80);
+
+      // No callback → no card, no key drive, no cancel.
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[B');
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[C');
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('on abort while awaiting the answer, injects no menu key (abort race)', async () => {
+      const ac = new AbortController();
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      let resolveAns: ((v: unknown) => void) | undefined;
+      const canUseTool = vi.fn(() => new Promise((r) => { resolveAns = r; }));
+      const promise = engine.sendMessageWithCallbacks(
+        'ask me something',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { abortController: ac },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('ask me something'), { timeout: 2000 });
+
+      h.fakePty._onData?.(Q_MODAL_SINGLE);
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+
+      ac.abort('timeout');
+      await expect(promise).rejects.toThrow(/aborted/i);
+      const writeCountAtAbort = h.fakePty.write.mock.calls.length;
+      resolveAns?.({ behavior: 'allow', updatedInput: { answers: { 'Which color do you want?': 'Green' } } }); // late answer
+      await wait(60);
+      expect(h.fakePty.write.mock.calls.length).toBe(writeCountAtAbort); // nothing injected post-abort
+    });
+
+    it('routes a PERMISSION dialog to handlePermission, not the question path (cross-detection isolation)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({ behavior: 'allow', updatedInput: {} });
+      const { turn } = await injectThenReady(engine, canUseTool);
+
+      h.fakePty._onData?.(
+        [' Do you want to create probe.txt?', ' ❯ 1. Yes', '   2. Yes, allow all edits during this session', ' Esc to cancel · Tab to amend'].join('\n'),
+      );
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      // The permission path scrapes a tool name — NEVER 'AskUserQuestion'.
+      expect(canUseTool.mock.calls[0][0]).toBe('Write');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
+      await turn;
+    });
+  });
+
   describe('generation progress (Story 32.7 — spinner "↓ N tokens" parsing)', () => {
     // Drive the engine to the post-injection state (where progress parsing is live):
     // feed a boot frame with the ❯ marker, then wait until the prompt was injected.
