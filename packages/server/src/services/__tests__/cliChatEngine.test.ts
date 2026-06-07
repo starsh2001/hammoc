@@ -592,35 +592,196 @@ describe('CliChatEngine', () => {
       expect(h.fakePty.write.mock.calls.length).toBe(writeCountAtAbort); // nothing injected post-abort
     });
 
-    it('handles a tool_use content block without crashing (rendered on reload; skipped live — AC5)', async () => {
+  });
+
+  describe('live tool cards (Story 32.9 — onToolUse/onToolResult parity + permission-gated suppression)', () => {
+    // A real CLI tool_use assistant line (verified shape from real CLI sessions:
+    // {type:'tool_use', id:'toolu_…', name, input}; one message may carry several = parallel).
+    function toolUseLine(
+      uuid: string,
+      tools: Array<{ id: string; name: string; input?: Record<string, unknown> }>,
+      opts: { parentUuid?: string; stopReason?: string } = {},
+    ): string {
+      return JSON.stringify({
+        type: 'assistant', uuid, parentUuid: opts.parentUuid ?? 'u1', timestamp: '2026-06-04T00:00:01.000Z', entrypoint: 'cli',
+        message: {
+          role: 'assistant', model: 'claude-opus-4-6',
+          content: tools.map((t) => ({ type: 'tool_use', id: t.id, name: t.name, input: t.input ?? {} })),
+          stop_reason: opts.stopReason ?? 'tool_use',
+        },
+      });
+    }
+    // A user tool_result line (verified shape: {type:'tool_result', tool_use_id, content, is_error}).
+    function toolResultLine(
+      uuid: string,
+      results: Array<{ tool_use_id: string; content: string; is_error?: boolean }>,
+      parentUuid = 'a1',
+    ): string {
+      return JSON.stringify({
+        type: 'user', uuid, parentUuid, timestamp: '2026-06-04T00:00:02.000Z',
+        message: {
+          role: 'user',
+          content: results.map((r) => ({
+            type: 'tool_result', tool_use_id: r.tool_use_id, content: r.content,
+            ...(r.is_error !== undefined ? { is_error: r.is_error } : {}),
+          })),
+        },
+      });
+    }
+
+    const PERM_DIALOG = (verb = 'create', file = 'probe.txt') =>
+      [` Do you want to ${verb} ${file}?`, ' ❯ 1. Yes', '   2. Yes, allow all edits during this session', ' Esc to cancel · Tab to amend'].join('\n');
+
+    it('emits onToolUse (SDK TrackedToolCall mapping) + onToolResult for an auto-approved tool, then completes', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
-      const onTextChunk = vi.fn();
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
       const onComplete = vi.fn();
-      const promise = engine.sendMessageWithCallbacks('hi', { onTextChunk, onComplete, onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+      // No canUseTool → no permission flow → tools are auto-approved/safe (live-emit path).
+      const promise = engine.sendMessageWithCallbacks(
+        'hi', { onToolUse, onToolResult, onComplete, onTextChunk: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn(),
+      );
 
       await wait(30);
       await writeSession(SID, [
         userLine('u1'),
-        JSON.stringify({
-          type: 'assistant', uuid: 'a1', parentUuid: 'u1', timestamp: '2026-06-04T00:00:01.000Z',
-          message: {
-            role: 'assistant', model: 'claude-opus-4-6',
-            content: [{ type: 'tool_use', id: 'toolu_1', name: 'Write', input: { file_path: 'x.txt', content: 'hi' } }],
-            stop_reason: 'tool_use',
-          },
-        }),
-        // tool_result (type=user) — skipped live, merged on reload by historyParser.
-        JSON.stringify({
-          type: 'user', uuid: 'tr1', parentUuid: 'a1', timestamp: '2026-06-04T00:00:02.000Z',
-          message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'done' }] },
-        }),
+        toolUseLine('a1', [{ id: 'toolu_1', name: 'Write', input: { file_path: 'x.txt', content: 'hi' } }]),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_1', content: 'File written', is_error: false }]),
         assistantLine('a2', { parentUuid: 'a1', text: 'finished' }),
       ]);
 
       const response = await promise;
+      // onToolUse: real toolu_ id, status pending, input passes through (so "which file" shows live).
+      expect(onToolUse).toHaveBeenCalledTimes(1);
+      expect(onToolUse).toHaveBeenCalledWith({ id: 'toolu_1', name: 'Write', input: { file_path: 'x.txt', content: 'hi' }, status: 'pending' });
+      // onToolResult: matched by the same id, success = !is_error.
+      expect(onToolResult).toHaveBeenCalledTimes(1);
+      expect(onToolResult).toHaveBeenCalledWith('toolu_1', { success: true, output: 'File written', error: undefined });
+      // Tool blocks contribute no text; final content is the end_turn text only.
+      expect(response.content).toBe('finished');
+      // Ordering: onToolUse → onToolResult → complete.
+      expect(onToolUse.mock.invocationCallOrder[0]).toBeLessThan(onToolResult.mock.invocationCallOrder[0]);
       expect(onComplete).toHaveBeenCalledTimes(1);
-      expect(response.content).toBe('finished'); // the tool_use block contributes no live text
-      expect(onTextChunk.mock.calls.map((c) => (c[0] as { content: string }).content)).toEqual(['finished']);
+    });
+
+    it('maps an error tool_result to {success:false, error} (output undefined) and strips XML wrappers', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolResult = vi.fn();
+      const promise = engine.sendMessageWithCallbacks(
+        'hi', { onToolUse: vi.fn(), onToolResult, onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn(),
+      );
+      await wait(30);
+      await writeSession(SID, [
+        userLine('u1'),
+        toolUseLine('a1', [{ id: 'toolu_e', name: 'Bash', input: { command: 'false' } }]),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_e', content: '<tool_use_error>boom</tool_use_error>', is_error: true }]),
+        assistantLine('a2', { parentUuid: 'a1', text: 'done' }),
+      ]);
+      await promise;
+      expect(onToolResult).toHaveBeenCalledWith('toolu_e', { success: false, output: undefined, error: 'boom' });
+    });
+
+    it('emits each parallel tool_use block in order (one assistant message, multiple tools)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const promise = engine.sendMessageWithCallbacks(
+        'hi', { onToolUse, onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn(),
+      );
+      await wait(30);
+      await writeSession(SID, [
+        userLine('u1'),
+        toolUseLine('a1', [
+          { id: 'toolu_a', name: 'Glob', input: { pattern: '*.ts' } },
+          { id: 'toolu_b', name: 'Glob', input: { pattern: '*.md' } },
+          { id: 'toolu_c', name: 'Grep', input: { pattern: 'foo' } },
+        ]),
+        assistantLine('a2', { parentUuid: 'a1', text: 'searched' }),
+      ]);
+      await promise;
+      expect(onToolUse).toHaveBeenCalledTimes(3);
+      expect(onToolUse.mock.calls.map((c) => (c[0] as { id: string }).id)).toEqual(['toolu_a', 'toolu_b', 'toolu_c']);
+      expect(onToolUse.mock.calls.map((c) => (c[0] as { name: string }).name)).toEqual(['Glob', 'Glob', 'Grep']);
+    });
+
+    it('does not double-emit a tool across re-parses (drain re-reads the whole file as it grows)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const promise = engine.sendMessageWithCallbacks(
+        'hi', { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn(),
+      );
+      await wait(30);
+      // First drain: tool_use + its result (no end_turn yet).
+      await writeSession(SID, [
+        userLine('u1'),
+        toolUseLine('a1', [{ id: 'toolu_1', name: 'Read', input: { file_path: 'a' } }]),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_1', content: 'contents', is_error: false }]),
+      ]);
+      await vi.waitFor(() => expect(onToolResult).toHaveBeenCalledTimes(1));
+      // Append the end_turn — triggers another full re-parse of the same growing file.
+      await fs.appendFile(path.join(h.state.sessionsDir, `${SID}.jsonl`), assistantLine('a2', { parentUuid: 'a1', text: 'done' }) + '\n', 'utf8');
+      await promise;
+      expect(onToolUse).toHaveBeenCalledTimes(1); // toolu_1 emitted exactly once
+      expect(onToolResult).toHaveBeenCalledTimes(1);
+    });
+
+    it('SUPPRESSES the live tool card for a permission-gated tool (standalone card + reload cover it)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const canUseTool = vi.fn().mockResolvedValue({ behavior: 'allow', updatedInput: {} });
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing', { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, canUseTool as never, vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      // Permission dialog detected → standalone card emitted (32.6) + suppression credit (32.9).
+      h.fakePty._onData?.(PERM_DIALOG('create', 'probe.txt'));
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      // The approved tool's tool_use block now lands in JSONL — it must NOT be live-emitted.
+      await writeSession(SID, [
+        userLine('u1'),
+        toolUseLine('a1', [{ id: 'toolu_perm', name: 'Write', input: { file_path: 'probe.txt' } }]),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_perm', content: 'written', is_error: false }]),
+        assistantLine('a2', { parentUuid: 'a1', text: 'created it' }),
+      ]);
+      const response = await turn;
+      expect(onToolUse).not.toHaveBeenCalled(); // suppressed — the standalone permission card stands in
+      expect(onToolResult).not.toHaveBeenCalled(); // result also left to reload (no orphan tool:result)
+      expect(response.content).toBe('created it');
+    });
+
+    it('mixes a SUPPRESSED permission-gated tool and a LIVE auto-approved tool in one turn (FIFO)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const canUseTool = vi.fn().mockResolvedValue({ behavior: 'allow', updatedInput: {} });
+      // Spawn with the spy callbacks directly (the shared injectThenReady hardcodes its own).
+      const turn = engine.sendMessageWithCallbacks(
+        'do things', { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, canUseTool as never, vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do things'), { timeout: 2000 });
+      // ONE permission dialog → exactly one suppression credit.
+      h.fakePty._onData?.(PERM_DIALOG('create', 'gated.txt'));
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      // The gated Write block (suppressed) then an auto-approved Read block (live), in one turn.
+      await writeSession(SID, [
+        userLine('u1'),
+        toolUseLine('a1', [{ id: 'toolu_gated', name: 'Write', input: { file_path: 'gated.txt' } }]),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_gated', content: 'ok', is_error: false }], 'a1'),
+        toolUseLine('a2', [{ id: 'toolu_free', name: 'Read', input: { file_path: 'free.txt' } }], { parentUuid: 'a1' }),
+        toolResultLine('tr2', [{ tool_use_id: 'toolu_free', content: 'data', is_error: false }], 'a2'),
+        assistantLine('a3', { parentUuid: 'a2', text: 'done' }),
+      ]);
+      await turn;
+      // Only the auto-approved tool is live; the gated one is suppressed.
+      expect(onToolUse).toHaveBeenCalledTimes(1);
+      expect(onToolUse).toHaveBeenCalledWith({ id: 'toolu_free', name: 'Read', input: { file_path: 'free.txt' }, status: 'pending' });
+      expect(onToolResult).toHaveBeenCalledTimes(1);
+      expect(onToolResult).toHaveBeenCalledWith('toolu_free', { success: true, output: 'data', error: undefined });
     });
   });
 

@@ -2649,6 +2649,10 @@ async function handleChatSend(
         sessionId: sessionIdRef.current || '',
         toolCall: { id: requestId, name: toolName, input },
         requiresApproval: true,
+        // CLI engine emits no tool:call, so a normal-tool permission has no tool card to
+        // attach to — tell the client to render it as an independent card. AskUserQuestion
+        // already renders independently (client keys off the tool name), so exclude it.
+        standalone: engineMode === 'cli' && !isAskUserQuestion,
       } as PermissionRequest);
 
       // Notify via Telegram if no socket connected (or alwaysNotify enabled)

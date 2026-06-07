@@ -36,7 +36,20 @@
  * `canUseTool` answer is translated to menu keys (single-select ↓+Enter; multiSelect
  * Space-toggle + → Submit), and any non-drivable case (multi-question, unparseable,
  * custom "Other") is Esc-cancelled so the modal can never deadlock the response path.
- * See `handleQuestion` below. Still deferred to Epic 33: synthetic typing (the client
+ * See `handleQuestion` below. 32.9 fills the last gap 32.6 AC5 left as "(optional) live
+ * `onToolUse` parity, only when it does not collide with the permission order / regression-0":
+ * `handleAssistantLine` now *emits* each tool_use block (and the drain emits each tool_result
+ * line) through the SAME `onToolUse`/`onToolResult` callbacks SDK mode uses (mapping copied
+ * from `streamHandler`), so a tool card renders live — which file is being written shows the
+ * moment it happens, not only on reload. The verification gate (Task 1) found the permission
+ * card's id namespace (synthetic `cli-perm-N`) and the real tool id (`toolu_…`) can never
+ * match, so id-merge is impossible; the honest floor is taken: a tool that went through the
+ * 32.6 permission dialog is *suppressed* live (it already has the standalone permission card
+ * and renders on reload), while auto-approved / safe tools (Bypass mode; read-only/auto-
+ * approved tools in default mode) emit live. No double-render: `stream:complete-messages`
+ * replaces the live cards with the authoritative reload at turn end (same as SDK mode), so
+ * client + `@hammoc/shared` are unchanged — the engine only *calls* the existing callbacks.
+ * Still deferred to Epic 33: synthetic typing (the client
  * frame-coalescing path is shared with SDK mode, so per-block animation needs the
  * Epic 33 mode toggle), the on/off toggles, and mode-selection UI.
  *
@@ -56,6 +69,10 @@ import type {
   ContentBlock,
   TextContentBlock,
   ThinkingContentBlock,
+  ToolUseContentBlock,
+  ToolResultContentBlock,
+  TrackedToolCall,
+  ToolResult,
 } from '@hammoc/shared';
 import { resolveEffectiveModel } from '@hammoc/shared';
 import path from 'path';
@@ -564,6 +581,21 @@ export class CliChatEngine implements ChatEngine {
       let dialogBuffer = ''; // rolling stripped PTY output, scanned for the dialog
       let permissionPending = false; // guards re-entry while awaiting the user's decision
       let permCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-approval)
+      // Live tool-card state (Story 32.9 — post-injection only).
+      // FIFO count of permission-gated tools whose live tool_use emit must be SUPPRESSED:
+      // each detected 32.6 dialog already shows a standalone permission card (synthetic
+      // `cli-perm-N`), so emitting a second card under the real `toolu_…` id would split it
+      // (the two id namespaces never match — Task 1). Incremented at dialog detection,
+      // decremented per tool_use block; the invariant "#suppressed == #permission cards" means
+      // a permission-gated tool can never produce a duplicate live card. Auto-approved/safe
+      // tools (count 0) emit live. The suppressed tool still renders on reload (no loss).
+      let permissionGatedToolsPending = 0;
+      // tool_use ids emitted live this turn (gates which tool_results to mirror live — a
+      // suppressed tool is absent here, so its result is left to reload too, no orphan).
+      const liveEmittedToolIds = new Set<string>();
+      // tool_use ids whose tool_result was already emitted (the drain re-parses the whole
+      // file as it grows; this dedups so a result is mirrored exactly once).
+      const resultEmittedToolIds = new Set<string>();
       // AskUserQuestion-modal state (Story 32.8 — post-injection only; SEPARATE buffer from
       // the permission path so the verified 32.6 detection is byte-for-byte untouched).
       let questionBuffer = ''; // rolling stripped PTY output, scanned for the question modal
@@ -897,6 +929,13 @@ export class CliChatEngine implements ChatEngine {
             const sentence = extractPromptSentence(dialogBuffer);
             dialogBuffer = ''; // consume — don't re-match the same dialog text
             handlePermission(toolName, sentence, `cli-perm-${++permCounter}`);
+            // Story 32.9: this tool's tool_use block (written only AFTER the decision —
+            // 32.6 Task 1; allow AND deny both record one block — verified) must NOT be
+            // live-emitted, or its real-id card would split from the standalone permission
+            // card above. Mark one block for suppression; the dialog always precedes the
+            // block (claude blocks on the prompt), so the counter is set before the drain
+            // sees it.
+            permissionGatedToolsPending++;
           }
         }
         // AskUserQuestion modal (Story 32.8): a SEPARATE rolling buffer + guard so the
@@ -979,14 +1018,33 @@ export class CliChatEngine implements ChatEngine {
                   done: false,
                 });
               }
+            } else if (block.type === 'tool_use') {
+              // Story 32.9: live tool-card emission. The envelope is identical to SDK mode
+              // (verified against real CLI sessions — `{type:'tool_use', id:'toolu_…', name,
+              // input}`), so reuse the SDK mapping (`streamHandler.handleToolUseBlock`) and
+              // the existing onToolUse → `tool:call` wire verbatim. The block also renders on
+              // reload (the authoritative `stream:complete-messages` replaces the live cards
+              // at turn end), so this only adds the *live* view — no double render.
+              const toolBlock = block as ToolUseContentBlock;
+              if (permissionGatedToolsPending > 0) {
+                // Approval-gated tool (AC4): a 32.6 standalone permission card already stands
+                // in for it (synthetic `cli-perm-N` id) and it renders on reload — so suppress
+                // the live emit (a real-id card here would split from that permission card).
+                // This is the honest reload fallback for the permission path (Task 1 decision).
+                permissionGatedToolsPending--;
+              } else {
+                // Auto-approved / safe tool (AC2): no dialog, no standalone card → a live card
+                // is clean. Track the id so the matching tool_result is mirrored live (AC3).
+                const toolCall: TrackedToolCall = {
+                  id: toolBlock.id,
+                  name: toolBlock.name,
+                  input: toolBlock.input,
+                  status: 'pending',
+                };
+                liveEmittedToolIds.add(toolBlock.id);
+                callbacks.onToolUse?.(toolCall);
+              }
             }
-            // tool_use blocks render naturally on history reload (envelope-compatible
-            // — verified in the Story 32.6 observation: thinking → tool_use →
-            // tool_result → text on reload). A *live* onToolUse emit here was weighed
-            // (AC5) and deliberately skipped: it adds no core value (the approval
-            // round-trip is the real gap) and risks ordering races with the
-            // permission flow — regression-0 takes precedence. The interactive
-            // approval itself is handled out-of-band by handlePermission (PTY).
           }
         } else if (typeof blockContent === 'string') {
           const text = blockContent;
@@ -1014,6 +1072,37 @@ export class CliChatEngine implements ChatEngine {
         }
 
         return envelope?.stop_reason === 'end_turn';
+      };
+
+      /**
+       * Story 32.9 (AC3, AC5): mirror a user line's tool_result blocks through onToolResult,
+       * but only for tools that were live-emitted this turn (`liveEmittedToolIds`). A
+       * permission-gated tool was suppressed (no live card), so its result is left to reload
+       * too — a `tool:result` for a card that does not exist live would orphan it. Deduped per
+       * tool_use_id (`resultEmittedToolIds`) because the drain re-parses the whole file as it
+       * grows. The success/output/error + XML-strip mapping mirrors
+       * `streamHandler.handleToolResultBlock` / `historyParser` exactly (envelope-compatible),
+       * so the live result matches what reload would render.
+       */
+      const emitToolResults = (raw: RawJSONLMessage): void => {
+        const content = raw.message?.content;
+        if (!Array.isArray(content)) return;
+        for (const block of content) {
+          if (block.type !== 'tool_result') continue;
+          const trb = block as ToolResultContentBlock & { is_error?: boolean };
+          const id = trb.tool_use_id;
+          if (!liveEmittedToolIds.has(id) || resultEmittedToolIds.has(id)) continue;
+          resultEmittedToolIds.add(id);
+          const rawContent = typeof trb.content === 'string' ? trb.content : '';
+          const cleanContent = rawContent.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
+          const isError = trb.is_error ?? false;
+          const result: ToolResult = {
+            success: !isError,
+            output: isError ? undefined : cleanContent,
+            error: isError ? cleanContent : undefined,
+          };
+          callbacks.onToolResult?.(id, result);
+        }
       };
 
       const finishTurn = () => {
@@ -1048,13 +1137,18 @@ export class CliChatEngine implements ChatEngine {
 
           const messages = await parseJSONLFile(sessionFile);
           for (const raw of messages) {
-            // Filter (§6.3): only assistant lines are render targets; bookkeeping
-            // (type ∉ {user,assistant}), meta, and command sentinels are excluded.
-            if (raw.type !== 'assistant' || raw.isMeta) continue;
-            if (emittedUuids.has(raw.uuid)) continue;
-            if (handleAssistantLine(raw)) {
-              finishTurn();
-              return;
+            if (raw.isMeta) continue;
+            // Filter (§6.3): assistant lines are the render targets; user lines are mined for
+            // tool_result blocks (Story 32.9 — live result mirroring); every other type
+            // (summary/system/queue-operation/command sentinels) is bookkeeping and excluded.
+            if (raw.type === 'assistant') {
+              if (emittedUuids.has(raw.uuid)) continue;
+              if (handleAssistantLine(raw)) {
+                finishTurn();
+                return;
+              }
+            } else if (raw.type === 'user') {
+              emitToolResults(raw);
             }
           }
         } catch (err) {

@@ -351,6 +351,13 @@ export interface PermissionRequest {
   sessionId: string;
   toolCall: ToolCall;
   requiresApproval: boolean;
+  /**
+   * When true, the client renders this permission as an INDEPENDENT card (like an
+   * AskUserQuestion card) instead of attaching it to a preceding tool segment. Set by
+   * the CLI engine path, which emits no `tool:call` event, so there is no tool card to
+   * attach to. SDK mode leaves this unset (falsy) and keeps the tool-attached behavior.
+   */
+  standalone?: boolean;
 }
 
 /**

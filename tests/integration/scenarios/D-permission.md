@@ -32,6 +32,27 @@
 **엣지케이스**:
 - E1. 모달 표시 중 다른 탭에서 응답: 한쪽 탭만 적용, 다른 탭 모달은 자동 닫힘 (다중 브라우저 동기화)
 
+### D-01-03: CLI 엔진 모드 권한 → 독립 카드 `[MANUAL]`
+**배경**: SDK 모드(D-01-01)는 권한을 ToolCard 인라인 버튼으로 붙여 표시한다. CLI 엔진은 *승인 필요* 도구의 도구 실행 이벤트(`tool:call`)를 (Story 32.9에서) 의도적으로 **억제**한다 — 승인 전엔 진짜 도구 id 가 JSONL 에 없고 권한 카드는 합성 id(`cli-perm-N`)라, 라이브 도구 카드를 더하면 진짜 id 카드와 합성 id 권한 카드가 분리되기 때문. 따라서 붙일 ToolCard 가 없어, CLI 모드의 일반(승인 필요) 도구 권한 요청은 서버가 `permission:request` 에 `standalone:true` 를 실어 보내고, 클라이언트는 이를 AskUserQuestion 과 동일한 독립 `InteractiveResponseCard`(`type='permission'`)로 렌더한다. (자동 승인·안전 도구 — Bypass 전체·default 모드 read-only — 는 32.9에서 라이브 `tool:call`/`tool:result` 를 보내 ToolCard 가 뜨지만, 그건 권한 다이얼로그가 없는 경로라 D-01-03 대상이 아니다. AskUserQuestion·SDK 모드 권한은 불변 — 회귀 없음.)
+
+**[MANUAL] 사유**: C11(C-chat.md)과 동일 — 구독-인증된 실제 `claude` 바이너리 + 인터랙티브 PTY 가 필요해 헤드리스 하네스에서 자동화가 구조적으로 불안정. 릴리즈 직전 수동 회귀로 검증.
+
+**선행 조건**: 구독 로그인된 `claude` 바이너리(호스트 PATH 또는 설정 경로), 전역 설정에서 CLI 엔진 선택(P-06-01).
+
+**절차 (수동)**:
+1. CLI 엔진 모드 + **Ask** 권한 모드로 전환
+2. "Create a file named cli-perm.txt with content: hi" 전송
+3. 권한 카드 노출 대기 (PTY 가 권한 다이얼로그를 그릴 때까지)
+
+**기대 결과**:
+- 독립 `InteractiveResponseCard` 렌더 — Shield 아이콘 + 권한 문장("…create cli-perm.txt?") + 승인/거부 버튼. ToolCard 부착 형태가 **아님**.
+- (Story 32.9) 승인 필요 도구는 별도 라이브 ToolCard 가 **뜨지 않는다** — 독립 권한 카드 하나만 (라이브 `tool:call` 억제 보장 → 카드 분리/중복 없음). 턴 완료 reload 시 도구 블록은 히스토리에 자연 렌더된다.
+- "승인" → `permission:respond` 전송 → CLI PTY 에 Enter 주입 → 파일 실제 생성, 카드 "승인됨" 표시
+- "거부" → Esc 주입 → 파일 미생성, 표준 거부 흐름
+
+**엣지케이스**:
+- E1. (수정 전 회귀 신호) 권한 카드가 전혀 안 뜨고 턴이 멈추면 `standalone` 미전달 — 서버 emit 또는 클라 분기 회귀. 클라 렌더 분기 자체는 `useStreaming.interactive.test.ts` 단위로 가드됨.
+
 ---
 
 ## D2. 권한 모드 전환 `[SDK]`
