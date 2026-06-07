@@ -98,6 +98,28 @@ class ImageStorageService {
   }
 
   /**
+   * Resolve absolute filesystem paths for a set of attachments, using the SAME
+   * hash-based filename + directory scheme as {@link storeImages}. Call right after
+   * storeImages with the same args so every path points at a file that exists on disk.
+   *
+   * Used by the CLI engine attachment passthrough: unlike SDK mode (base64 content
+   * blocks), the CLI engine cannot inject binary data over the PTY, so it grants
+   * read access to these paths (`--add-dir`) and references them in the prompt.
+   * Unsupported mime types are skipped (mirrors storeImages), so the result may be
+   * shorter than the input.
+   */
+  resolveImagePaths(projectSlug: string, sessionId: string, images: ImageAttachment[]): string[] {
+    const projectDir = sessionService.getProjectDir(projectSlug);
+    const imageDir = getImageDir(projectDir, sessionId);
+    const paths: string[] = [];
+    for (const img of images) {
+      const filename = buildImageFilename(img.data, img.mimeType);
+      if (filename) paths.push(path.join(imageDir, filename));
+    }
+    return paths;
+  }
+
+  /**
    * Get absolute filesystem path for an image.
    * Validates filename format to prevent path traversal.
    * Returns null if filename is invalid.

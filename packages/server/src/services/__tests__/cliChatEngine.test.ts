@@ -310,6 +310,86 @@ describe('CliChatEngine', () => {
     });
   });
 
+  describe('image attachments (CLI mode)', () => {
+    it('grants --add-dir for the attachment directory', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj', permissionMode: 'default' });
+      const imgPath = path.join('/mock/projects/slug/images/sess', 'abc1234567890def.png');
+      const promise = engine.sendMessageWithCallbacks(
+        'describe this',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID, attachedImagePaths: [imgPath] },
+        undefined,
+        vi.fn(),
+      );
+
+      await wait(30);
+      const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
+      expect(spawnArg.args).toEqual(expect.arrayContaining(['--add-dir', path.dirname(imgPath)]));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
+      await promise;
+    });
+
+    it('appends a Read-tool instruction referencing every attachment path, and de-dupes shared dirs', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const a = '/mock/projects/slug/images/sess/aaa1111111111111.png';
+      const b = '/mock/projects/slug/images/sess/bbb2222222222222.png';
+      const promise = engine.sendMessageWithCallbacks(
+        'what is in these',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID, attachedImagePaths: [a, b] },
+        undefined,
+        vi.fn(),
+      );
+
+      await wait(20);
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ Try "fix typecheck"');
+
+      await vi.waitFor(
+        () => {
+          const writes = h.fakePty.write.mock.calls.map((c) => c[0]);
+          const injected = writes.find(
+            (w): w is string => typeof w === 'string' && w.includes('what is in these'),
+          );
+          expect(injected).toBeTruthy();
+          expect(injected).toContain(a);
+          expect(injected).toContain(b);
+          expect(injected).toMatch(/Read tool/i);
+        },
+        { timeout: 3000 },
+      );
+
+      // a and b share one directory → exactly one --add-dir grant (de-duped)
+      const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
+      const addDirCount = (spawnArg.args as string[]).filter((x) => x === '--add-dir').length;
+      expect(addDirCount).toBe(1);
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('injects the raw prompt and adds no --add-dir when there are no attachments', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'plain message',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+
+      await wait(20);
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('plain message'), { timeout: 3000 });
+
+      const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
+      expect(spawnArg.args).not.toContain('--add-dir');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+  });
+
   describe('§6.3 filter', () => {
     it('ignores bookkeeping, meta, and non-assistant lines', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });

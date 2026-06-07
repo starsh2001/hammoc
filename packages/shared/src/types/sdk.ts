@@ -67,6 +67,16 @@ export interface ChatOptions {
   enableFileCheckpointing?: boolean;
   /** User message UUID for rewindFiles call on server (restores files to that point) */
   rewindToMessageUuid?: string;
+  /**
+   * CLI engine only: absolute filesystem paths of image attachments already saved
+   * to disk. The interactive PTY text channel cannot carry binary image data the way
+   * SDK mode's base64 content blocks do, so the CLI engine passes attachments *by
+   * reference*: it grants read access to these files via `--add-dir` and appends an
+   * explicit "read these files" instruction to the injected prompt, letting the model
+   * open them with its Read tool. The SDK engine ignores this field (it embeds the
+   * `images` base64 blocks directly).
+   */
+  attachedImagePaths?: string[];
 }
 
 /**

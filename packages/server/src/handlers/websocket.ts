@@ -2471,10 +2471,14 @@ async function handleChatSend(
   const projectSlug = sessionService.encodeProjectPath(workingDirectory);
 
   // Story 27.2: Store images as files, emit URL-based ImageRef[] instead of base64.
+  // CLI engine (image support): also resolve the on-disk absolute paths so the CLI path
+  // can reference attachments by --add-dir + prompt (it can't embed base64 over the PTY).
+  let attachedImagePaths: string[] = [];
   if (!forkSession) {
     let imageRefs: ImageRef[] | undefined;
     if (images && images.length > 0) {
       imageRefs = await imageStorageService.storeImages(projectSlug, sessionId || '', images);
+      attachedImagePaths = imageStorageService.resolveImagePaths(projectSlug, sessionId || '', images);
     }
     emit('user:message', {
       content,
@@ -2594,7 +2598,13 @@ async function handleChatSend(
       ...(isResuming ? { resume: sessionId } : { sessionId }),
       abortController,
       model,
-      images,
+      // SDK mode embeds base64 image blocks directly; CLI mode can't (the PTY is
+      // text-only), so it instead receives the on-disk paths resolved above and
+      // references them via --add-dir + an explicit prompt instruction. Each engine
+      // ignores the other's field, so we only send the one that applies.
+      ...(engineMode === 'cli'
+        ? (attachedImagePaths.length > 0 ? { attachedImagePaths } : {})
+        : { images }),
       // Advanced settings from preferences
       customSystemPrompt: effectivePrefs.customSystemPrompt,
       // maxThinkingTokens: legacy path; SDK docs say it takes precedence for backward-compat,

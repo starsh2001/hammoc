@@ -166,6 +166,35 @@ describe('imageStorageService', () => {
     });
   });
 
+  describe('resolveImagePaths', () => {
+    it('resolves absolute paths with the same hash+dir scheme as storeImages', () => {
+      const images = [
+        { mimeType: 'image/png', data: 'aGVsbG8=', name: 'a.png' },
+        { mimeType: 'image/jpeg', data: 'd29ybGQ=', name: 'b.jpg' },
+      ];
+      const result = imageStorageService.resolveImagePaths('proj1', 'sess1', images);
+      expect(result).toEqual([
+        path.join('/mock/projects/proj1', 'images', 'sess1', `${expectedHash('aGVsbG8=')}.png`),
+        path.join('/mock/projects/proj1', 'images', 'sess1', `${expectedHash('d29ybGQ=')}.jpg`),
+      ]);
+    });
+
+    it('skips unsupported mime types (result shorter than input)', () => {
+      const images = [
+        { mimeType: 'image/png', data: 'aGVsbG8=', name: 'a.png' },
+        { mimeType: 'image/bmp', data: 'dGVzdA==', name: 'b.bmp' },
+      ];
+      const result = imageStorageService.resolveImagePaths('proj1', 'sess1', images);
+      expect(result).toEqual([
+        path.join('/mock/projects/proj1', 'images', 'sess1', `${expectedHash('aGVsbG8=')}.png`),
+      ]);
+    });
+
+    it('returns empty array when there are no images', () => {
+      expect(imageStorageService.resolveImagePaths('proj1', 'sess1', [])).toEqual([]);
+    });
+  });
+
   describe('getImagePath', () => {
     it('returns path for valid filename', () => {
       const result = imageStorageService.getImagePath('proj1', 'sess1', 'a1b2c3d4e5f6a7b8.png');

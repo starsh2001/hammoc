@@ -88,6 +88,34 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('cliChatEngine');
 
 /**
+ * CLI attachment passthrough (image support in CLI mode). The interactive PTY carries
+ * only text, so image attachments — already saved to disk by `imageStorageService` —
+ * are referenced *by path* rather than embedded as base64 (SDK mode's approach). Two
+ * cooperating pieces:
+ *  - `uniqueAttachmentDirs`: directories to grant read access to via `--add-dir`. The
+ *    attachments live under `~/.claude/projects/<slug>/images`, OUTSIDE the project
+ *    cwd, so without this the model's Read is blocked (or prompts for permission).
+ *  - `appendAttachmentInstruction`: an explicit "use your Read tool to open these
+ *    files" line appended to the prompt. A bare path in the text does NOT reliably
+ *    trigger a Read — the model must be told. Verified by real-PTY smoke: a
+ *    `--add-dir`'d image referenced this way is read (vision) with no permission
+ *    prompt in default mode.
+ */
+function uniqueAttachmentDirs(paths?: string[]): string[] {
+  if (!paths || paths.length === 0) return [];
+  const dirs = new Set<string>();
+  for (const p of paths) dirs.add(path.dirname(p));
+  return [...dirs];
+}
+
+function appendAttachmentInstruction(content: string, paths?: string[]): string {
+  if (!paths || paths.length === 0) return content;
+  const many = paths.length > 1;
+  const list = paths.map((p) => `- ${p}`).join('\n');
+  return `${content}\n\n[Attached image${many ? 's' : ''} — use your Read tool to open ${many ? 'these files' : 'this file'} and view ${many ? 'them' : 'it'}:\n${list}]`;
+}
+
+/**
  * Poll interval (ms) for session-file detection + draining. `fs.watch` is wired
  * as the low-latency trigger, but its reliability varies by platform (§7.2-2),
  * so a poll loop is the deterministic fallback that also covers the case where
@@ -515,6 +543,11 @@ export class CliChatEngine implements ChatEngine {
       throw new Error('CliChatEngine requires a workingDirectory to locate the session JSONL');
     }
 
+    // Reference image attachments by path in the prompt (the PTY can't carry base64
+    // the way SDK mode does). No-op when there are no attachments. Paired with the
+    // `--add-dir` grants built into `args` below so the referenced files are readable.
+    const promptToInject = appendAttachmentInstruction(content, options.attachedImagePaths);
+
     const projectSlug = sessionService.encodeProjectPath(cwd);
     const sessionsDir = sessionService.getSessionsDir(cwd);
     const resumeId = typeof options.resume === 'string' && options.resume.length > 0 ? options.resume : undefined;
@@ -538,6 +571,14 @@ export class CliChatEngine implements ChatEngine {
     // Sonnet bare unless explicitly opted in. Keeps both engines consistent.
     if (options.model) args.push('--model', resolveEffectiveModel(options.model)!);
     if (options.effort) args.push('--effort', options.effort);
+    // Image attachments (CLI mode): grant read access to each attachment directory.
+    // The files live outside the project cwd (~/.claude/projects/.../images), so
+    // without --add-dir the model's Read is blocked. The matching prompt-side reference
+    // (`appendAttachmentInstruction`, applied to `promptToInject`) is what actually
+    // triggers the read.
+    for (const dir of uniqueAttachmentDirs(options.attachedImagePaths)) {
+      args.push('--add-dir', dir);
+    }
 
     // New-session detection: snapshot existing JSONL before spawn (§7.2-1).
     const baselineFiles = resumeId ? new Set<string>() : await listJsonl(sessionsDir);
@@ -702,7 +743,7 @@ export class CliChatEngine implements ChatEngine {
           bootFallbackTimer = null;
         }
         try {
-          pty.write(content);
+          pty.write(promptToInject);
           submitTimer = setTimeout(() => {
             submitTimer = null;
             if (settled) return;
