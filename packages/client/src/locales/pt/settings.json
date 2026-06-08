@@ -81,11 +81,13 @@
         "cliSettingsTitle": "Configurações do modo CLI",
         "cliSettingsDesc": "Aplicado quando o motor de conversa CLI está ativo.",
         "cliShowThinkingSummaries": "Mostrar resumos de raciocínio",
-        "cliShowThinkingSummariesDesc": "Exibe os resumos de raciocínio do Claude enquanto o motor CLI gera uma resposta.",
+        "cliShowThinkingSummariesDesc": "Exibe os resumos de raciocínio do Claude enquanto o motor CLI gera uma resposta. (Solicitados por sessão; se realmente aparecem pode depender da sua versão/autenticação do Claude.)",
         "cliShowGenerationProgress": "Mostrar progresso da geração",
         "cliShowGenerationProgressDesc": "Exibe um indicador ao vivo '↓ N tokens · Ns' enquanto uma resposta é gerada.",
-        "cliSyntheticTyping": "Digitação sintética",
-        "cliSyntheticTypingDesc": "Anima os blocos concluídos caractere por caractere ao chegar (puramente estético; desativado por padrão).",
+        "cliSyntheticTyping": "Digitação e entrada de cartões",
+        "cliSyntheticTypingDesc": "O texto é digitado caractere por caractere e, em seguida, os cartões de ferramenta/raciocínio surgem um após o outro (apenas modo CLI; desativado por padrão).",
+        "cliCardStaggerMs": "Intervalo de entrada dos cartões (ms)",
+        "cliCardStaggerMsDesc": "Intervalo entre o surgimento de cada cartão de ferramenta/raciocínio após o término da digitação (500 ms por padrão).",
         "cliBinaryPath": "Caminho do binário do claude",
         "cliBinaryPathDesc": "Substituição manual do caminho do executável claude. Deixe vazio para a detecção automática.",
         "cliBinaryPathPlaceholder": "Detecção automática (deixar vazio)"
@@ -173,7 +175,9 @@
         "queueCheckpointing": "Executor de fila",
         "queueCheckpointingDesc": "Salvar snapshots de arquivos durante a execução da fila (aumenta o tamanho do arquivo JSONL)",
         "showThinkingBlocks": "Mostrar o processo de pensamento do Claude",
-        "showThinkingBlocksDesc": "Exibe blocos 'thinking' recolhidos acima das respostas em modelos recentes (Opus 4.7+). Desligue para obter o primeiro token ligeiramente mais rápido (o custo não muda)."
+        "showThinkingBlocksDesc": "Exibe blocos 'thinking' recolhidos acima das respostas em modelos recentes (Opus 4.7+). Desligue para obter o primeiro token ligeiramente mais rápido (o custo não muda).",
+        "cardEntranceAnimation": "Animação de entrada dos cartões",
+        "cardEntranceAnimationDesc": "Os cartões de mensagem e ferramenta surgem um a um com efeito de fade e deslize para cima durante o streaming, em vez de aparecerem todos de uma vez. Aplica-se a ambos os motores (estético; ativado por padrão)."
     },
     "confirm": {
         "serverRestart": "Isso irá recompilar e reiniciar o servidor. Continuar?",

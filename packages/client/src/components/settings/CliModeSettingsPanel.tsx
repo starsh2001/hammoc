@@ -2,9 +2,8 @@
  * CliModeSettingsPanel - CLI engine mode sub-settings (Epic 33, Story 33.2)
  *
  * Renders the CLI-mode display preferences (thinking summaries / generation progress /
- * synthetic typing) plus a claude binary path override. Self-gated behind the operator
- * billing flag (engineModeToggleEnabled) — identical gate to the engine-mode fieldset in
- * GlobalSettingsSection. When the gate is OFF the whole panel is absent (return null).
+ * synthetic typing) plus a claude binary path override. Always rendered in global settings,
+ * directly below the engine-mode toggle.
  *
  * These selections are persisted only; the CLI engine actually consumes them in Story 33.3
  * (no engine/pool/websocket wiring here — SDK and CLI runtime behaviour stay unchanged).
@@ -29,7 +28,7 @@ const CLI_CHECKBOXES: {
 
 export function CliModeSettingsPanel() {
   const { t } = useTranslation('settings');
-  const { preferences, engineModeToggleEnabled, updatePreference } = usePreferencesStore();
+  const { preferences, updatePreference } = usePreferencesStore();
 
   // Local state for the binary path with a debounced save (mirrors customSystemPrompt
   // in AdvancedSettingsSection — avoid a PATCH per keystroke).
@@ -58,9 +57,6 @@ export function CliModeSettingsPanel() {
     };
   }, []);
 
-  // Self-gating: hidden entirely unless the operator billing gate is ON.
-  if (!engineModeToggleEnabled) return null;
-
   return (
     <fieldset>
       <legend className="text-sm font-medium text-gray-900 dark:text-white mb-1">
@@ -88,6 +84,38 @@ export function CliModeSettingsPanel() {
             </div>
           </label>
         ))}
+
+        {/* Card reveal interval — only relevant while the typing/reveal animation is on */}
+        {(preferences.cliSyntheticTyping ?? false) && (
+          <div className="pl-7">
+            <label
+              htmlFor="cli-card-stagger"
+              className="block text-sm text-gray-900 dark:text-white mb-1"
+            >
+              {t('global.cliCardStaggerMs')}
+            </label>
+            <input
+              id="cli-card-stagger"
+              type="number"
+              min={0}
+              max={5000}
+              step={50}
+              value={preferences.cliCardStaggerMs ?? 500}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n) && n >= 0) {
+                  updatePreference('cliCardStaggerMs', n);
+                }
+              }}
+              className="w-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
+                         bg-white dark:bg-[#263240] text-gray-900 dark:text-white text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+              {t('global.cliCardStaggerMsDesc')}
+            </p>
+          </div>
+        )}
 
         {/* Binary path override — debounced text input */}
         <div>

@@ -19,6 +19,13 @@ export interface ChatServiceConfig {
    * string or `undefined` means auto-detect. The SDK engine ignores this field.
    */
   cliBinaryPath?: string;
+  /**
+   * Epic 33 (CLI mode): when true (default), request Claude's thinking summaries by
+   * injecting `--settings '{"showThinkingSummaries":true}'` into the interactive spawn.
+   * Session-scoped — it never modifies the global ~/.claude/settings.json. The SDK engine
+   * ignores this field (it sets `thinking.display` on the query directly instead).
+   */
+  cliShowThinkingSummaries?: boolean;
 }
 
 /**

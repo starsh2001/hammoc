@@ -1,7 +1,6 @@
 /**
  * CliModeSettingsPanel Tests (Epic 33, Story 33.2)
- * - Billing gate OFF → panel renders nothing (self-gated)
- * - Gate ON → 3 checkboxes + binary path input, reflecting the documented defaults
+ * - Renders 3 checkboxes + binary path input, reflecting the documented defaults
  *   (thinking ON, generation progress ON, synthetic typing OFF, binary path empty)
  * - Each control routes through updatePreference with the expected cli* key
  *
@@ -28,7 +27,6 @@ describe('CliModeSettingsPanel', () => {
     usePreferencesStore.setState({
       preferences: {},
       overrides: [],
-      engineModeToggleEnabled: false,
       loaded: true,
     });
   });
@@ -37,14 +35,7 @@ describe('CliModeSettingsPanel', () => {
     vi.useRealTimers();
   });
 
-  it('TC-1: renders nothing when the billing gate is OFF', () => {
-    const { container } = render(<CliModeSettingsPanel />);
-    expect(container).toBeEmptyDOMElement();
-    expect(screen.queryByText('CLI 모드 설정')).not.toBeInTheDocument();
-  });
-
-  it('TC-2: renders the title, 3 checkboxes and the binary path input when the gate is ON', () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
+  it('TC-1: renders the title, 3 checkboxes and the binary path input', () => {
     render(<CliModeSettingsPanel />);
     expect(screen.getByText('CLI 모드 설정')).toBeInTheDocument();
     expect(screen.getAllByRole('checkbox')).toHaveLength(3);
@@ -52,16 +43,14 @@ describe('CliModeSettingsPanel', () => {
   });
 
   it('TC-3: reflects documented defaults (thinking ON · progress ON · synthetic OFF · binary empty)', () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
     render(<CliModeSettingsPanel />);
     expect(screen.getByRole('checkbox', { name: /thinking 요약 표시/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /생성 진행률 표시/ })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /synthetic typing/ })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /타이핑·카드 연출/ })).not.toBeChecked();
     expect(screen.getByLabelText('claude 바이너리 경로')).toHaveValue('');
   });
 
   it('TC-4: toggling thinking summaries off calls updatePreference(false)', () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
     render(<CliModeSettingsPanel />);
     fireEvent.click(screen.getByRole('checkbox', { name: /thinking 요약 표시/ }));
@@ -69,16 +58,14 @@ describe('CliModeSettingsPanel', () => {
   });
 
   it('TC-5: toggling synthetic typing on calls updatePreference(true)', () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
     render(<CliModeSettingsPanel />);
-    fireEvent.click(screen.getByRole('checkbox', { name: /synthetic typing/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /타이핑·카드 연출/ }));
     expect(updateSpy).toHaveBeenCalledWith('cliSyntheticTyping', true);
   });
 
   it('TC-6: binary path input saves the value after the debounce window', () => {
     vi.useFakeTimers();
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
     render(<CliModeSettingsPanel />);
     const input = screen.getByLabelText('claude 바이너리 경로');
@@ -92,7 +79,6 @@ describe('CliModeSettingsPanel', () => {
   it('TC-7: clearing the binary path saves undefined (auto-detect)', () => {
     vi.useFakeTimers();
     usePreferencesStore.setState({
-      engineModeToggleEnabled: true,
       preferences: { cliBinaryPath: '/opt/homebrew/bin/claude' },
     });
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
@@ -102,5 +88,22 @@ describe('CliModeSettingsPanel', () => {
     fireEvent.change(input, { target: { value: '' } });
     act(() => { vi.advanceTimersByTime(1000); });
     expect(updateSpy).toHaveBeenCalledWith('cliBinaryPath', undefined);
+  });
+
+  it('TC-8: card stagger input appears only when typing/reveal is on, and saves on change', () => {
+    const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
+    render(<CliModeSettingsPanel />);
+    // Hidden while the typing/reveal animation is off (default).
+    expect(screen.queryByLabelText('카드 등장 간격 (ms)')).toBeNull();
+
+    // Turn it on → the interval input appears with the documented default (500).
+    act(() => {
+      usePreferencesStore.setState({ preferences: { cliSyntheticTyping: true } });
+    });
+    const input = screen.getByLabelText('카드 등장 간격 (ms)');
+    expect(input).toHaveValue(500);
+
+    fireEvent.change(input, { target: { value: '800' } });
+    expect(updateSpy).toHaveBeenCalledWith('cliCardStaggerMs', 800);
   });
 });

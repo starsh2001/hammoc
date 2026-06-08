@@ -414,7 +414,9 @@ export function InteractiveResponseCard({
               ? toolInput.command
               : typeof toolInput.file_path === 'string'
                 ? toolInput.file_path
-                : JSON.stringify(toolInput).slice(0, 200)}
+                : typeof toolInput.prompt === 'string'
+                  ? toolInput.prompt
+                  : JSON.stringify(toolInput).slice(0, 200)}
           </p>
         )}
         {type === 'permission' && !isResponded && (

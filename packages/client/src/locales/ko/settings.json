@@ -82,11 +82,13 @@
         "cliSettingsTitle": "CLI 모드 설정",
         "cliSettingsDesc": "CLI 대화 엔진이 활성화됐을 때 적용됩니다.",
         "cliShowThinkingSummaries": "thinking 요약 표시",
-        "cliShowThinkingSummariesDesc": "CLI 엔진이 응답을 생성하는 동안 Claude의 thinking 요약을 표시합니다.",
+        "cliShowThinkingSummariesDesc": "CLI 엔진이 응답을 생성하는 동안 Claude의 thinking 요약을 표시합니다. (세션별로 요청되며, 실제 표시 여부는 Claude 버전/인증 환경에 따라 다를 수 있습니다.)",
         "cliShowGenerationProgress": "생성 진행률 표시",
         "cliShowGenerationProgressDesc": "응답을 생성하는 동안 '↓ N tokens · Ns' 실시간 인디케이터를 표시합니다.",
-        "cliSyntheticTyping": "synthetic typing",
-        "cliSyntheticTypingDesc": "완성된 블록을 도착 시 글자 단위로 연출합니다(순수 미관, 기본 꺼짐).",
+        "cliSyntheticTyping": "타이핑·카드 연출",
+        "cliSyntheticTypingDesc": "텍스트는 글자 단위로 타이핑되고, 그 뒤 도구·사고 카드가 차례로 등장합니다 (CLI 모드 전용, 기본 꺼짐).",
+        "cliCardStaggerMs": "카드 등장 간격 (ms)",
+        "cliCardStaggerMsDesc": "타이핑이 끝난 뒤 도구·사고 카드가 하나씩 등장하는 간격입니다 (기본 500ms).",
         "cliBinaryPath": "claude 바이너리 경로",
         "cliBinaryPathDesc": "claude 실행 파일 경로를 수동으로 지정합니다. 비워 두면 자동 탐지합니다.",
         "cliBinaryPathPlaceholder": "자동 탐지 (비워 두기)"
@@ -174,7 +176,9 @@
         "queueCheckpointing": "큐 러너",
         "queueCheckpointingDesc": "큐 실행 중 파일 스냅샷 저장 (JSONL 파일 크기 증가)",
         "showThinkingBlocks": "Claude의 사고 과정 표시",
-        "showThinkingBlocksDesc": "Opus 4.7 등 최신 모델에서 응답 위에 접힌 'thinking' 블록을 표시합니다. 끄면 첫 응답 토큰이 조금 더 빨리 나옵니다 (비용은 동일)."
+        "showThinkingBlocksDesc": "Opus 4.7 등 최신 모델에서 응답 위에 접힌 'thinking' 블록을 표시합니다. 끄면 첫 응답 토큰이 조금 더 빨리 나옵니다 (비용은 동일).",
+        "cardEntranceAnimation": "카드 등장 애니메이션",
+        "cardEntranceAnimationDesc": "스트리밍 중 메시지·도구 카드가 한꺼번에 나타나지 않고 아래에서 살짝 떠오르며 하나씩 페이드인합니다. 두 엔진 모두 적용 (미관용, 기본 켜짐)."
     },
     "confirm": {
         "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",

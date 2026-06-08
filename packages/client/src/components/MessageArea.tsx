@@ -18,6 +18,7 @@ import { TaskNotificationCard } from './TaskNotificationCard';
 import { getContextUsagePercent } from '@hammoc/shared';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, isTaskNotificationSegment, isToolSummarySegment, isResultErrorSegment, useChatStore } from '../stores/chatStore';
+import { usePreferencesStore } from '../stores/preferencesStore';
 import { debugLogger } from '../utils/debugLogger';
 import { scrollElementIntoContainer } from '../utils/scrollUtils';
 import { ScrollProvider } from '../contexts/ScrollContext';
@@ -446,10 +447,35 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
 
   // Story 32.7: transient CLI generation progress ("↓ N tokens · Ns"). Additive next
   // to the streaming indicators below — null in SDK mode (real token streaming), so the
-  // indicators keep their existing text unchanged.
+  // indicators keep their existing text unchanged. Its presence is the CLI-mode signal
+  // (the SDK engine never emits it) and also switches the spinner to the braille variant.
   const generationProgress = useChatStore((s) => s.generationProgress);
+
+  // Card entrance animation (Advanced toggle, default ON): streaming cards bubble in
+  // (fade + slide up) one by one as they mount, instead of popping in all at once.
+  // Applies to BOTH engines, streaming segments only — history/reload is left static.
+  const cardEntranceAnimation = usePreferencesStore((s) => s.preferences.cardEntranceAnimation ?? true);
+
+  // Elapsed seconds measured CLIENT-SIDE from the stream's start — deliberately NOT the
+  // seconds scraped off claude's spinner (generationProgress.elapsedSeconds). The scraped
+  // value freezes whenever the token count stalls and reads 0 on counter-only frames; a 1s
+  // wall-clock tick off streamingStartedAt advances smoothly regardless of the CLI parse.
+  const streamingStartedAt = useChatStore((s) => s.streamingStartedAt);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    if (!isStreaming || !streamingStartedAt) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const startMs = streamingStartedAt.getTime();
+    const tick = () => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    tick(); // paint the correct value immediately (start may already be in the past on resume)
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [isStreaming, streamingStartedAt]);
+
   const generationProgressLabel = generationProgress
-    ? t('streaming.generationProgress', { tokens: generationProgress.tokens, seconds: generationProgress.elapsedSeconds })
+    ? t('streaming.generationProgress', { tokens: generationProgress.tokens, seconds: elapsedSeconds })
     : null;
 
   // Show compaction hint when waiting too long with high context usage
@@ -532,6 +558,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
 
         {/* Streaming segments - rendered in order (hidden after pending permission, hidden during restore) */}
         {!isRestoringStream && shouldRenderSegments && visibleSegments.map((seg, index) => {
+          const el: ReactNode = (() => {
           if (isThinkingSegment(seg)) {
             // Thinking is still streaming only if it's the last segment and overall streaming is active
             const isThinkingStillStreaming = isStreaming && isLastSegmentIndex(index);
@@ -688,6 +715,13 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           }
 
           return null;
+          })();
+          if (el == null) return null;
+          // Bubble each streaming card in as it mounts. A new segment mounts fresh → the
+          // animation plays once; an existing segment keeps the same wrapper key, so its
+          // text can keep growing without replaying. Toggle off → original static render.
+          if (!cardEntranceAnimation) return el;
+          return <div key={`seg-anim-${index}`} className="animate-fadeInUp">{el}</div>;
         })}
 
         {/* Last result error (persisted after streaming completes) */}
@@ -751,7 +785,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <StreamingIndicator />
+                <StreamingIndicator variant={generationProgress ? 'braille' : 'default'} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.generating')}</span>
                 {generationProgressLabel && (
                   <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums">{generationProgressLabel}</span>
@@ -766,7 +800,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <StreamingIndicator />
+                <StreamingIndicator variant={generationProgress ? 'braille' : 'default'} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">
                   {isForking ? t('streaming.forking') : t('streaming.waiting')}
                   {!isForking && showCompactionHint && (

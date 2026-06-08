@@ -31,15 +31,22 @@ export interface UserPreferences {
   /** Stores the actual last-used mode when permissionMode is 'latest' */
   lastPermissionMode?: PermissionMode;
   // Conversation engine (Epic 33). 'sdk' (default) | 'cli'. Fallback = DEFAULT_ENGINE_MODE.
-  // Only consumed when the operator billing gate (ENGINE_MODE_TOGGLE_ENABLED) is ON;
-  // otherwise the effective engine is forced to 'sdk' regardless of this value.
+  // Precedence: per-project override > this global > default (computeEffectiveEngineMode).
   engineMode?: EngineMode;
   // CLI engine mode sub-settings (Epic 33.2). Stored globally; consumed by the CLI
-  // engine only when the billing gate is ON and CLI mode is selected (Story 33.3).
+  // engine only when CLI mode is the effective engine (Story 33.3).
   cliShowThinkingSummaries?: boolean;   // surface claude thinking summaries (default ON)
   cliShowGenerationProgress?: boolean;  // show the "↓ N tokens · Ns" indicator (default ON)
-  cliSyntheticTyping?: boolean;         // client-side per-block typewriter animation (default OFF)
+  // Master toggle for the CLI-mode "reveal" animation. When ON: assistant text types out
+  // char-by-char, then non-text cards (thinking/tool/system) enter one-by-one with a stagger
+  // gap, instead of the whole turn appearing at once. CLI mode only; SDK mode and
+  // history/replay are unaffected. Default OFF. (Client-side only — the engine never reads it.)
+  cliSyntheticTyping?: boolean;
   cliBinaryPath?: string;               // manual claude binary path override ('' = auto-detect)
+  // Delay in ms between non-text card entrances during the CLI reveal animation (above).
+  // Each thinking/tool/system card waits this long after the previous segment finishes
+  // before bubbling in. Text typing is continuous (not gated by this). Default 500.
+  cliCardStaggerMs?: number;
   commandFavorites?: Array<string | CommandFavoriteEntry>;
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default
@@ -59,6 +66,10 @@ export interface UserPreferences {
   // false → `display: 'omitted'` — thinking is skipped from the stream, faster time-to-first-text
   // Opus 4.7 API default is 'omitted'; Hammoc defaults this to true so ThinkingBlock stays visible.
   showThinkingBlocks?: boolean;
+  // Card entrance animation: streaming message/tool cards fade + slide up as they appear
+  // (a per-card "bubble in" effect) instead of popping in all at once. Applies to BOTH
+  // engines, streaming segments only (not history/reload). Default ON; toggle in Advanced.
+  cardEntranceAnimation?: boolean;
   // i18n settings (Epic 22)
   language?: SupportedLanguage;     // User's preferred language
   // Permission sync policy across browsers
@@ -101,9 +112,6 @@ export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defa
 /** API response type — includes server-only metadata */
 export interface PreferencesApiResponse extends UserPreferences {
   _overrides?: string[]; // fields overridden by environment variables
-  // Epic 33 — operator billing gate (ENGINE_MODE_TOGGLE_ENABLED). Server-only metadata,
-  // not persisted. false/absent → client hides the engine-mode toggle (default SDK only).
-  _engineModeToggleEnabled?: boolean;
 }
 
 /** Telegram notification settings stored in preferences */

@@ -81,11 +81,13 @@
         "cliSettingsTitle": "CLIモード設定",
         "cliSettingsDesc": "CLI会話エンジンが有効なときに適用されます。",
         "cliShowThinkingSummaries": "思考サマリーを表示",
-        "cliShowThinkingSummariesDesc": "CLIエンジンが応答を生成している間、Claudeの思考サマリーを表示します。",
+        "cliShowThinkingSummariesDesc": "CLIエンジンが応答を生成している間、Claudeの思考サマリーを表示します。(セッションごとに要求されます。実際に表示されるかは Claude のバージョン/認証環境によって異なる場合があります。)",
         "cliShowGenerationProgress": "生成の進捗を表示",
         "cliShowGenerationProgressDesc": "応答の生成中に「↓ N tokens · Ns」のリアルタイムインジケーターを表示します。",
-        "cliSyntheticTyping": "擬似タイピング",
-        "cliSyntheticTypingDesc": "完成したブロックを到着時に1文字ずつ演出します（純粋な装飾。デフォルトはオフ）。",
+        "cliSyntheticTyping": "タイピング・カード演出",
+        "cliSyntheticTypingDesc": "テキストを1文字ずつ表示し、その後ツール・思考カードが順番に現れます（CLIモードのみ。デフォルトはオフ）。",
+        "cliCardStaggerMs": "カード表示間隔 (ms)",
+        "cliCardStaggerMsDesc": "タイピング完了後、ツール・思考カードが1つずつ現れる間隔です（デフォルト500ms）。",
         "cliBinaryPath": "claudeバイナリのパス",
         "cliBinaryPathDesc": "claude実行ファイルのパスを手動で指定します。空欄の場合は自動検出します。",
         "cliBinaryPathPlaceholder": "自動検出（空欄）"
@@ -173,7 +175,9 @@
         "queueCheckpointing": "キューランナー",
         "queueCheckpointingDesc": "キュー実行中にファイルスナップショットを保存（JSONLファイルサイズが増加します）",
         "showThinkingBlocks": "Claudeの思考プロセスを表示",
-        "showThinkingBlocksDesc": "Opus 4.7などの最新モデルで応答上部に折りたたまれた「thinking」ブロックを表示します。オフにすると最初の応答トークンが少し早く届きます（コストは変わりません）。"
+        "showThinkingBlocksDesc": "Opus 4.7などの最新モデルで応答上部に折りたたまれた「thinking」ブロックを表示します。オフにすると最初の応答トークンが少し早く届きます（コストは変わりません）。",
+        "cardEntranceAnimation": "カード登場アニメーション",
+        "cardEntranceAnimationDesc": "ストリーミング中、メッセージやツールのカードが一度に表示されるのではなく、下からふわっと1枚ずつフェードインします。両エンジンに適用（装飾用・既定でオン）。"
     },
     "confirm": {
         "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",

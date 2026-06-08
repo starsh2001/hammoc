@@ -17,7 +17,9 @@ import i18n from '../i18n';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
+import { usePreferencesStore } from '../stores/preferencesStore';
 import { debugLog } from '../utils/debugLogger';
+import { createPresentationQueue } from '../utils/presentationQueue';
 
 // Module-scoped cache: SDK returns filesChanged=0 for actual rewind,
 // so we remember the count from the preceding dryRun for the success toast.
@@ -90,6 +92,19 @@ export function useStreaming() {
     let frameBuffer = '';
     let frameRequestId: number | null = null;
 
+    // --- Synthetic typing (CLI mode, opt-in `cliSyntheticTyping`) ---
+    // CLI mode delivers assistant text one COMPLETED block at a time, so the frame
+    // coalescing below paints each block in a single shot (no typewriter feel). When the
+    // user opts in AND the effective engine is CLI, route chunks through a typewriter queue
+    // instead. SDK mode (real token streaming) and the toggle-off path stay untouched.
+    const isSyntheticTyping = (): boolean => {
+      const prefs = usePreferencesStore.getState().preferences;
+      if (!(prefs.cliSyntheticTyping ?? false)) return false;
+      const mode = useChatStore.getState().projectSettings?.engineModeOverride ?? prefs.engineMode ?? 'sdk';
+      return mode === 'cli';
+    };
+    const preso = createPresentationQueue({ append: appendStreamingContent });
+
     const flushFrameBuffer = () => {
       frameRequestId = null;
       if (frameBuffer.length > 0) {
@@ -101,6 +116,12 @@ export function useStreaming() {
 
     /** Enqueue text content for coalesced rendering (one state update per frame) */
     const enqueueChunk = (content: string) => {
+      // CLI synthetic typing: release this block character-by-character. SDK mode (and CLI
+      // with the toggle off) uses the original per-frame coalescing path below.
+      if (isSyntheticTyping()) {
+        preso.enqueueText(content);
+        return;
+      }
       frameBuffer += content;
       if (frameRequestId === null) {
         frameRequestId = requestAnimationFrame(flushFrameBuffer);
@@ -118,6 +139,10 @@ export function useStreaming() {
         frameBuffer = '';
         appendStreamingContent(text);
       }
+      // Commit any in-flight synthetic-typing text too, so a following thinking/tool/
+      // permission segment is ordered AFTER the typed text. In synthetic mode the segment
+      // handlers route through the presentation queue directly, so this is a safety net.
+      preso.flush();
     };
 
     /** Discard all pending text (for abort/error) */
@@ -126,6 +151,35 @@ export function useStreaming() {
       if (frameRequestId !== null) {
         cancelAnimationFrame(frameRequestId);
         frameRequestId = null;
+      }
+      preso.clear();
+    };
+
+    /** Card-entrance gap (ms) for the CLI reveal animation; default 500, clamped to >= 0. */
+    const staggerMs = (): number => {
+      const v = usePreferencesStore.getState().preferences.cliCardStaggerMs;
+      return typeof v === 'number' && v >= 0 ? v : 500;
+    };
+    /**
+     * Reveal-animation helpers (CLI synthetic typing). In synthetic mode, mutations to the
+     * streaming segment list go through the presentation queue so arrival order == reveal
+     * order: a NEW card bubbles in `cliCardStaggerMs` after the prior step finishes; an UPDATE
+     * lands in order with no gap. Outside synthetic mode they run immediately (buffered text is
+     * flushed first to keep segment ordering, exactly as before).
+     */
+    const revealSegment = (mutate: () => void, delayMs = staggerMs()) => {
+      if (isSyntheticTyping()) {
+        preso.enqueueReveal(mutate, delayMs);
+      } else {
+        flushChunkQueue();
+        mutate();
+      }
+    };
+    const updateSegment = (mutate: () => void) => {
+      if (isSyntheticTyping()) {
+        preso.enqueueReveal(mutate, 0);
+      } else {
+        mutate();
       }
     };
 
@@ -169,9 +223,9 @@ export function useStreaming() {
       if (state.isCompacting) {
         useChatStore.setState({ isCompacting: false });
       }
-      // Flush pending text before thinking segment to maintain correct ordering
-      flushChunkQueue();
-      addStreamingThinking(data.content);
+      // Reveal the thinking card: staggered after prior text/cards in synthetic mode,
+      // flush-then-insert immediately otherwise.
+      revealSegment(() => addStreamingThinking(data.content));
     };
 
     // Handle incoming stream chunks
@@ -256,8 +310,12 @@ export function useStreaming() {
 
     // Handle stream completion
     const handleComplete = async (data: Message) => {
-      // Flush any buffered chunks before completing
-      flushChunkQueue();
+      // Flush any buffered chunks before completing. With synthetic typing, the real
+      // completion + typer drain happens in stream:complete-messages — flushing here would
+      // cut the last block short, so skip it (frameBuffer is empty in synthetic mode).
+      if (!isSyntheticTyping()) {
+        flushChunkQueue();
+      }
 
       // Update streamingSessionId with the actual sessionId from result
       // (SDK doesn't send 'init' message, so sessionId only comes in 'result')
@@ -342,17 +400,15 @@ export function useStreaming() {
         return;
       }
 
-      // Flush pending text BEFORE inserting tool segment to prevent message splitting.
-      // Without this, buffered text would drain after the tool segment and create a
-      // new text segment (visually splitting the assistant's response).
-      flushChunkQueue();
-
-      addStreamingToolCall({
+      // Reveal the tool card. Synthetic mode: queue it so it bubbles in AFTER the assistant
+      // text finishes typing (staggered). Otherwise: flush buffered text first to prevent the
+      // response from splitting, then insert immediately (original behavior).
+      revealSegment(() => addStreamingToolCall({
         id: data.id,
         name: data.name,
         input: data.input,
         startedAt: data.startedAt,
-      });
+      }));
     };
 
     // Handle permission:request event — add interactive segment for permission or question (Story 7.1)
@@ -405,6 +461,20 @@ export function useStreaming() {
           });
           return;
         }
+      }
+
+      // CLI engine path: no tool:call was emitted, so there is no tool segment to attach
+      // to. Render the permission as an INDEPENDENT card — the same mechanism
+      // AskUserQuestion already uses. SDK mode leaves `standalone` falsy and keeps the
+      // tool-attached behavior below.
+      if (data.standalone) {
+        addInteractiveSegment({
+          id: data.id,
+          interactionType: 'permission',
+          toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
+          choices: [],
+        });
+        return;
       }
 
       // Update tool input with enriched data from permission request
@@ -465,39 +535,40 @@ export function useStreaming() {
 
     // Handle tool input update (for real-time file path display)
     const handleToolInputUpdate = (data: { toolCallId: string; input: Record<string, unknown> }) => {
-      updateStreamingToolCallInput(data.toolCallId, data.input);
+      updateSegment(() => updateStreamingToolCallInput(data.toolCallId, data.input));
     };
 
     // Handle tool result - update tool segment status
     const handleToolResult = (data: { toolCallId: string; result: ToolResult }) => {
-      const { success, output, error } = data.result;
-      updateStreamingToolCall(data.toolCallId, output ?? error ?? '', !success);
+      updateSegment(() => {
+        const { success, output, error } = data.result;
+        updateStreamingToolCall(data.toolCallId, output ?? error ?? '', !success);
 
-      // Auto-resolve interactive segments (e.g., AskUserQuestion) associated
-      // with this tool call. During reconnect replay, tool:result arrives for
-      // questions that were already answered — mark them as responded.
-      const segments = useChatStore.getState().streamingSegments;
-      const staleIdx = segments.findIndex(
-        (s) => s.type === 'interactive' && s.status === 'waiting' &&
-               s.toolCall?.id === data.toolCallId
-      );
-      if (staleIdx !== -1) {
-        const updated = [...segments];
-        const seg = updated[staleIdx];
-        if (seg.type === 'interactive') {
-          updated[staleIdx] = {
-            ...seg,
-            status: 'responded' as InteractiveStatus,
-            response: i18n.t('notification:streaming.respondedBeforeReconnect'),
-          };
-          useChatStore.setState({ streamingSegments: updated });
+        // Auto-resolve interactive segments (e.g., AskUserQuestion) associated
+        // with this tool call. During reconnect replay, tool:result arrives for
+        // questions that were already answered — mark them as responded.
+        const segments = useChatStore.getState().streamingSegments;
+        const staleIdx = segments.findIndex(
+          (s) => s.type === 'interactive' && s.status === 'waiting' &&
+                 s.toolCall?.id === data.toolCallId
+        );
+        if (staleIdx !== -1) {
+          const updated = [...segments];
+          const seg = updated[staleIdx];
+          if (seg.type === 'interactive') {
+            updated[staleIdx] = {
+              ...seg,
+              status: 'responded' as InteractiveStatus,
+              response: i18n.t('notification:streaming.respondedBeforeReconnect'),
+            };
+            useChatStore.setState({ streamingSegments: updated });
+          }
         }
-      }
+      });
     };
 
     // Handle context compaction notification
     const handleCompact = (data: CompactMetadata) => {
-      flushChunkQueue();
       // Story 27.1: cooldown guard removed — messages arrive via WebSocket only
       // Update context usage with actual pre-compact token count from SDK
       // This is the real context size when compact was triggered (more accurate than stale assistant:usage)
@@ -515,12 +586,12 @@ export function useStreaming() {
         });
       }
       useChatStore.setState({ isCompacting: true });
-      addSystemSegment(`Context compaction (${data.trigger})...`, 'compact');
+      revealSegment(() => addSystemSegment(`Context compaction (${data.trigger})...`, 'compact'));
     };
 
     // Handle tool:progress — update elapsed time on existing tool segment
     const handleToolProgress = (data: { toolUseId: string; elapsedTimeSeconds: number; toolName: string }) => {
-      updateToolProgress(data.toolUseId, data.elapsedTimeSeconds);
+      updateSegment(() => updateToolProgress(data.toolUseId, data.elapsedTimeSeconds));
     };
 
     // Story 32.7: handle generation:progress — store the transient CLI "↓ N tokens · Ns"
@@ -532,20 +603,17 @@ export function useStreaming() {
 
     // Handle system:task-notification — add task notification segment
     const handleTaskNotification = (data: TaskNotificationData) => {
-      flushChunkQueue();
-      addTaskNotification(data);
+      revealSegment(() => addTaskNotification(data));
     };
 
     // Handle tool:summary — add tool summary segment
     const handleToolSummary = (data: { summary: string; precedingToolUseIds: string[] }) => {
-      flushChunkQueue();
-      addToolSummary(data.summary, data.precedingToolUseIds);
+      revealSegment(() => addToolSummary(data.summary, data.precedingToolUseIds));
     };
 
     // Handle result:error — add result error segment before completion
     const handleResultError = (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => {
-      flushChunkQueue();
-      addResultError(data);
+      revealSegment(() => addResultError(data));
     };
 
     // Handle session:created / session:resumed — earliest streaming signal from server.
@@ -1112,6 +1180,16 @@ export function useStreaming() {
                 break;
               }
             }
+            // CLI engine path (see handlePermissionRequest): render as an independent
+            // permission card on buffer replay too.
+            if (d.standalone) {
+              segments.push({
+                type: 'interactive', id: d.id, interactionType: 'permission',
+                toolCall: { id: d.toolCall.id, name: d.toolCall.name, input: d.toolCall.input },
+                choices: [], status: 'waiting',
+              });
+              break;
+            }
             // Default: attach permission to existing tool segment
             if (d.toolCall.input) {
               const found = findToolSegment(d.toolCall.id);
@@ -1401,7 +1479,7 @@ export function useStreaming() {
     // Replaces messages with confirmed data, processes usage, and ends streaming state.
     // Abort is treated the same as normal completion — messages are replaced with
     // confirmed data and a cancellation message card is appended.
-    const handleStreamCompleteMessages = (data: { sessionId: string; messages: HistoryMessage[]; usage?: ChatUsage; aborted?: boolean }) => {
+    const handleStreamCompleteMessages = async (data: { sessionId: string; messages: HistoryMessage[]; usage?: ChatUsage; aborted?: boolean }) => {
       debugLog.stream('stream:complete-messages received', {
         sessionId: data.sessionId,
         messageCount: data.messages.length,
@@ -1444,6 +1522,12 @@ export function useStreaming() {
         // the next frame) fires after completeStreaming() and re-populates segments
         // via appendStreamingContent, creating an orphaned segment that renders as
         // a duplicate message bubble.
+        // Synthetic typing: let the queued text finish at typing speed before swapping in
+        // the authoritative messages (so the effect isn't cut off). Aborted streams skip
+        // the wait; drain() resolves instantly when nothing is queued.
+        if (!data.aborted && isSyntheticTyping()) {
+          await preso.drain();
+        }
         clearChunkQueue();
         useMessageStore.getState().setMessages(messages);
         completeStreaming();

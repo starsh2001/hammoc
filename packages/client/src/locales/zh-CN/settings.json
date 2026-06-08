@@ -81,11 +81,13 @@
         "cliSettingsTitle": "CLI 模式设置",
         "cliSettingsDesc": "在 CLI 对话引擎启用时生效。",
         "cliShowThinkingSummaries": "显示思考摘要",
-        "cliShowThinkingSummariesDesc": "在 CLI 引擎生成响应时显示 Claude 的思考摘要。",
+        "cliShowThinkingSummariesDesc": "在 CLI 引擎生成响应时显示 Claude 的思考摘要。（按会话请求；是否真正显示取决于你的 Claude 版本/认证环境。）",
         "cliShowGenerationProgress": "显示生成进度",
         "cliShowGenerationProgressDesc": "在生成响应时显示实时的“↓ N tokens · Ns”指示器。",
-        "cliSyntheticTyping": "模拟打字",
-        "cliSyntheticTypingDesc": "在已完成的内容块到达时逐字呈现（纯装饰效果，默认关闭）。",
+        "cliSyntheticTyping": "打字与卡片动画",
+        "cliSyntheticTypingDesc": "文本逐字打出，随后工具/思考卡片依次浮现（仅 CLI 模式，默认关闭）。",
+        "cliCardStaggerMs": "卡片出现间隔 (ms)",
+        "cliCardStaggerMsDesc": "打字完成后，工具/思考卡片逐个出现的间隔（默认 500 毫秒）。",
         "cliBinaryPath": "claude 可执行文件路径",
         "cliBinaryPathDesc": "手动指定 claude 可执行文件的路径。留空则自动检测。",
         "cliBinaryPathPlaceholder": "自动检测（留空）"
@@ -173,7 +175,9 @@
         "queueCheckpointing": "队列执行器",
         "queueCheckpointingDesc": "在队列执行期间保存文件快照（会增加 JSONL 文件大小）",
         "showThinkingBlocks": "显示 Claude 的思考过程",
-        "showThinkingBlocksDesc": "在 Opus 4.7 等最新模型的响应上方显示折叠的“thinking”块。关闭后首个响应 token 会略快到达（费用不变）。"
+        "showThinkingBlocksDesc": "在 Opus 4.7 等最新模型的响应上方显示折叠的“thinking”块。关闭后首个响应 token 会略快到达（费用不变）。",
+        "cardEntranceAnimation": "卡片入场动画",
+        "cardEntranceAnimationDesc": "流式输出时，消息和工具卡片逐个从下方淡入上浮，而不是一次性全部弹出。两种引擎均适用（装饰性，默认开启）。"
     },
     "confirm": {
         "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",

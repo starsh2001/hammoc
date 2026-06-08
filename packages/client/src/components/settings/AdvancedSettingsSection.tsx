@@ -542,6 +542,25 @@ export function AdvancedSettingsSection() {
         </label>
       </div>
 
+      {/* Card entrance animation: streaming cards bubble in one by one (both engines) */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={preferences.cardEntranceAnimation ?? true}
+            onChange={(e) => {
+              updatePreference('cardEntranceAnimation', e.target.checked);
+              toast.success(t('toast.settingChanged', { label: t('advanced.cardEntranceAnimation') }));
+            }}
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+          />
+          <div>
+            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.cardEntranceAnimation')}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.cardEntranceAnimationDesc')}</p>
+          </div>
+        </label>
+      </div>
+
       {/* Default Thinking Effort — moved to GlobalSettingsSection */}
     </div>
   );
