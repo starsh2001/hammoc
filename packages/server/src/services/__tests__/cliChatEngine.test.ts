@@ -259,24 +259,35 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
-    it('injects --settings showThinkingSummaries by default (thinking summaries ON)', async () => {
+    it('injects --settings with a background-block PreToolUse hook + thinking summaries by default', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
       await wait(30);
       const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
       const i = (spawnArg.args as string[]).indexOf('--settings');
       expect(i).toBeGreaterThanOrEqual(0);
-      expect((spawnArg.args as string[])[i + 1]).toBe(JSON.stringify({ showThinkingSummaries: true }));
+      const settings = JSON.parse((spawnArg.args as string[])[i + 1]);
+      // Story 36.1: the background-block command hook is ALWAYS injected
+      expect(settings.hooks.PreToolUse[0].matcher).toBe('Bash');
+      expect(settings.hooks.PreToolUse[0].hooks[0].type).toBe('command');
+      expect(settings.hooks.PreToolUse[0].hooks[0].command).toContain('block-background.cjs');
+      // thinking summaries ON by default
+      expect(settings.showThinkingSummaries).toBe(true);
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;
     });
 
-    it('omits --settings when cliShowThinkingSummaries is false', async () => {
+    it('keeps the background-block hook but omits showThinkingSummaries when cliShowThinkingSummaries is false', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj', cliShowThinkingSummaries: false });
       const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
       await wait(30);
       const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
-      expect(spawnArg.args).not.toContain('--settings');
+      const i = (spawnArg.args as string[]).indexOf('--settings');
+      expect(i).toBeGreaterThanOrEqual(0);
+      const settings = JSON.parse((spawnArg.args as string[])[i + 1]);
+      // background-block hook still present (always-on), only thinking is gated off
+      expect(settings.hooks.PreToolUse[0].hooks[0].command).toContain('block-background.cjs');
+      expect(settings.showThinkingSummaries).toBeUndefined();
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;
     });

@@ -78,6 +78,7 @@ import type {
 } from '@hammoc/shared';
 import { resolveEffectiveModel, sanitizeToolResultContent } from '@hammoc/shared';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import { watch, type FSWatcher } from 'fs';
 import { sessionService } from './sessionService.js';
@@ -124,6 +125,23 @@ function appendAttachmentInstruction(content: string, paths?: string[]): string 
  * the project's sessions directory does not exist yet (brand-new project).
  */
 const POLL_MS = 60;
+
+/**
+ * Path to the bundled CLI PreToolUse command-hook script (Story 36.1 — background
+ * block). Resolves to packages/server/resources/hooks/block-background.cjs in both
+ * dev (src) and prod (dist) — resources/ ships via npm `files` (same pattern as
+ * manualSyncService). Forward-slashed so the `node "..."` command is shell-safe.
+ */
+const BACKGROUND_HOOK_SCRIPT = path
+  .resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'resources',
+    'hooks',
+    'block-background.cjs'
+  )
+  .replace(/\\/g, '/');
 
 /**
  * Prompt-injection timing (all empirically tuned against claude v2.1.162 — verified
@@ -592,14 +610,29 @@ export class CliChatEngine implements ChatEngine {
     for (const dir of uniqueAttachmentDirs(options.attachedImagePaths)) {
       args.push('--add-dir', dir);
     }
-    // Surface thinking summaries (default ON). Injected as a SESSION-SCOPED `--settings`
-    // JSON so the global ~/.claude/settings.json is never modified. Opus 4.7+ omit
-    // summaries unless asked; this requests them. `showThinkingSummaries` governs whether
-    // the harness asks the API to send summaries (then renders what comes back). Effect
-    // under subscription auth must be confirmed in a real CLI-mode chat (see field doc).
+    // Session-scoped `--settings` JSON (the global ~/.claude/settings.json is never
+    // modified). Two things ride on it:
+    //  - Story 36.1: a PreToolUse command hook that denies background Bash
+    //    (run_in_background) — ALWAYS injected, since turn-per-process makes a
+    //    backgrounded task doomed. The deny bypasses canUseTool, so it also blocks
+    //    auto-approved calls (mirrors the SDK engine's inline hook in chatService).
+    //  - thinking summaries (default ON): Opus 4.7+ omit summaries unless asked; this
+    //    requests them. Effect under subscription auth must be confirmed in a real
+    //    CLI-mode chat (see field doc).
+    const settingsObj: Record<string, unknown> = {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [{ type: 'command', command: `node "${BACKGROUND_HOOK_SCRIPT}"` }],
+          },
+        ],
+      },
+    };
     if (this.cliShowThinkingSummaries) {
-      args.push('--settings', JSON.stringify({ showThinkingSummaries: true }));
+      settingsObj.showThinkingSummaries = true;
     }
+    args.push('--settings', JSON.stringify(settingsObj));
 
     // Pin this turn's session file by id whenever the id is known up front. The file
     // name is deterministic — claude writes `<id>.jsonl` for BOTH `--resume <id>` and

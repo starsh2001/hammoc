@@ -18,6 +18,7 @@ import { SessionService } from './sessionService.js';
 import { rewindSessionFiles } from './fileRewind.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
+import { isBlockedBackgroundCall, BACKGROUND_BLOCK_REASON } from '../utils/backgroundBlock.js';
 
 const log = createLogger('chatService');
 
@@ -253,6 +254,32 @@ export class ChatService implements ChatEngine {
       forkSession: options.forkSession,
       enableFileCheckpointing: options.enableFileCheckpointing,
       canUseTool,
+      // Story 36.1: block background tool execution (run_in_background) before it
+      // reaches the shell. A PreToolUse deny bypasses canUseTool, so this also
+      // covers auto-approved (bypass/auto) calls that canUseTool never sees.
+      hooks: {
+        PreToolUse: [
+          {
+            hooks: [
+              async (input) => {
+                if (
+                  input.hook_event_name === 'PreToolUse' &&
+                  isBlockedBackgroundCall(input.tool_name, input.tool_input)
+                ) {
+                  return {
+                    hookSpecificOutput: {
+                      hookEventName: 'PreToolUse' as const,
+                      permissionDecision: 'deny' as const,
+                      permissionDecisionReason: BACKGROUND_BLOCK_REASON,
+                    },
+                  };
+                }
+                return { continue: true };
+              },
+            ],
+          },
+        ],
+      },
       // Capture CLI stderr for debugging process exit errors
       stderr: (data: string) => {
         log.error(`CLI stderr: ${data.trimEnd()}`);
