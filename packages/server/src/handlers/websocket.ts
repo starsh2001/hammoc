@@ -2574,11 +2574,11 @@ async function handleChatSend(
   try {
     // Load preferences early for advanced settings + timeout
     const effectivePrefs = await preferencesService.getEffectivePreferences();
-    // Story 33.3: resolve the effective engine mode (billing gate OFF → always 'sdk').
+    // Story 33.3: resolve the effective engine mode (override > global > 'sdk' default).
     // Captured once into a local so the progress-callback gating below reuses the same
     // decision (no second resolve, and `engineMode === 'cli'` stays consistent).
     const engineMode = await projectService.getEffectiveEngineMode(workingDirectory);
-    const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath });
+    const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath, cliShowThinkingSummaries: effectivePrefs.cliShowThinkingSummaries });
     stream.chatService = chatService;
 
     const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
