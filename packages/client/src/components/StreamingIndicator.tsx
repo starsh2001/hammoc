@@ -8,18 +8,58 @@
  * - Dark/light mode support
  */
 
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+/**
+ * Braille spinner frames — a uniform 12-frame rotation. The stock cli-spinners "dots" set is 10
+ * frames but jumps by two dots at two of its steps, which reads as a skipped/blank frame when
+ * cycled quickly; filling the two missing transition glyphs (⠛, ⠶) makes every step move by
+ * exactly one dot so it rotates smoothly. A single rotating glyph reads as a
+ * clear, distinct motion — chosen over the dot-opacity pulse for CLI generation, where the
+ * spinner sits beside the "↓ N tokens · Ns" counter and a more legible "working" cue is wanted.
+ * The glyph is cycled in JS because an animated character cannot be expressed as a CSS keyframe;
+ * the interval self-gates on variant + visibility so it only runs while actually on screen.
+ */
+const BRAILLE_FRAMES = ['⠋', '⠛', '⠙', '⠹', '⠸', '⠼', '⠴', '⠶', '⠦', '⠧', '⠇', '⠏'] as const;
+const BRAILLE_INTERVAL_MS = 80;
 
 interface StreamingIndicatorProps {
   /** Whether the indicator is visible */
   visible?: boolean;
-  /** Visual variant: default (gray pulse), compact (amber bounce) */
-  variant?: 'default' | 'compact';
+  /** Visual variant: default (gray pulse), compact (amber bounce), braille (rotating glyph — CLI) */
+  variant?: 'default' | 'compact' | 'braille';
 }
 
 export function StreamingIndicator({ visible = true, variant = 'default' }: StreamingIndicatorProps) {
   const { t } = useTranslation('chat');
+
+  // Hooks must run unconditionally (before any early return), so the braille frame timer
+  // self-gates on variant + visible rather than being conditionally created.
+  const isBraille = variant === 'braille';
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    if (!isBraille || !visible) return;
+    const id = setInterval(() => {
+      setFrame((f) => (f + 1) % BRAILLE_FRAMES.length);
+    }, BRAILLE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [isBraille, visible]);
+
   if (!visible) return null;
+
+  if (isBraille) {
+    return (
+      <span
+        className="inline-flex items-center font-mono text-base leading-none text-gray-500 dark:text-gray-300"
+        aria-live="polite"
+        aria-label={t('streaming.ariaLabel')}
+      >
+        <span className="sr-only">{t('streaming.srText')}</span>
+        <span aria-hidden="true">{BRAILLE_FRAMES[frame]}</span>
+      </span>
+    );
+  }
 
   const isCompact = variant === 'compact';
   const colorClass = isCompact
