@@ -30,6 +30,15 @@ Anything else is rejected at attach time.
 - The chat message references each image via the API URL `/api/projects/<projectSlug>/sessions/<sessionId>/images/<filename>`. That URL is for the **browser** to render thumbnails — it is not a file-system path and Read tools cannot use it directly.
 - To open the file from disk, build the absolute path under `<homeDir>/.claude/projects/...` using the rules above, then call Read with that path.
 
+## Delivery to the model (SDK vs CLI engine)
+
+The on-disk location above is identical for both conversation engines, but how the bytes reach the model differs:
+
+- **SDK engine** — The image is embedded inline in the request as a base64 content block. The model receives it as a vision input directly; no file read occurs.
+- **CLI engine** — The interactive CLI channel carries only text, so the image is referenced **by path** instead. Right after storing, Hammoc grants the model read access to the session image directory (`<homeDir>/.claude/projects/<encoded-project-path>/images/<sessionId>`) via the CLI `--add-dir` flag, then appends an instruction to the prompt telling the model to open the listed absolute path(s) with its Read tool. The grant is scoped to exactly that one image directory (which sits outside the project cwd), and reading an `--add-dir`'d image this way does not raise a permission prompt.
+
+For an agent: in CLI mode an attached image arrives as a literal "use your Read tool to open this file" instruction carrying an absolute path under `.claude/projects/.../images/...` — that path resolves with the rules above.
+
 ## Lifecycle
 
 - Images are written the moment the user sends a message with attachments.

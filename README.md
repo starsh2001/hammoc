@@ -160,16 +160,17 @@ Real-time conversations with Claude through a rich web UI.
 
 ### Model & Permission Control
 
-- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants (including Opus 4.8 and Sonnet 4.6 with 1M context) with model name displayed on the button
+- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants with the model name on the button, plus a **1M context** toggle (auto-on for Opus, opt-in for Sonnet)
 - **Thinking effort** — Adjust reasoning intensity (Low / Medium / High, plus Max on 4.6 models and XHigh on Opus 4.7 / 4.8)
 - **Permission modes** — Plan, Ask (default), Auto, or Bypass
+- **Conversation engine** — Run chats through the Claude Agent SDK (API credits) or the Claude Code CLI (subscription billing), switchable globally or per-project
 - **Per-project overrides** — Different settings per project
 
 ### Project Management
 
 - **Project list** — Browse all projects with session counts and last activity
 - **Project dashboard** — Real-time status: active chats, queue runners, terminals
-- **Project creation** — Create new projects with optional BMad Method initialization
+- **Project creation** — Create new projects with a visual directory picker (Browse) and optional BMad Method initialization
 - **Per-project Settings tab** — Each project carries its own Settings tab (model, permission, budget) plus the Harness Workbench (see below). No more switching to the global Settings page and picking a project from a dropdown
 - **Hide/unhide projects** — Keep the list clean
 

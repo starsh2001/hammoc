@@ -26,11 +26,21 @@ Each card has a **kebab menu** (⋮) with:
 ### 5.2 Creating a New Project
 
 1. Click **"New Project"** on the project list page
-2. Enter the project directory path
+2. Enter the project directory path, or click **Browse** to pick a folder visually (see below)
 3. The path is validated automatically with a short debounce while you type (`"Validating path..."` helper text is shown). Blurring the field validates immediately
 4. Path collision detection — if the path already belongs to an existing project, an amber warning appears with a **"Navigate to existing"** link and the **Create** button is disabled until you pick a different path
 5. Invalid paths show the server's validation message in red below the input, and also disable **Create**
 6. Optionally enable BMad Method initialization with version selection
+
+**Browse for a directory** — Instead of typing the path, click **Browse** to open a visual directory picker:
+
+- It opens expanded at your home directory. Click **My PC** to jump up to the drive roots (Windows) or filesystem root, then drill back down
+- A breadcrumb across the top shows your current location; click any segment to jump straight to that level
+- The folder tree lazy-loads subfolders as you expand them — only folders are shown, never files
+- Create a folder in place with **New folder**, or rename one with **Rename** (there is no delete here, by design)
+- Click **Select this path** to drop the highlighted folder into the path field. Browsing only fills the input; the normal validation and **Create** step still apply
+
+This is most useful on mobile or tablet, where typing a long absolute path by hand is awkward.
 
 ### 5.3 Project Settings
 
@@ -45,6 +55,7 @@ The Settings tab has a two-pane layout:
 
 - **Default model** — Override the global model selection
 - **Permission mode** — Override the global permission mode (Plan, Ask before edits, Edit automatically). Note: Bypass permissions is not available at project level
+- **Conversation engine** — Override which engine this project runs on: **Use Global default**, **SDK**, or **CLI** (see §13.16). When set to anything other than Global default, a "Project override" badge appears next to the field. The effective engine is resolved as project override → global setting → SDK
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
 

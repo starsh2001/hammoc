@@ -187,6 +187,7 @@ Attach images to your messages for Claude to analyze:
 - Maximum: 5 images per message, 10MB per image
 - Images preview in the input area before sending
 - Sent images display as clickable thumbnails above the message text. Clicking a thumbnail opens the full image viewer with multi-image navigation (see §6.4)
+- Image attachments work with both conversation engines (SDK and CLI). With the CLI engine the image is passed to Claude by file reference instead of being embedded inline, but you attach it exactly the same way — the model still sees it
 
 ### 2.5 Tool Call Visualization
 
@@ -299,6 +300,13 @@ When Claude uses extended thinking, the reasoning is shown in a collapsible bloc
 ### 2.15 Model Selector
 
 The model selector button is located in the chat input toolbar. It displays the current model family name (e.g., "Opus", "Sonnet", "Haiku") directly on the button. When using the default model, it shows "Default". Click to open a dropdown for choosing a different model and adjusting thinking effort.
+
+**1M context window** — For models that support a 1-million-token context window (Opus 4.8, Sonnet 4.6), a **"1M context"** toggle appears near the top of the dropdown:
+
+- **Opus** — Locked on. The 1M window is included with your Max subscription at no extra cost, so it is always engaged and cannot be switched off (the toggle shows "Included with Max").
+- **Sonnet** (and other non-Opus 1M-capable models) — Off by default. Sonnet's 1M window bills to usage credits rather than your subscription, so you opt in explicitly. The toggle shows a "Requires usage credits" hint that turns amber once enabled. Left off, Sonnet runs at the standard 200K context window.
+
+The toggle only appears for 1M-capable models; every other model uses its native context window and shows no toggle.
 
 ### 2.16 Thinking Effort
 
@@ -648,11 +656,21 @@ Each card has a **kebab menu** (⋮) with:
 ### 5.2 Creating a New Project
 
 1. Click **"New Project"** on the project list page
-2. Enter the project directory path
+2. Enter the project directory path, or click **Browse** to pick a folder visually (see below)
 3. The path is validated automatically with a short debounce while you type (`"Validating path..."` helper text is shown). Blurring the field validates immediately
 4. Path collision detection — if the path already belongs to an existing project, an amber warning appears with a **"Navigate to existing"** link and the **Create** button is disabled until you pick a different path
 5. Invalid paths show the server's validation message in red below the input, and also disable **Create**
 6. Optionally enable BMad Method initialization with version selection
+
+**Browse for a directory** — Instead of typing the path, click **Browse** to open a visual directory picker:
+
+- It opens expanded at your home directory. Click **My PC** to jump up to the drive roots (Windows) or filesystem root, then drill back down
+- A breadcrumb across the top shows your current location; click any segment to jump straight to that level
+- The folder tree lazy-loads subfolders as you expand them — only folders are shown, never files
+- Create a folder in place with **New folder**, or rename one with **Rename** (there is no delete here, by design)
+- Click **Select this path** to drop the highlighted folder into the path field. Browsing only fills the input; the normal validation and **Create** step still apply
+
+This is most useful on mobile or tablet, where typing a long absolute path by hand is awkward.
 
 ### 5.3 Project Settings
 
@@ -667,6 +685,7 @@ The Settings tab has a two-pane layout:
 
 - **Default model** — Override the global model selection
 - **Permission mode** — Override the global permission mode (Plan, Ask before edits, Edit automatically). Note: Bypass permissions is not available at project level
+- **Conversation engine** — Override which engine this project runs on: **Use Global default**, **SDK**, or **CLI** (see §13.16). When set to anything other than Global default, a "Project override" badge appears next to the field. The effective engine is resolved as project override → global setting → SDK
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
 
@@ -1844,6 +1863,8 @@ Choose the default Claude model:
 - Haiku 3.5
 - Opus 3, Sonnet 3, Haiku 3
 
+> **1M context window**: Opus 4.8 always runs with its 1M window (included with Max). Sonnet 4.6's 1M window is **opt-in** and bills to usage credits — enable it per session with the "1M context" toggle in the model selector (see §2.15). Left off, Sonnet uses a 200K window.
+
 Can be overridden per-project (see §5.3).
 
 ### 13.4 Default Permission Mode
@@ -1997,13 +2018,11 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 > The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install. The `{gitStatus}` block is no longer baked into the default — re-add it via this editor if you want it pre-included.
 
-### 13.16 Conversation Engine (Operator-Gated)
-
-> **Visible only when your operator enables it.** This setting sits behind an administrative switch. If you don't see a "Conversation Engine" choice in Global settings, your deployment uses the standard engine and nothing in this section applies to you.
+### 13.16 Conversation Engine
 
 Hammoc can run conversations through one of two engines:
 
-- **SDK** (default) — The Claude Agent SDK. Responses stream token-by-token as they're generated. This is the standard engine and behaves identically whether or not the toggle is exposed.
+- **SDK** (default) — The Claude Agent SDK. Responses stream token-by-token as they're generated. This is the standard engine.
 - **CLI** — Routes your conversation through the Claude Code command-line tool instead. Its main draw is billing: it draws on your Claude **subscription** rather than separate API credits.
 
 **Trade-offs of CLI mode:**
@@ -2011,15 +2030,19 @@ Hammoc can run conversations through one of two engines:
 | | SDK | CLI |
 |---|---|---|
 | Billing | API credits | Subscription pool |
-| Response rendering | Token-by-token streaming | **Block-by-block** — each completed block appears at once (no per-character typing) |
+| Response rendering | Token-by-token streaming | **Block-by-block** — each completed block appears at once. An optional "synthetic typing" effect can re-animate each block character-by-character (see CLI Mode Settings below) |
 | Progress feedback | Live token stream | Optional "↓ N tokens · Ns" counter while generating |
 
 Your conversation history is identical either way — both engines write the same session files, so a chat created in CLI mode reloads and renders exactly like an SDK chat, and you can switch engines between sessions without losing or garbling history. The engine is chosen per session at the moment you send; there is no live mid-conversation switch.
 
-**CLI Mode Settings** appear alongside the toggle when it's enabled, and apply only while the CLI engine is active:
+Everything interactive works the same in CLI mode as in SDK mode: live tool-call cards, permission prompts, `AskUserQuestion` selection cards, extended thinking, image attachments (see §2.4), and code rewind all behave identically. One subtle difference: in CLI mode a permission prompt appears as its own standalone card rather than attached to the tool card that triggered it.
 
-- **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path you enter is invalid, Hammoc logs a warning and falls back to auto-detect rather than failing the turn.
+**CLI Mode Settings** appear alongside the toggle, and apply only while the CLI engine is active:
+
+- **Show thinking summaries** — Surface Claude's thinking summaries while the CLI engine generates a response (default on). It is requested per session and never edits your global Claude config; whether summaries actually appear can also depend on your Claude version and authentication.
 - **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
+- **Synthetic typing** — Re-animate each completed block character-by-character as it arrives, mimicking the SDK's token-by-token feel. Purely cosmetic; off by default.
+- **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path you enter is invalid, Hammoc logs a warning and falls back to auto-detect rather than failing the turn.
 
 ### 13.17 Advanced Settings
 
@@ -2038,6 +2061,9 @@ Your conversation history is identical either way — both engines write the sam
 - **Max Budget (USD)** — Set cost limit per query ($0.01–$100)
 
 > **Scope (as of v1.3.0)**: these SDK parameters now apply to **both** direct chat sends and Queue Runner executions. Earlier releases silently dropped them in the queue path — if your queue runs started honoring Max Turns or Max Thinking Tokens after upgrading, this is why. Adjust the values if the new behavior surprises you.
+
+**Display:**
+- **Card entrance animation** — While a response streams, each message and tool card fades and slides up one at a time as it appears, instead of the whole batch popping in at once. Applies to both engines and affects live streaming only (reloaded history renders statically). Purely cosmetic; on by default.
 
 ### 13.18 Help
 

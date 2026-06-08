@@ -45,6 +45,8 @@ Choose the default Claude model:
 - Haiku 3.5
 - Opus 3, Sonnet 3, Haiku 3
 
+> **1M context window**: Opus 4.8 always runs with its 1M window (included with Max). Sonnet 4.6's 1M window is **opt-in** and bills to usage credits — enable it per session with the "1M context" toggle in the model selector (see §2.15). Left off, Sonnet uses a 200K window.
+
 Can be overridden per-project (see §5.3).
 
 ### 13.4 Default Permission Mode
@@ -100,7 +102,7 @@ How long to wait for Claude's response:
 - 10 minutes
 - 30 minutes
 
-The timeout resets on every activity. If overridden by an environment variable, the field is disabled with an amber warning.
+The timeout resets on every activity, and it only guards Claude's own generation. Waiting for **your** input — approving a permission prompt or answering an `AskUserQuestion` selection — pauses the timer, so those prompts never time out; step away and respond whenever you're back. If overridden by an environment variable, the field is disabled with an amber warning.
 
 ### 13.10 Default Thinking Effort
 
@@ -198,7 +200,33 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 > The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install. The `{gitStatus}` block is no longer baked into the default — re-add it via this editor if you want it pre-included.
 
-### 13.16 Advanced Settings
+### 13.16 Conversation Engine
+
+Hammoc can run conversations through one of two engines:
+
+- **SDK** (default) — The Claude Agent SDK. Responses stream token-by-token as they're generated. This is the standard engine.
+- **CLI** — Routes your conversation through the Claude Code command-line tool instead. Its main draw is billing: it draws on your Claude **subscription** rather than separate API credits.
+
+**Trade-offs of CLI mode:**
+
+| | SDK | CLI |
+|---|---|---|
+| Billing | API credits | Subscription pool |
+| Response rendering | Token-by-token streaming | **Block-by-block** — each completed block appears at once. An optional "synthetic typing" effect can re-animate each block character-by-character (see CLI Mode Settings below) |
+| Progress feedback | Live token stream | Optional "↓ N tokens · Ns" counter while generating |
+
+Your conversation history is identical either way — both engines write the same session files, so a chat created in CLI mode reloads and renders exactly like an SDK chat, and you can switch engines between sessions without losing or garbling history. The engine is chosen per session at the moment you send; there is no live mid-conversation switch.
+
+Everything interactive works the same in CLI mode as in SDK mode: live tool-call cards, permission prompts, `AskUserQuestion` selection cards, extended thinking, image attachments (see §2.4), and code rewind all behave identically. One subtle difference: in CLI mode a permission prompt appears as its own standalone card rather than attached to the tool card that triggered it.
+
+**CLI Mode Settings** appear alongside the toggle, and apply only while the CLI engine is active:
+
+- **Show thinking summaries** — Surface Claude's thinking summaries while the CLI engine generates a response (default on). It is requested per session and never edits your global Claude config; whether summaries actually appear can also depend on your Claude version and authentication.
+- **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
+- **Synthetic typing** — Re-animate each completed block character-by-character as it arrives, mimicking the SDK's token-by-token feel. Purely cosmetic; off by default.
+- **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path you enter is invalid, Hammoc logs a warning and falls back to auto-detect rather than failing the turn.
+
+### 13.17 Advanced Settings
 
 **Server Management (mode-dependent):**
 
@@ -216,7 +244,10 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 > **Scope (as of v1.3.0)**: these SDK parameters now apply to **both** direct chat sends and Queue Runner executions. Earlier releases silently dropped them in the queue path — if your queue runs started honoring Max Turns or Max Thinking Tokens after upgrading, this is why. Adjust the values if the new behavior surprises you.
 
-### 13.17 Help
+**Display:**
+- **Card entrance animation** — While a response streams, each message and tool card fades and slides up one at a time as it appears, instead of the whole batch popping in at once. Applies to both engines and affects live streaming only (reloaded history renders statically). Purely cosmetic; on by default.
+
+### 13.18 Help
 
 In-app usage guide within the Settings page:
 
@@ -226,7 +257,7 @@ In-app usage guide within the Settings page:
 - **BMad Method** — Quick guide to the BMad workflow
 - **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
 
-### 13.18 About
+### 13.19 About
 
 Displays app information:
 

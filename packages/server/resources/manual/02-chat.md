@@ -56,6 +56,7 @@ Attach images to your messages for Claude to analyze:
 - Maximum: 5 images per message, 10MB per image
 - Images preview in the input area before sending
 - Sent images display as clickable thumbnails above the message text. Clicking a thumbnail opens the full image viewer with multi-image navigation (see §6.4)
+- Image attachments work with both conversation engines (SDK and CLI). With the CLI engine the image is passed to Claude by file reference instead of being embedded inline, but you attach it exactly the same way — the model still sees it
 
 ### 2.5 Tool Call Visualization
 
@@ -169,6 +170,13 @@ When Claude uses extended thinking, the reasoning is shown in a collapsible bloc
 
 The model selector button is located in the chat input toolbar. It displays the current model family name (e.g., "Opus", "Sonnet", "Haiku") directly on the button. When using the default model, it shows "Default". Click to open a dropdown for choosing a different model and adjusting thinking effort.
 
+**1M context window** — For models that support a 1-million-token context window (Opus 4.8, Sonnet 4.6), a **"1M context"** toggle appears near the top of the dropdown:
+
+- **Opus** — Locked on. The 1M window is included with your Max subscription at no extra cost, so it is always engaged and cannot be switched off (the toggle shows "Included with Max").
+- **Sonnet** (and other non-Opus 1M-capable models) — Off by default. Sonnet's 1M window bills to usage credits rather than your subscription, so you opt in explicitly. The toggle shows a "Requires usage credits" hint that turns amber once enabled. Left off, Sonnet runs at the standard 200K context window.
+
+The toggle only appears for 1M-capable models; every other model uses its native context window and shows no toggle.
+
 ### 2.16 Thinking Effort
 
 Control how much Claude "thinks" before responding. The intensity bar appears inside the model selector dropdown. The number of bars depends on the selected model:
@@ -274,7 +282,7 @@ Browse all conversation branches in a read-only mode:
 
 ### 2.24 Max Budget Warning Banner
 
-When the **Max Budget (USD)** advanced setting (see §13.16) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
+When the **Max Budget (USD)** advanced setting (see §13.17) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
 
 - **Yellow warning** (80% threshold) — "Budget warning: $X.XXXX / $Y.YYYY used (ZZ%) — approaching Max Budget limit."
 - **Red critical warning** (95% threshold) — "Budget critical: $X.XXXX / $Y.YYYY used (ZZ%) — stream will auto-stop when limit is exceeded."
