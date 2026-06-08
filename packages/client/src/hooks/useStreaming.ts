@@ -601,6 +601,12 @@ export function useStreaming() {
       useChatStore.getState().setGenerationProgress(data);
     };
 
+    // Story 36.2: handle cli:phase — store the transient CLI boot/inject phase
+    // (launching/submitting/waiting/null). Live-only, same lifecycle as generation:progress.
+    const handleCliPhase = (data: { phase: 'launching' | 'submitting' | 'waiting' | null }) => {
+      useChatStore.getState().setCliPhase(data.phase);
+    };
+
     // Handle system:task-notification — add task notification segment
     const handleTaskNotification = (data: TaskNotificationData) => {
       revealSegment(() => addTaskNotification(data));
@@ -1317,6 +1323,7 @@ export function useStreaming() {
           }
           // Skip tool:progress during replay (only elapsed times, final state is in tool:result)
           // Skip generation:progress during replay (Story 32.7 — transient live-only counter)
+          // Skip cli:phase during replay (Story 36.2 — transient live-only phase, no case → default skip)
           // Skip permission:already-resolved (no toast during replay)
           default:
             break;
@@ -1432,6 +1439,7 @@ export function useStreaming() {
     socket.on('system:compact', handleCompact);
     socket.on('tool:progress', handleToolProgress);
     socket.on('generation:progress', handleGenerationProgress);
+    socket.on('cli:phase', handleCliPhase);
     socket.on('system:task-notification', handleTaskNotification);
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
@@ -1643,6 +1651,7 @@ export function useStreaming() {
       socket.off('system:compact', handleCompact);
       socket.off('tool:progress', handleToolProgress);
       socket.off('generation:progress', handleGenerationProgress);
+      socket.off('cli:phase', handleCliPhase);
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);

@@ -2759,11 +2759,17 @@ async function handleChatSend(
     const onGenerationProgress = (progress: { tokens: number; elapsedSeconds: number }) => {
       emit('generation:progress', progress);
     };
+    // Story 36.2: CLI pre-generation phase (launching/submitting/waiting/null). Same
+    // transient/live-only semantics and the SAME gating as the progress counter below.
+    const onPhase = (phase: 'launching' | 'submitting' | 'waiting' | null) => {
+      emit('cli:phase', { phase });
+    };
     // Story 33.3: gate the progress counter on CLI mode + the user's preference (default
     // ON, Story 33.2). In SDK mode the engine ignores the callback anyway; passing
     // `undefined` makes the gate explicit so the 'cli' + pref-OFF case emits nothing.
     const cliProgress = shouldForwardCliProgress(engineMode, effectivePrefs.cliShowGenerationProgress);
     const generationProgressCb = cliProgress ? onGenerationProgress : undefined;
+    const cliPhaseCb = cliProgress ? onPhase : undefined;
 
     // Build shared callbacks (common logic for browser & queue paths)
     const { callbacks, sessionIdRef } = buildStreamCallbacks(
@@ -2907,7 +2913,7 @@ async function handleChatSend(
     try {
       const sendResult = await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
-      }, generationProgressCb);
+      }, generationProgressCb, cliPhaseCb);
       // SDK may return "No conversation found" as an error result (not a thrown exception).
       // Convert to a thrown error so the retry logic below can handle it.
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
@@ -2944,13 +2950,13 @@ async function handleChatSend(
         // Run /compact to shrink context (preserves session file)
         await chatService.sendMessageWithCallbacks('/compact', callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`compact:${messageType}`);
-        }, generationProgressCb);
+        }, generationProgressCb, cliPhaseCb);
         // Retry the original message after compaction
         log.info(`[AUTO-COMPACT] compaction done, retrying original message: sessionId=${sessionId}`);
         resetTimeout('auto-compact-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`retry:${messageType}`);
-        }, generationProgressCb);
+        }, generationProgressCb, cliPhaseCb);
       // Resume failed for other unknown reasons — retry without resume (fresh session).
       // Guards:
       //  1. Only when resuming (not a fresh session send)
@@ -2988,7 +2994,7 @@ async function handleChatSend(
         resetTimeout('resume-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, retryOptions, canUseTool, (messageType: string) => {
           resetTimeout(`raw:${messageType}`);
-        }, generationProgressCb);
+        }, generationProgressCb, cliPhaseCb);
       } else {
         // Not retrying — flush gated error events before re-throwing
         ungateCallbacks();

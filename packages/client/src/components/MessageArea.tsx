@@ -451,6 +451,11 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   // (the SDK engine never emits it) and also switches the spinner to the braille variant.
   const generationProgress = useChatStore((s) => s.generationProgress);
 
+  // Story 36.2: CLI pre-generation phase (launching/submitting/waiting); null in SDK mode
+  // and once the first block arrives. Drives the waiting-indicator label + braille spinner
+  // so the ~3s boot/inject window reads as "working" instead of a frozen spinner.
+  const cliPhase = useChatStore((s) => s.cliPhase);
+
   // Card entrance animation (Advanced toggle, default ON): streaming cards bubble in
   // (fade + slide up) one by one as they mount, instead of popping in all at once.
   // Applies to BOTH engines, streaming segments only — history/reload is left static.
@@ -477,6 +482,9 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   const generationProgressLabel = generationProgress
     ? t('streaming.generationProgress', { tokens: generationProgress.tokens, seconds: elapsedSeconds })
     : null;
+
+  // Story 36.2: localized phase label, shown in the waiting indicator before the first block.
+  const cliPhaseLabel = cliPhase ? t(`streaming.cliPhase.${cliPhase}`) : null;
 
   // Show compaction hint when waiting too long with high context usage
   const isWaitingWithNoContent = isStreaming && !isCompacting && !isRestoringStream && streamingSegments.length === 0;
@@ -785,7 +793,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <StreamingIndicator variant={generationProgress ? 'braille' : 'default'} />
+                <StreamingIndicator variant={generationProgress || cliPhase ? 'braille' : 'default'} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.generating')}</span>
                 {generationProgressLabel && (
                   <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums">{generationProgressLabel}</span>
@@ -800,10 +808,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <StreamingIndicator variant={generationProgress ? 'braille' : 'default'} />
+                <StreamingIndicator variant={generationProgress || cliPhase ? 'braille' : 'default'} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">
-                  {isForking ? t('streaming.forking') : t('streaming.waiting')}
-                  {!isForking && showCompactionHint && (
+                  {cliPhaseLabel ?? (isForking ? t('streaming.forking') : t('streaming.waiting'))}
+                  {!isForking && !cliPhaseLabel && showCompactionHint && (
                     <span className="text-amber-600 dark:text-amber-400"> ({t('streaming.compactionHint')})</span>
                   )}
                 </span>

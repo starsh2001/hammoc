@@ -293,7 +293,12 @@
     "generating": "Generando...",
     "restoring": "Restaurando conversación...",
     "compactionHint": "es posible que se esté compactando el contexto",
-    "generationProgress": "↓ {{tokens}} tokens · {{seconds}} s"
+    "generationProgress": "↓ {{tokens}} tokens · {{seconds}} s",
+    "cliPhase": {
+      "launching": "Iniciando Claude Code…",
+      "submitting": "Enviando prompt…",
+      "waiting": "Esperando respuesta…"
+    }
   },
   "markdown": {
     "openFile": "Abrir archivo: {{href}}"

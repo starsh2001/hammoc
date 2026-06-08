@@ -543,7 +543,8 @@ describe('WebSocket Handler', () => {
         expect.any(Object),
         expect.any(Function),
         expect.any(Function),
-        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined // onPhase gated off in SDK mode (Story 36.2)
       );
     });
 
@@ -577,7 +578,8 @@ describe('WebSocket Handler', () => {
         expect.objectContaining({ resume: 'resume-session-id', abortController: expect.any(AbortController) }),
         expect.any(Function),
         expect.any(Function),
-        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined // onPhase gated off in SDK mode (Story 36.2)
       );
     });
 
@@ -615,7 +617,8 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined // onPhase gated off in SDK mode (Story 36.2)
       );
     });
 
@@ -653,7 +656,8 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined // onPhase gated off in SDK mode (Story 36.2)
       );
     });
 
@@ -684,7 +688,8 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined // onPhase gated off in SDK mode (Story 36.2)
       );
     });
   });
@@ -920,7 +925,8 @@ describe('WebSocket Handler', () => {
         }),
         expect.any(Function),
         expect.any(Function),
-        undefined // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
+        undefined // onPhase gated off in SDK mode (Story 36.2)
       );
     });
 

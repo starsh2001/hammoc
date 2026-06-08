@@ -412,6 +412,47 @@ describe('useStreaming', () => {
     });
   });
 
+  describe('cli:phase event (Story 36.2 — transient CLI boot/inject phase)', () => {
+    it('stores the phase on a live cli:phase event', () => {
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('cli:phase', { phase: 'launching' });
+
+      expect(useChatStore.getState().cliPhase).toBe('launching');
+    });
+
+    it('clears the phase on a null cli:phase event (hand-off to generation:progress)', () => {
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('cli:phase', { phase: 'waiting' });
+      expect(useChatStore.getState().cliPhase).toBe('waiting');
+
+      mockSocket.trigger('cli:phase', { phase: null });
+      expect(useChatStore.getState().cliPhase).toBeNull();
+    });
+
+    it('registers and cleans up the cli:phase listener', () => {
+      const { unmount } = renderHook(() => useStreaming());
+
+      expect(mockSocket.on).toHaveBeenCalledWith('cli:phase', expect.any(Function));
+
+      unmount();
+
+      expect(mockSocket.off).toHaveBeenCalledWith('cli:phase', expect.any(Function));
+    });
+
+    it('skips cli:phase during buffer replay (transient, live-only)', () => {
+      renderHook(() => useStreaming());
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [{ event: 'cli:phase', data: { phase: 'launching' } }],
+      });
+
+      expect(useChatStore.getState().cliPhase).toBeNull();
+    });
+  });
+
   describe('cleanup', () => {
     it('removes event listeners on unmount', () => {
       const { unmount } = renderHook(() => useStreaming());

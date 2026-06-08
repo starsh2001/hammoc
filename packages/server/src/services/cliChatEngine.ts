@@ -560,6 +560,9 @@ export class CliChatEngine implements ChatEngine {
    * an input-wait alive — Story 35.1 pauses that timer for the whole input-wait.
    * `onGenerationProgress` (Story 32.7) is the transient "↓ N tokens · Ns" signal
    * parsed from the same spinner frames — emitted on value change (see `emitProgress`).
+   * `onPhase` (Story 36.2) reports the pre-generation boot/inject phase
+   * (launching → submitting → waiting → null) so the UI shows "working" through the ~3s
+   * before the first block instead of a frozen spinner; null hands off to onGenerationProgress.
    */
   async sendMessageWithCallbacks(
     content: string,
@@ -568,6 +571,7 @@ export class CliChatEngine implements ChatEngine {
     canUseTool?: CanUseTool,
     onRawMessage?: (messageType: string) => void,
     onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
+    onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
   ): Promise<ChatResponse> {
     const cwd = this.workingDirectory;
     if (!cwd) {
@@ -675,6 +679,10 @@ export class CliChatEngine implements ChatEngine {
     }
 
     const { handle, pty } = cliSessionPool.spawnClaude({ cwd, args, binaryPathOverride: this.cliBinaryPath });
+    // Story 36.2: report the pre-generation phase so the UI shows progress through the
+    // ~3s boot/inject window instead of a frozen spinner. launching → (❯ seen) submitting
+    // → (Enter sent) waiting → (first block) null, handing off to onGenerationProgress.
+    onPhase?.('launching');
 
     return new Promise<ChatResponse>((resolve, reject) => {
       let settled = false;
@@ -720,6 +728,14 @@ export class CliChatEngine implements ChatEngine {
       // Generation-progress state (Story 32.7 — post-injection only).
       let progressBuffer = ''; // rolling stripped PTY output, scanned for the spinner counter
       let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
+      // Story 36.2: the phase indicator ends once generation actually starts (first
+      // progress counter). Idempotent — only the first call emits the null hand-off.
+      let phaseCleared = false;
+      const clearPhase = () => {
+        if (phaseCleared) return;
+        phaseCleared = true;
+        onPhase?.(null);
+      };
 
       const teardown = () => {
         if (pollTimer) {
@@ -807,6 +823,7 @@ export class CliChatEngine implements ChatEngine {
       const injectPrompt = () => {
         if (injected || settled) return;
         injected = true;
+        onPhase?.('submitting'); // ❯ seen — typing the prompt now
         bootBuffer = ''; // done with readiness detection — release it
         if (bootSettleTimer) {
           clearTimeout(bootSettleTimer);
@@ -823,6 +840,7 @@ export class CliChatEngine implements ChatEngine {
             if (settled) return;
             try {
               pty.write('\r');
+              onPhase?.('waiting'); // prompt submitted — awaiting the first response block
             } catch (err) {
               fail(err instanceof Error ? err : new Error(String(err)));
             }
@@ -988,6 +1006,7 @@ export class CliChatEngine implements ChatEngine {
         const tokens = parseInt(last[2].replace(/,/g, ''), 10);
         if (!Number.isFinite(tokens) || tokens === lastProgressTokens) return; // change-only throttle
         lastProgressTokens = tokens;
+        clearPhase(); // spinner counter appeared → generation started; end the phase indicator
         const elapsedSeconds = last[1] ? parseInt(last[1], 10) : 0;
         onGenerationProgress({ tokens, elapsedSeconds });
       };

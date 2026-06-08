@@ -312,6 +312,34 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
+    it('emits boot/inject phases launching → submitting → waiting, then null once generation starts (Story 36.2)', async () => {
+      const phases: (string | null)[] = [];
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'hi',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+        vi.fn(), // onGenerationProgress present so emitProgress runs and clears the phase
+        (p) => phases.push(p), // onPhase
+      );
+      await wait(20);
+      expect(phases[0]).toBe('launching'); // emitted right after spawn
+      // boot render with the ❯ marker → injection (submitting), then a SEPARATE Enter (waiting)
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ Try "fix typecheck"');
+      await vi.waitFor(() => expect(phases).toContain('submitting'), { timeout: 2000 });
+      await vi.waitFor(() => expect(phases).toContain('waiting'), { timeout: 3000 });
+      // a spinner counter frame → generation started → phase ends (null hand-off to progress)
+      h.fakePty._onData?.('✻ Working… (1s · ↓ 42 tokens)');
+      await vi.waitFor(() => expect(phases).toContain(null), { timeout: 2000 });
+      expect(phases.indexOf('launching')).toBeLessThan(phases.indexOf('submitting'));
+      expect(phases.indexOf('submitting')).toBeLessThan(phases.indexOf('waiting'));
+      expect(phases.indexOf('waiting')).toBeLessThan(phases.indexOf(null));
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
     it('accumulates multiple text blocks into the final content', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onTextChunk = vi.fn();

@@ -142,6 +142,9 @@ export interface ServerToClientEvents {
   // Story 32.7: CLI-engine generation progress — transient "↓ N tokens · Ns" signal
   // parsed from the claude TUI spinner (live-only; skipped on buffer replay).
   'generation:progress': (data: { tokens: number; elapsedSeconds: number }) => void;
+  // Story 36.2: CLI-engine pre-generation phase (boot/inject window). Transient,
+  // live-only (skipped on buffer replay); a null phase hands off to generation:progress.
+  'cli:phase': (data: { phase: 'launching' | 'submitting' | 'waiting' | null }) => void;
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;

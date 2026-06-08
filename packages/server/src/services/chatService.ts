@@ -474,7 +474,9 @@ export class ChatService implements ChatEngine {
      * tokens, so a derived "↓ N tokens" counter adds nothing (regression-0). `_`-prefixed
      * so eslint no-unused-vars stays clean.
      */
-    _onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void
+    _onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
+    /** Story 36.2: CLI phase callback — accepted for the ChatEngine interface, UNUSED in SDK mode. */
+    _onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void
   ): Promise<ChatResponse> {
     const streamHandler = new StreamHandler(effectiveModelIs1M(options.model));
     const generator = this.sendMessage(content, options, canUseTool);

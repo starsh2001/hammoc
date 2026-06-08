@@ -43,7 +43,13 @@ export interface ChatEngine {
     options?: ChatOptions,
     canUseTool?: CanUseTool,
     onRawMessage?: (messageType: string) => void,
-    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void
+    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
+    /**
+     * Story 36.2: CLI pre-generation phase (launching → submitting → waiting → null).
+     * Server-side, `@hammoc/shared`-independent (mirrors onGenerationProgress). CLI-only;
+     * the SDK engine ignores it (token streaming has no boot/inject gap).
+     */
+    onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void
   ): Promise<ChatResponse>;
 
   /** Update the permission mode mid-conversation (propagates to the live query). */

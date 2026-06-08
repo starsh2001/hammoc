@@ -172,6 +172,11 @@ interface ChatState {
    * progress signal is active (SDK mode never sets it).
    */
   generationProgress: { tokens: number; elapsedSeconds: number } | null;
+  /**
+   * Story 36.2: CLI pre-generation phase (boot/inject window). Live-only, cleared
+   * alongside generationProgress; null when no phase is active (SDK mode never sets it).
+   */
+  cliPhase: 'launching' | 'submitting' | 'waiting' | null;
   /** Current permission mode for Agent SDK */
   permissionMode: PermissionMode;
   /** Current context usage data from last SDK response */
@@ -333,6 +338,8 @@ interface ChatActions {
   setIsRewinding: (isRewinding: boolean) => void;
   /** Story 32.7: set/clear the transient CLI generation-progress signal (null clears) */
   setGenerationProgress: (progress: { tokens: number; elapsedSeconds: number } | null) => void;
+  /** Story 36.2: set/clear the CLI pre-generation phase (null = phase done / hand off to progress) */
+  setCliPhase: (phase: 'launching' | 'submitting' | 'waiting' | null) => void;
   /** Set last dryRun result for confirmation dialog */
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => void;
   /** Clear last dryRun result (dialog close/cancel) */
@@ -367,6 +374,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingSegments: [],
   streamingStartedAt: null,
   generationProgress: null,
+  cliPhase: null,
   lastResultError: null,
   selectedModel: '',
   // Seed from cached preferences so a fresh chatStore (page reload, first mount) immediately
@@ -531,6 +539,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: new Date(),
       generationProgress: null,
+      cliPhase: null,
       lastResultError: null,
     });
   },
@@ -674,6 +683,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: null,
       generationProgress: null,
+      cliPhase: null,
       streamCompleteCount: get().streamCompleteCount + 1,
     });
   },
@@ -699,6 +709,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: null,
       generationProgress: null,
+      cliPhase: null,
     });
   },
 
@@ -1032,6 +1043,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setIsRewinding: (isRewinding: boolean) => set({ isRewinding }),
 
   setGenerationProgress: (progress) => set({ generationProgress: progress }),
+
+  setCliPhase: (phase) => set({ cliPhase: phase }),
 
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => set({ lastDryRunResult: result }),
 
