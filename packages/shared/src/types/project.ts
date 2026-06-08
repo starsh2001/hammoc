@@ -36,7 +36,7 @@ export interface ProjectSettings {
   modelOverride?: string;
   /** undefined = use global */
   permissionModeOverride?: PermissionMode;
-  /** undefined = use global (Epic 33 — only effective when the billing gate is ON) */
+  /** undefined = use the global engine preference (Epic 33) */
   engineModeOverride?: EngineMode;
   /** Custom board column configuration */
   boardConfig?: BoardConfig;
@@ -65,7 +65,7 @@ export interface ProjectSettingsApiResponse extends ProjectSettings {
   effectiveModel: string;
   /** Effective permission mode after merging with global preferences */
   effectivePermissionMode: PermissionMode;
-  /** Effective engine mode after merging with global preferences + billing gate (Epic 33) */
+  /** Effective engine mode after merging project override with the global preference (Epic 33) */
   effectiveEngineMode: EngineMode;
   /** Which fields have project-level overrides (for UI indicator) */
   _overrides: string[];

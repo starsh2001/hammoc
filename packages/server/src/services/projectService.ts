@@ -37,21 +37,16 @@ const BMAD_RESOURCES_DIR = path.join(SERVER_PACKAGE_ROOT, 'resources', 'bmad-met
 /**
  * Pure resolver for the effective conversation engine mode (Epic 33 SSoT).
  *
- * The billing gate is authoritative: when the toggle is OFF, the effective mode is
- * forced to `DEFAULT_ENGINE_MODE` ('sdk') regardless of any persisted 'cli' selection
- * — so rolling CLI mode back is a flag flip with no code change. When ON, a project
- * override wins over the global preference, which wins over the default.
+ * A project override wins over the global preference, which wins over the default.
  *
  * Extracted from the inline expression so both the settings API response
  * (`_buildEffectiveResponse`) and the engine-side resolver (`getEffectiveEngineMode`)
- * consume one expression and can never drift — the gate logic has a single home.
+ * consume one expression and can never drift — the precedence logic has a single home.
  */
 function computeEffectiveEngineMode(
   override: EngineMode | undefined,
   globalEngineMode: EngineMode | undefined,
-  toggleEnabled: boolean,
 ): EngineMode {
-  if (!toggleEnabled) return DEFAULT_ENGINE_MODE;
   return override ?? globalEngineMode ?? DEFAULT_ENGINE_MODE;
 }
 
@@ -364,9 +359,6 @@ class ProjectService {
   private async _buildEffectiveResponse(originalPath: string): Promise<ProjectSettingsApiResponse> {
     const projectSettings = await this.readProjectSettings(originalPath);
     const globalPrefs = await preferencesService.getEffectivePreferences();
-    // Epic 33 — billing gate is authoritative: when OFF, effectiveEngineMode is forced to 'sdk'
-    // even if a 'cli' override is persisted (the 33.3 engine resolver only consumes effective).
-    const engineToggleEnabled = preferencesService.getEngineModeToggleEnabled();
 
     const _overrides: string[] = [];
     if (projectSettings.modelOverride !== undefined) _overrides.push('modelOverride');
@@ -381,7 +373,6 @@ class ProjectService {
       effectiveEngineMode: computeEffectiveEngineMode(
         projectSettings.engineModeOverride,
         globalPrefs.engineMode,
-        engineToggleEnabled,
       ),
       _overrides,
     };
@@ -391,10 +382,9 @@ class ProjectService {
    * Resolve the effective conversation engine mode for a project (Epic 33, Story 33.3).
    *
    * Engine-side counterpart to `_buildEffectiveResponse`'s `effectiveEngineMode`: both
-   * run through `computeEffectiveEngineMode`, so the billing gate + override precedence
-   * has one source of truth. The three conversation call sites (main chat, rewind,
-   * queue) call this to decide which engine the factory instantiates. With the gate
-   * OFF it always returns 'sdk', so the SDK path stays byte-identical to pre-33.3.
+   * run through `computeEffectiveEngineMode`, so the override precedence has one source
+   * of truth. The three conversation call sites (main chat, rewind, queue) call this to
+   * decide which engine the factory instantiates.
    *
    * `originalPath` is the project's real filesystem path — the same value the factory
    * receives as `workingDirectory`.
@@ -402,8 +392,7 @@ class ProjectService {
   async getEffectiveEngineMode(originalPath: string): Promise<EngineMode> {
     const projectSettings = await this.readProjectSettings(originalPath);
     const globalPrefs = await preferencesService.getEffectivePreferences();
-    const toggleEnabled = preferencesService.getEngineModeToggleEnabled();
-    return computeEffectiveEngineMode(projectSettings.engineModeOverride, globalPrefs.engineMode, toggleEnabled);
+    return computeEffectiveEngineMode(projectSettings.engineModeOverride, globalPrefs.engineMode);
   }
 
   /**

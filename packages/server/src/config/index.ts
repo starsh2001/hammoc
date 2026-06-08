@@ -116,17 +116,6 @@ export const config = {
   },
 
   /**
-   * Engine-mode toggle exposure gate (Epic 33, Story 33.1).
-   * Billing-confirmation gate — DEFAULT OFF (opposite of terminal.enabled, which defaults ON):
-   * billing-unconfirmed is the safe default, so the SDK/CLI engine toggle is exposed only by
-   * explicit opt-in (`=== 'true'`). Until the 6/15 billing-split confirmation is GO, the toggle
-   * stays hidden and the effective engine is forced to 'sdk'. After GO the operator sets
-   * ENGINE_MODE_TOGGLE_ENABLED=true to expose the toggle.
-   */
-  engineMode: {
-    toggleEnabled: process.env.ENGINE_MODE_TOGGLE_ENABLED === 'true',
-  },
-  /**
    * Package metadata from root package.json
    */
   pkg: readPackageMeta(),

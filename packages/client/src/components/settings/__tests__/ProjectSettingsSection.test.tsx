@@ -66,7 +66,6 @@ describe('ProjectSettingsSection', () => {
         chatTimeoutMs: 300000,
       },
       overrides: [],
-      engineModeToggleEnabled: false,
       loaded: true,
     });
   });
@@ -109,10 +108,12 @@ describe('ProjectSettingsSection', () => {
     mockGetSettings.mockResolvedValue(mockSettingsWithOverride);
     mockUpdateSettings.mockResolvedValue(mockSettingsNoOverride);
     render(<ProjectSettingsSection projectSlug="project-a" />);
+    // The engine-override fieldset also renders a "전역 기본값 사용" radio now, so scope
+    // to the permission section's variant (its "(현재: …)" suffix names a permission mode).
     await waitFor(() => {
-      expect(screen.getByRole('radio', { name: /전역 기본값 사용/ })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /전역 기본값 사용 \(현재: Ask/ })).toBeInTheDocument();
     });
-    const globalRadio = screen.getByRole('radio', { name: /전역 기본값 사용/ });
+    const globalRadio = screen.getByRole('radio', { name: /전역 기본값 사용 \(현재: Ask/ });
     fireEvent.click(globalRadio);
     await waitFor(() => {
       expect(mockUpdateSettings).toHaveBeenCalledWith('project-a', { permissionModeOverride: null });
@@ -204,17 +205,8 @@ describe('ProjectSettingsSection', () => {
     });
   });
 
-  // Story 33.1 — engine-mode override is gated by the operator billing flag
-  it('TC-12: engine override fieldset is hidden when the billing gate is OFF', async () => {
-    render(<ProjectSettingsSection projectSlug="project-a" />);
-    await waitFor(() => {
-      expect(screen.getByLabelText(/모델 오버라이드/)).toBeInTheDocument();
-    });
-    expect(screen.queryByText('대화 엔진 재정의')).not.toBeInTheDocument();
-  });
-
-  it('TC-13: engine override fieldset renders when the gate is ON', async () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
+  // Epic 33 — engine-mode override is always available (no billing gate)
+  it('TC-12: engine override fieldset renders', async () => {
     render(<ProjectSettingsSection projectSlug="project-a" />);
     await waitFor(() => {
       expect(screen.getByText('대화 엔진 재정의')).toBeInTheDocument();
@@ -222,8 +214,7 @@ describe('ProjectSettingsSection', () => {
     expect(screen.getByRole('radio', { name: /CLI/ })).toBeInTheDocument();
   });
 
-  it('TC-14: selecting the CLI engine override sends engineModeOverride', async () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
+  it('TC-13: selecting the CLI engine override sends engineModeOverride', async () => {
     mockUpdateSettings.mockResolvedValue({
       ...mockSettingsNoOverride,
       engineModeOverride: 'cli',

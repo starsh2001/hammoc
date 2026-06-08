@@ -124,12 +124,12 @@ export class QueueService {
     } catch { /* keep default 'en' */ }
 
     this.workingDirectory = await this.projectService.resolveOriginalPath(projectSlug);
-    // Story 33.3: instantiate the effective engine (gate OFF → 'sdk', byte-identical to
-    // before). cliBinaryPath comes from the same global prefs (undefined on read failure
+    // Story 33.3: instantiate the effective engine (override > global > 'sdk' default).
+    // cliBinaryPath comes from the same global prefs (undefined on read failure
     // = auto-detect, graceful).
     this.chatService = createChatEngine(
       await this.projectService.getEffectiveEngineMode(this.workingDirectory),
-      { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath },
+      { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath, cliShowThinkingSummaries: prefs?.cliShowThinkingSummaries },
     );
     this.abortController = new AbortController();
     this.items = items;

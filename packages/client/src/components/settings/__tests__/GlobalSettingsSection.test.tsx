@@ -40,7 +40,6 @@ describe('GlobalSettingsSection', () => {
         chatTimeoutMs: 300000,
       },
       overrides: [],
-      engineModeToggleEnabled: false,
       loaded: true,
     });
     useChatStore.setState({
@@ -128,22 +127,15 @@ describe('GlobalSettingsSection', () => {
     expect(setLanguageSpy).toHaveBeenCalledWith('ko');
   });
 
-  // Story 33.1 — engine-mode toggle is gated by the operator billing flag
-  it('TC-10: engine mode fieldset is hidden when the billing gate is OFF', () => {
-    render(<GlobalSettingsSection />);
-    expect(screen.queryByText('대화 엔진')).not.toBeInTheDocument();
-  });
-
-  it('TC-11: engine mode fieldset renders SDK/CLI radios when the gate is ON', () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
+  // Epic 33 — engine-mode toggle is always available (no billing gate)
+  it('TC-10: engine mode fieldset renders SDK/CLI radios', () => {
     render(<GlobalSettingsSection />);
     expect(screen.getByText('대화 엔진')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /SDK/ })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /CLI/ })).toBeInTheDocument();
   });
 
-  it('TC-12: selecting the CLI engine calls updatePreference', () => {
-    usePreferencesStore.setState({ engineModeToggleEnabled: true });
+  it('TC-11: selecting the CLI engine calls updatePreference', () => {
     const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
     render(<GlobalSettingsSection />);
     fireEvent.click(screen.getByRole('radio', { name: /CLI/ }));

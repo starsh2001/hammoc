@@ -136,7 +136,7 @@
 - P3. 채팅 타임아웃 설정 `[EDGE]`
 - P4. 고급 설정 & 서버 재시작 `[SDK] [EDGE]`
 - P5. 서버 업데이트 체크 & 업데이트 `[EDGE]`
-- P6. 엔진 모드 토글 & CLI 설정 패널 (운영자 게이트) `[EDGE]`
+- P6. 엔진 모드 토글 & CLI 설정 패널 `[EDGE]`
 
 ### Q. BMad Method
 - Q1. BMad 초기화 `[CORE]`
@@ -188,6 +188,7 @@ P-05-01, P-05-02, F-02-02, F-05-02, G-01-02, H-03-01, C-04-01, C-11-01
 - H-03-01: 큐 실행 중 Abort 버튼 포착 타이밍 확보 실패 (false FAIL 잦음)
 - C-04-01: 1M 컨텍스트 모델에서 90% 토큰 도달이 비용·시간상 비현실적 (런처 compact 임계값 주입 훅 추가 시 자동화 전환 가능)
 - C-11-01: CLI 엔진은 구독-인증 claude 바이너리 + 인터랙티브 PTY 필요 — 헤드리스 하네스에 구독 claude 부재 + PTY 화면 파싱 타이밍 취약 (토글·CLI 설정 UI 게이팅·선택·영속은 P-06-01 로 자동화)
+- D-01-03: CLI 모드 독립 권한 카드는 C-11 과 동일 제약(구독 claude + PTY)으로 헤드리스 자동화 불가 — 수동 회귀. 클라 렌더 분기(`standalone` → 독립 카드)는 `useStreaming.interactive.test.ts` 단위로 가드
 
 ### `[SDK_BLOCKED]` (SDK 업스트림 미동작 — 수정 시 자동 PASS 전환)
 _(현재 없음 — H-05-02는 2026-04-21 SDK 0.2.114 재검증으로 PASS 복귀. 자세한 맥락은 [sdk-upstream-issues.md](sdk-upstream-issues.md) 참조.)_

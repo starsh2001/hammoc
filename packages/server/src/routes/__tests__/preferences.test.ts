@@ -1,7 +1,7 @@
 /**
  * Preferences Routes Tests
- * Story 33.1: GET /api/preferences surfaces the engine-mode billing gate as
- * server-only metadata (_engineModeToggleEnabled) alongside _overrides.
+ * GET /api/preferences surfaces server-only metadata (_overrides). The engine-mode
+ * billing gate was removed, so the response no longer carries _engineModeToggleEnabled.
  *
  * The router imports chatService (which pulls in the SDK) at module load, so the
  * dependency modules are mocked to isolate the route handler.
@@ -14,7 +14,6 @@ import express from 'express';
 vi.mock('../../services/preferencesService.js', () => ({
   preferencesService: {
     getEffectivePreferences: vi.fn(),
-    getEngineModeToggleEnabled: vi.fn(),
   },
 }));
 vi.mock('../../services/notificationService.js', () => ({ notificationService: { reload: vi.fn() } }));
@@ -25,7 +24,7 @@ vi.mock('../../services/chatService.js', () => ({ DEFAULT_WORKSPACE_TEMPLATE: 't
 import preferencesRoutes from '../preferences.js';
 import { preferencesService } from '../../services/preferencesService.js';
 
-describe('Preferences Routes — GET / engine-mode gate metadata (Story 33.1)', () => {
+describe('Preferences Routes — GET / metadata', () => {
   let app: express.Application;
 
   beforeEach(() => {
@@ -42,25 +41,32 @@ describe('Preferences Routes — GET / engine-mode gate metadata (Story 33.1)', 
     vi.restoreAllMocks();
   });
 
-  it('includes _engineModeToggleEnabled=true when the billing gate is ON', async () => {
+  it('returns preferences with an _overrides array', async () => {
     vi.mocked(preferencesService.getEffectivePreferences).mockResolvedValue({ theme: 'dark' });
-    vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(true);
 
     const response = await request(app).get('/api/preferences');
 
     expect(response.status).toBe(200);
-    expect(response.body._engineModeToggleEnabled).toBe(true);
     expect(response.body.theme).toBe('dark');
     expect(Array.isArray(response.body._overrides)).toBe(true);
   });
 
-  it('includes _engineModeToggleEnabled=false when the billing gate is OFF', async () => {
+  it('does not surface the removed engine-mode gate flag', async () => {
     vi.mocked(preferencesService.getEffectivePreferences).mockResolvedValue({ theme: 'dark' });
-    vi.mocked(preferencesService.getEngineModeToggleEnabled).mockReturnValue(false);
 
     const response = await request(app).get('/api/preferences');
 
     expect(response.status).toBe(200);
-    expect(response.body._engineModeToggleEnabled).toBe(false);
+    expect(response.body._engineModeToggleEnabled).toBeUndefined();
+  });
+
+  it('flags CHAT_TIMEOUT_MS in _overrides when set via env', async () => {
+    process.env.CHAT_TIMEOUT_MS = '60000';
+    vi.mocked(preferencesService.getEffectivePreferences).mockResolvedValue({ theme: 'dark' });
+
+    const response = await request(app).get('/api/preferences');
+
+    expect(response.status).toBe(200);
+    expect(response.body._overrides).toContain('chatTimeoutMs');
   });
 });

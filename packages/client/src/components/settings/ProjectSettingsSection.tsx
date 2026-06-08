@@ -62,7 +62,6 @@ export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionPr
   const { t } = useTranslation('settings');
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
   const globalPrefs = usePreferencesStore((s) => s.preferences);
-  const engineModeToggleEnabled = usePreferencesStore((s) => s.engineModeToggleEnabled);
 
   const [settings, setSettings] = useState<ProjectSettingsApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -329,23 +328,59 @@ export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionPr
             </div>
           </fieldset>
 
-          {/* Engine Mode Override (Epic 33 — exposed only when the operator billing gate is ON) */}
-          {engineModeToggleEnabled && (
-            <fieldset>
-              <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                {t('project.engineModeOverride')}
-                {overrides.includes('engineModeOverride') && (
-                  <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-normal">
-                    {t('project.projectOverride')}
+          {/* Engine Mode Override (Epic 33 — per-project engine choice) */}
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              {t('project.engineModeOverride')}
+              {overrides.includes('engineModeOverride') && (
+                <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-normal">
+                  {t('project.projectOverride')}
+                </span>
+              )}
+            </legend>
+            <div className="space-y-2">
+              {/* Global default option */}
+              <label
+                className={`
+                  relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                  ${engineValue === GLOBAL_SENTINEL
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
+                  }
+                `}
+              >
+                <input
+                  type="radio"
+                  name="projectEngineMode"
+                  value={GLOBAL_SENTINEL}
+                  checked={engineValue === GLOBAL_SENTINEL}
+                  onChange={() => handleEngineModeChange(GLOBAL_SENTINEL)}
+                  disabled={updating}
+                  className="sr-only"
+                />
+                <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  engineValue === GLOBAL_SENTINEL
+                    ? 'border-blue-500'
+                    : 'border-gray-400 dark:border-gray-500'
+                } ${updating ? 'opacity-50' : ''}`}>
+                  {engineValue === GLOBAL_SENTINEL && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
+                <div>
+                  <span className={`text-sm font-medium ${engineValue === GLOBAL_SENTINEL ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                    {t('project.useGlobalDefault', { value: getEngineLabel(globalEngine, t) })}
                   </span>
-                )}
-              </legend>
-              <div className="space-y-2">
-                {/* Global default option */}
+                </div>
+              </label>
+
+              {/* Engine options */}
+              {ENGINE_OPTIONS.map((opt) => (
                 <label
+                  key={opt.value}
                   className={`
                     relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                    ${engineValue === GLOBAL_SENTINEL
+                    ${engineValue === opt.value
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                       : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
                     }
@@ -354,75 +389,37 @@ export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionPr
                   <input
                     type="radio"
                     name="projectEngineMode"
-                    value={GLOBAL_SENTINEL}
-                    checked={engineValue === GLOBAL_SENTINEL}
-                    onChange={() => handleEngineModeChange(GLOBAL_SENTINEL)}
+                    value={opt.value}
+                    checked={engineValue === opt.value}
+                    onChange={() => handleEngineModeChange(opt.value)}
                     disabled={updating}
                     className="sr-only"
+                    aria-describedby={`project-engine-desc-${opt.value}`}
                   />
                   <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                    engineValue === GLOBAL_SENTINEL
+                    engineValue === opt.value
                       ? 'border-blue-500'
                       : 'border-gray-400 dark:border-gray-500'
                   } ${updating ? 'opacity-50' : ''}`}>
-                    {engineValue === GLOBAL_SENTINEL && (
+                    {engineValue === opt.value && (
                       <div className="w-2 h-2 rounded-full bg-blue-500" />
                     )}
                   </div>
                   <div>
-                    <span className={`text-sm font-medium ${engineValue === GLOBAL_SENTINEL ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                      {t('project.useGlobalDefault', { value: getEngineLabel(globalEngine, t) })}
+                    <span className={`text-sm font-medium ${engineValue === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                      {t(opt.labelKey)}
                     </span>
+                    <p
+                      id={`project-engine-desc-${opt.value}`}
+                      className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
+                    >
+                      {t(opt.descKey)}
+                    </p>
                   </div>
                 </label>
-
-                {/* Engine options */}
-                {ENGINE_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className={`
-                      relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                      ${engineValue === opt.value
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
-                      }
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      name="projectEngineMode"
-                      value={opt.value}
-                      checked={engineValue === opt.value}
-                      onChange={() => handleEngineModeChange(opt.value)}
-                      disabled={updating}
-                      className="sr-only"
-                      aria-describedby={`project-engine-desc-${opt.value}`}
-                    />
-                    <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                      engineValue === opt.value
-                        ? 'border-blue-500'
-                        : 'border-gray-400 dark:border-gray-500'
-                    } ${updating ? 'opacity-50' : ''}`}>
-                      {engineValue === opt.value && (
-                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                      )}
-                    </div>
-                    <div>
-                      <span className={`text-sm font-medium ${engineValue === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                        {t(opt.labelKey)}
-                      </span>
-                      <p
-                        id={`project-engine-desc-${opt.value}`}
-                        className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
-                      >
-                        {t(opt.descKey)}
-                      </p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          )}
+              ))}
+            </div>
+          </fieldset>
 
           {/* Hidden Toggle */}
           <div>

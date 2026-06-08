@@ -52,15 +52,6 @@ class PreferencesService {
     return config.terminal.enabled;
   }
 
-  /**
-   * Check if the engine-mode toggle is exposed (Epic 33 billing gate, default OFF).
-   * Controlled only by ENGINE_MODE_TOGGLE_ENABLED env var / config.engineMode.toggleEnabled.
-   * When false, the client hides the SDK/CLI toggle and the effective engine is forced to 'sdk'.
-   */
-  getEngineModeToggleEnabled(): boolean {
-    return config.engineMode.toggleEnabled;
-  }
-
   async writePreferences(partial: Partial<UserPreferences>): Promise<UserPreferences> {
     const dataDir = this.getDataDir();
     await fs.mkdir(dataDir, { recursive: true });

@@ -35,7 +35,7 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 
 export function GlobalSettingsSection() {
   const { t, i18n } = useTranslation('settings');
-  const { preferences, overrides, engineModeToggleEnabled, updatePreference, setLanguage } = usePreferencesStore();
+  const { preferences, overrides, updatePreference, setLanguage } = usePreferencesStore();
   const { theme, setTheme } = useTheme();
   const permissionModePref = preferences.permissionMode ?? 'default';
   const engineModePref = preferences.engineMode ?? 'sdk';
@@ -263,61 +263,59 @@ export function GlobalSettingsSection() {
         </div>
       </fieldset>
 
-      {/* Engine Mode Setting (Epic 33 — exposed only when the operator billing gate is ON) */}
-      {engineModeToggleEnabled && (
-        <fieldset>
-          <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-            {t('global.engineMode')}
-          </legend>
-          <div className="space-y-2">
-            {([
-              { value: 'sdk' as const, labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk' },
-              { value: 'cli' as const, labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli' },
-            ]).map((opt) => (
-              <label
-                key={opt.value}
-                className={`
-                  relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                  ${engineModePref === opt.value
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
-                  }
-                `}
-              >
-                <input
-                  type="radio"
-                  name="engineMode"
-                  value={opt.value}
-                  checked={engineModePref === opt.value}
-                  onChange={() => handleEngineModeChange(opt.value)}
-                  className="sr-only"
-                  aria-describedby={`engine-desc-${opt.value}`}
-                />
-                <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                  engineModePref === opt.value
-                    ? 'border-blue-500'
-                    : 'border-gray-400 dark:border-gray-500'
-                }`}>
-                  {engineModePref === opt.value && (
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  )}
-                </div>
-                <div>
-                  <span className={`text-sm font-medium ${engineModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                    {t(opt.labelKey)}
-                  </span>
-                  <p
-                    id={`engine-desc-${opt.value}`}
-                    className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
-                  >
-                    {t(opt.descKey)}
-                  </p>
-                </div>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      )}
+      {/* Engine Mode Setting (Epic 33 — conversation engine: SDK or CLI) */}
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          {t('global.engineMode')}
+        </legend>
+        <div className="space-y-2">
+          {([
+            { value: 'sdk' as const, labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk' },
+            { value: 'cli' as const, labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli' },
+          ]).map((opt) => (
+            <label
+              key={opt.value}
+              className={`
+                relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                ${engineModePref === opt.value
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                name="engineMode"
+                value={opt.value}
+                checked={engineModePref === opt.value}
+                onChange={() => handleEngineModeChange(opt.value)}
+                className="sr-only"
+                aria-describedby={`engine-desc-${opt.value}`}
+              />
+              <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                engineModePref === opt.value
+                  ? 'border-blue-500'
+                  : 'border-gray-400 dark:border-gray-500'
+              }`}>
+                {engineModePref === opt.value && (
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                )}
+              </div>
+              <div>
+                <span className={`text-sm font-medium ${engineModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                  {t(opt.labelKey)}
+                </span>
+                <p
+                  id={`engine-desc-${opt.value}`}
+                  className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
+                >
+                  {t(opt.descKey)}
+                </p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       {/* CLI Mode Sub-settings (Epic 33.2 — self-gated behind the same billing flag) */}
       <CliModeSettingsPanel />

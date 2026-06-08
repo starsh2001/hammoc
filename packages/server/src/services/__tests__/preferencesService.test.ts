@@ -121,12 +121,4 @@ describe('PreferencesService', () => {
       expect(prefs.chatTimeoutMs).toBe(180000);
     });
   });
-
-  describe('getEngineModeToggleEnabled (Story 33.1)', () => {
-    it('returns false by default when ENGINE_MODE_TOGGLE_ENABLED is unset (billing gate default OFF)', () => {
-      // config.engineMode.toggleEnabled resolves from the env at import time; unset → false.
-      // This is the opposite default of terminal.enabled (default ON) — billing-unconfirmed is the safe default.
-      expect(preferencesService.getEngineModeToggleEnabled()).toBe(false);
-    });
-  });
 });
