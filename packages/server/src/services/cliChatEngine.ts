@@ -1118,6 +1118,11 @@ export class CliChatEngine implements ChatEngine {
       const handleAssistantLine = (raw: RawJSONLMessage): boolean => {
         if (emittedUuids.has(raw.uuid)) return false;
         emittedUuids.add(raw.uuid);
+        // Story 36.2 (AC1): the first assistant block means generation has started — end the
+        // phase indicator here too, so a response that emits no spinner counter (no "↓ N tokens"
+        // frame) still leaves the waiting phase. Idempotent with emitProgress, which fires first
+        // when a spinner counter appears; whichever comes first wins, the other is a no-op.
+        clearPhase();
         lastAssistantUuid = raw.uuid;
 
         const envelope = raw.message as AssistantEnvelope | undefined;

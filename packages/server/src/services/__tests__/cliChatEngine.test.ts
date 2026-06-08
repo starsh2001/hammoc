@@ -340,6 +340,29 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
+    it('ends the phase on the first assistant block even without a spinner counter (Story 36.2 AC1)', async () => {
+      const phases: (string | null)[] = [];
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'hi',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+        vi.fn(),
+        (p) => phases.push(p),
+      );
+      await wait(20);
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ Try "fix typecheck"');
+      await vi.waitFor(() => expect(phases).toContain('waiting'), { timeout: 3000 });
+      // NO spinner counter frame — go straight to the first session block. handleAssistantLine
+      // (not emitProgress) must clear the phase, covering the spinner-less response (AC1).
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+      expect(phases).toContain(null);
+      expect(phases.indexOf('waiting')).toBeLessThan(phases.indexOf(null));
+    });
+
     it('accumulates multiple text blocks into the final content', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onTextChunk = vi.fn();
