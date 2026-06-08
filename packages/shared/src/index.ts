@@ -152,6 +152,9 @@ export {
   MarkdownH2Section,
 } from './utils/markdownSections.js';
 
+// tool_result content sanitization (shared by server engines & client render)
+export { sanitizeToolResultContent } from './utils/toolResultContent.js';
+
 // Story 30.3: Harness Export/Import bundle DTOs
 export * from './types/harnessBundle.js';
 

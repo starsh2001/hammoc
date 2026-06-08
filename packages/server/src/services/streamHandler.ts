@@ -5,7 +5,7 @@
 
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatResponse } from '@hammoc/shared';
-import { correctContextWindow } from '@hammoc/shared';
+import { correctContextWindow, sanitizeToolResultContent } from '@hammoc/shared';
 import { createLogger } from '../utils/logger.js';
 import {
   SDKMessageType,
@@ -818,9 +818,8 @@ export class StreamHandler {
     block: ParsedToolResultBlock,
     callbacks: StreamCallbacks
   ): void {
-    // Strip SDK XML wrapper tags (e.g. <tool_use_error>...</tool_use_error>)
     const rawContent = typeof block.content === 'string' ? block.content : '';
-    const cleanContent = rawContent.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
+    const cleanContent = sanitizeToolResultContent(rawContent);
     const result: ToolResult = {
       success: !block.isError,
       output: block.isError ? undefined : cleanContent,

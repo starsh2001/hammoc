@@ -49,9 +49,11 @@
  * approved tools in default mode) emit live. No double-render: `stream:complete-messages`
  * replaces the live cards with the authoritative reload at turn end (same as SDK mode), so
  * client + `@hammoc/shared` are unchanged — the engine only *calls* the existing callbacks.
- * Still deferred to Epic 33: synthetic typing (the client
- * frame-coalescing path is shared with SDK mode, so per-block animation needs the
- * Epic 33 mode toggle), the on/off toggles, and mode-selection UI.
+ * Synthetic typing (the client-side per-block typewriter effect for CLI mode) is now
+ * implemented in the client render layer (`utils/syntheticTyper.ts`, wired into
+ * `useStreaming`) — gated by the `cliSyntheticTyping` toggle AND the effective CLI engine,
+ * with the shared SDK frame-coalescing path left untouched. The on/off toggles and
+ * mode-selection UI shipped in Epic 33.
  *
  * [Source: docs/spike-32.1-cli-output-source.md#7.1; docs/prd/epic-32-cli-engine-core.md#Story 32.4+]
  */
@@ -74,7 +76,7 @@ import type {
   TrackedToolCall,
   ToolResult,
 } from '@hammoc/shared';
-import { resolveEffectiveModel } from '@hammoc/shared';
+import { resolveEffectiveModel, sanitizeToolResultContent } from '@hammoc/shared';
 import path from 'path';
 import fs from 'fs/promises';
 import { watch, type FSWatcher } from 'fs';
@@ -471,6 +473,16 @@ export class CliChatEngine implements ChatEngine {
    * fallback in `cliSessionPool.resolveClaudeBinary`.
    */
   private cliBinaryPath: string | undefined;
+  /**
+   * When true (default), inject `--settings '{"showThinkingSummaries":true}'` so the
+   * interactive claude is asked to surface thinking summaries (Opus 4.7+ omit them by
+   * default). Session-scoped via `--settings` — the global config is untouched. NOTE:
+   * the actual effect depends on the server honoring the parameter for the active auth;
+   * a real CLI-mode chat must confirm it (the interactive PTY could not be reproduced in
+   * the dev shell — no Windows console there; a real entrypoint:cli session was observed
+   * to surface thinking, so this is expected to work).
+   */
+  private cliShowThinkingSummaries: boolean;
 
   /**
    * CLI mode performs no inline rewind-before-send, so this stays null. (Standalone
@@ -482,6 +494,7 @@ export class CliChatEngine implements ChatEngine {
     this.workingDirectory = config.workingDirectory;
     this.permissionMode = config.permissionMode ?? 'default';
     this.cliBinaryPath = config.cliBinaryPath;
+    this.cliShowThinkingSummaries = config.cliShowThinkingSummaries ?? true;
   }
 
   getPermissionMode(): PermissionMode {
@@ -579,25 +592,53 @@ export class CliChatEngine implements ChatEngine {
     for (const dir of uniqueAttachmentDirs(options.attachedImagePaths)) {
       args.push('--add-dir', dir);
     }
+    // Surface thinking summaries (default ON). Injected as a SESSION-SCOPED `--settings`
+    // JSON so the global ~/.claude/settings.json is never modified. Opus 4.7+ omit
+    // summaries unless asked; this requests them. `showThinkingSummaries` governs whether
+    // the harness asks the API to send summaries (then renders what comes back). Effect
+    // under subscription auth must be confirmed in a real CLI-mode chat (see field doc).
+    if (this.cliShowThinkingSummaries) {
+      args.push('--settings', JSON.stringify({ showThinkingSummaries: true }));
+    }
 
-    // New-session detection: snapshot existing JSONL before spawn (§7.2-1).
-    const baselineFiles = resumeId ? new Set<string>() : await listJsonl(sessionsDir);
+    // Pin this turn's session file by id whenever the id is known up front. The file
+    // name is deterministic — claude writes `<id>.jsonl` for BOTH `--resume <id>` and
+    // the pre-allocated `--session-id <id>` (same flag built into `args` above) — so we
+    // target that file directly. The previous path only pinned on resume and otherwise
+    // adopted "the newest NEW *.jsonl" (newestNewJsonl); that cannot tell two new
+    // sessions in the SAME project apart, so a new-session turn could latch onto the
+    // OTHER session's freshly-created file (the new-session file-matching race —
+    // reproduced in cliChatEngine.sessionIsolation.test.ts). Hammoc always supplies a
+    // client-generated UUID for new sessions (ChatPage route `/session/:sessionId`), so
+    // the unpinned diff-detect fallback below only triggers when no id was supplied at
+    // all (claude self-assigns the id) — the one case where the file name is unknown.
+    const preallocId =
+      !resumeId && options.sessionId && UUID_RE.test(options.sessionId) ? options.sessionId : undefined;
+    const pinnedId = resumeId ?? preallocId;
 
-    // Resume targets a known file; record its current size so only NEW appended
-    // assistant lines are emitted (not the replayed history), and seed the emitted
-    // set with the existing assistant uuids.
+    // New-session detection baseline (§7.2-1) is only needed for the unpinned fallback;
+    // when pinned we never scan for new files, so skip the pre-spawn snapshot.
+    const baselineFiles = pinnedId ? new Set<string>() : await listJsonl(sessionsDir);
+
+    // A pinned id resolves the session file up front; resume additionally records the
+    // current size so only NEW appended assistant lines are emitted (not the replayed
+    // history) and seeds the emitted set with the existing assistant uuids.
     let sessionFile: string | null = null;
     let resolvedSessionId: string | null = null;
     let lastSize = 0;
     const emittedUuids = new Set<string>();
 
-    if (resumeId) {
-      sessionFile = sessionService.getSessionFilePath(projectSlug, resumeId);
-      resolvedSessionId = resumeId;
-      lastSize = await fileSize(sessionFile);
-      for (const m of await parseJSONLFile(sessionFile)) {
-        if (m.type === 'assistant') emittedUuids.add(m.uuid);
+    if (pinnedId) {
+      sessionFile = sessionService.getSessionFilePath(projectSlug, pinnedId);
+      resolvedSessionId = pinnedId;
+      if (resumeId) {
+        lastSize = await fileSize(sessionFile);
+        for (const m of await parseJSONLFile(sessionFile)) {
+          if (m.type === 'assistant') emittedUuids.add(m.uuid);
+        }
       }
+      // Pre-allocated new session: the file does not exist yet (claude creates it on the
+      // first write); lastSize stays 0 so the whole file drains once it appears.
     }
 
     const { handle, pty } = cliSessionPool.spawnClaude({ cwd, args, binaryPathOverride: this.cliBinaryPath });
@@ -1035,17 +1076,20 @@ export class CliChatEngine implements ChatEngine {
           let textIdx = 0;
           for (const block of blockContent) {
             if (block.type === 'thinking') {
-              // Thinking display (verified Story 32.7 Task 1, real-PTY): the thinking
-              // block flows through the SAME onThinking → thinking:chunk path as SDK mode
-              // (envelope-identical; renders the same live and on reload). When populated
-              // it renders at parity; the empty-thinking guard below is load-bearing
-              // because claude writes thinking blocks EMPTY by default — surfacing the
-              // *summary* content requires the global `showThinkingSummaries` Claude Code
-              // setting (no per-session spawn flag exists: `--effort` controls thinking
-              // depth, not summary surfacing; `MAX_THINKING_TOKENS` is the budget). So
-              // thinking-display is mechanism-complete here; the on/off toggle + a
-              // per-mode "surface summaries" lever are Epic 33 (not synthesized to avoid
-              // a false success — spike §4.6/§4.7).
+              // Thinking display: thinking blocks flow through the SAME onThinking →
+              // thinking:chunk path as SDK mode (renders live + on reload). The
+              // empty-thinking guard below matters because Opus 4.7+ OMIT thinking
+              // summaries by default, so the block often arrives EMPTY (signature only)
+              // unless summaries are explicitly requested. `cliShowThinkingSummaries`
+              // (default ON) requests them — the arg build above injects
+              // `--settings '{"showThinkingSummaries":true}'` into the interactive spawn
+              // (session-scoped; the global ~/.claude/settings.json is never touched).
+              // Evidence this works in CLI mode: a real entrypoint:cli session on this
+              // host (claude v2.1.162, opus-4-8) surfaced POPULATED thinking. (#52376
+              // reports subscription sessions get redacted thinking, but a real CLI
+              // session here contradicted that — so we wire it and let a live CLI chat
+              // confirm. Note: `-p`/print runs as entrypoint:sdk-ts, a DIFFERENT path,
+              // so a `-p` test does NOT represent interactive CLI mode.)
               const thinking = (block as ThinkingContentBlock).thinking;
               if (thinking && thinking.trim()) callbacks.onThinking?.(thinking);
             } else if (block.type === 'text') {
@@ -1135,7 +1179,7 @@ export class CliChatEngine implements ChatEngine {
           if (!liveEmittedToolIds.has(id) || resultEmittedToolIds.has(id)) continue;
           resultEmittedToolIds.add(id);
           const rawContent = typeof trb.content === 'string' ? trb.content : '';
-          const cleanContent = rawContent.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
+          const cleanContent = sanitizeToolResultContent(rawContent);
           const isError = trb.is_error ?? false;
           const result: ToolResult = {
             success: !isError,

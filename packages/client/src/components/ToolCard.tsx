@@ -17,6 +17,7 @@ import { openProjectFile } from '../utils/fileOpenUtils';
 import { isImagePath } from '../utils/languageDetect';
 import { useProjectStore } from '../stores/projectStore';
 import { usePermissionTimeout } from '../hooks/usePermissionTimeout';
+import { sanitizeToolResultContent } from '@hammoc/shared';
 
 export interface ToolCardProps {
   toolName: string;
@@ -122,10 +123,10 @@ function computeLineChanges(original: string, modified: string): { added: number
   };
 }
 
-/** Strip SDK XML wrapper tags (e.g. <tool_use_error>...</tool_use_error>) from tool output */
+/** Strip SDK XML wrapper tags + <system-reminder> blocks from tool output */
 function stripXmlWrapperTags(text: string | undefined): string | undefined {
   if (!text) return text;
-  return text.replace(/<\/?(?:tool_use_error|error|result)>/g, '').trim();
+  return sanitizeToolResultContent(text);
 }
 
 /** ExitPlanMode: collapsible plan content and allowed prompts */
