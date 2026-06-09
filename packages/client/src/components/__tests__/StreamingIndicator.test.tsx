@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { StreamingIndicator } from '../StreamingIndicator';
+import { StreamingIndicator, SPARKLE_FRAMES } from '../StreamingIndicator';
 
 describe('StreamingIndicator', () => {
   it('renders three pulsing dots', () => {
@@ -93,6 +93,17 @@ describe('StreamingIndicator', () => {
     it('returns null when visible is false', () => {
       const { container } = render(<StreamingIndicator variant="sparkle" visible={false} />);
       expect(container.firstChild).toBeNull();
+    });
+
+    it('renders the externally provided frame in lockstep (no internal timer)', () => {
+      const { container, rerender } = render(<StreamingIndicator variant="sparkle" frame={0} />);
+      expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe(SPARKLE_FRAMES[0]);
+
+      // A new frame index shows the matching glyph; an out-of-range index wraps modulo length.
+      rerender(<StreamingIndicator variant="sparkle" frame={4} />);
+      expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe(SPARKLE_FRAMES[4]);
+      rerender(<StreamingIndicator variant="sparkle" frame={SPARKLE_FRAMES.length} />);
+      expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe(SPARKLE_FRAMES[0]);
     });
   });
 });

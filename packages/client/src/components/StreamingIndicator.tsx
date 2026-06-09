@@ -23,44 +23,53 @@ import { useTranslation } from 'react-i18next';
  * "↓ N tokens · Ns" counter. Cycled in JS because an animated character cannot be a CSS keyframe;
  * the interval self-gates on variant + visibility so it only runs while actually on screen.
  */
-const SPARKLE_FRAMES = ['·', '✢', '✳', '✻', '✽', '✻', '✳', '✢'] as const;
-const SPARKLE_INTERVAL_MS = 100;
+export const SPARKLE_FRAMES = ['·', '✢', '✳', '✻', '✽', '✻', '✳', '✢'] as const;
+const SPARKLE_INTERVAL_MS = 200;
 
 interface StreamingIndicatorProps {
   /** Whether the indicator is visible */
   visible?: boolean;
   /** Visual variant: default (gray pulse), compact (amber bounce), sparkle (twinkling star — CLI) */
   variant?: 'default' | 'compact' | 'sparkle';
+  /**
+   * sparkle variant only: an externally-driven frame index. MessageArea passes this so the star
+   * stays in lockstep with the animated "생성 중…" dots — one shared timer drives both, so the dot
+   * count advances together with the star. When omitted, an internal timer drives the rotation.
+   */
+  frame?: number;
 }
 
-export function StreamingIndicator({ visible = true, variant = 'default' }: StreamingIndicatorProps) {
+export function StreamingIndicator({ visible = true, variant = 'default', frame }: StreamingIndicatorProps) {
   const { t } = useTranslation('chat');
 
   // Hooks must run unconditionally (before any early return), so the sparkle frame timer
-  // self-gates on variant + visible rather than being conditionally created.
+  // self-gates on variant + visible. It is also skipped when a caller drives the frame
+  // externally (typeof frame === 'number'), so the two never double-advance the rotation.
   const isSparkle = variant === 'sparkle';
-  const [frame, setFrame] = useState(0);
+  const externalFrame = isSparkle && typeof frame === 'number';
+  const [internalFrame, setInternalFrame] = useState(0);
   useEffect(() => {
-    if (!isSparkle || !visible) return;
+    if (!isSparkle || externalFrame || !visible) return;
     const id = setInterval(() => {
-      setFrame((f) => (f + 1) % SPARKLE_FRAMES.length);
+      setInternalFrame((f) => (f + 1) % SPARKLE_FRAMES.length);
     }, SPARKLE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [isSparkle, visible]);
+  }, [isSparkle, externalFrame, visible]);
 
   if (!visible) return null;
 
   if (isSparkle) {
+    const glyph = SPARKLE_FRAMES[(frame ?? internalFrame) % SPARKLE_FRAMES.length];
     return (
       <span
-        className="inline-flex items-center font-mono text-base leading-none text-gray-500 dark:text-gray-300"
+        className="inline-flex items-center font-mono text-sm text-gray-500 dark:text-gray-300"
         aria-live="polite"
         aria-label={t('streaming.ariaLabel')}
       >
         <span className="sr-only">{t('streaming.srText')}</span>
         {/* Fixed-width centered cell: sparkle glyphs vary in advance width (· is narrow, ✽ wide),
             so pin a 1-char box and center each frame to keep the adjacent counter text from jittering. */}
-        <span aria-hidden="true" className="inline-block w-[1ch] text-center">{SPARKLE_FRAMES[frame]}</span>
+        <span aria-hidden="true" className="inline-block w-[1ch] text-center">{glyph}</span>
       </span>
     );
   }

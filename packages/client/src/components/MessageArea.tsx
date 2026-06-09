@@ -10,7 +10,7 @@ import { ChevronDown, FileText, XOctagon, Database, Info } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { MessageListSkeleton } from './MessageListSkeleton';
-import { StreamingIndicator } from './StreamingIndicator';
+import { StreamingIndicator, SPARKLE_FRAMES } from './StreamingIndicator';
 import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ThinkingBlock } from './ThinkingBlock';
@@ -22,6 +22,24 @@ import { usePreferencesStore } from '../stores/preferencesStore';
 import { debugLogger } from '../utils/debugLogger';
 import { scrollElementIntoContainer } from '../utils/scrollUtils';
 import { ScrollProvider } from '../contexts/ScrollContext';
+
+/**
+ * Progress label with animated trailing dots (CLI sparkle mode). The i18n string's own trailing
+ * ellipsis is stripped and replaced with `dots` visible dots; the remaining slots of the 3 stay as
+ * an invisible spacer so the count can change (1 → 2 → 3) without shifting the text/counter after it.
+ */
+function GeneratingLabel({ text, dots }: { text: string; dots: number }) {
+  const base = text.replace(/[\s.·…]+$/u, '');
+  return (
+    <>
+      {base}
+      <span aria-hidden="true">
+        {'.'.repeat(dots)}
+        <span className="invisible">{'.'.repeat(Math.max(0, 3 - dots))}</span>
+      </span>
+    </>
+  );
+}
 
 
 interface UseAutoScrollOptions {
@@ -486,6 +504,24 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   // Story 36.2: localized phase label, shown in the waiting indicator before the first block.
   const cliPhaseLabel = cliPhase ? t(`streaming.cliPhase.${cliPhase}`) : null;
 
+  // CLI sparkle spinner + the "생성 중…" dots share ONE timer so they advance together. Active only
+  // in CLI sparkle mode (generationProgress/cliPhase present). The 100ms tick is held for 2 ticks
+  // per glyph (≈200ms, half speed), and the dot count cycles 1 → 2 → 3 exactly once per full spin
+  // of the star (one turn of SPARKLE_FRAMES). frame is handed to StreamingIndicator so the two
+  // never drift. (SDK mode keeps the static i18n label + its own CSS-pulse dots.)
+  const sparkleActive = isStreaming && !!(generationProgress || cliPhase);
+  const [spinnerTick, setSpinnerTick] = useState(0);
+  useEffect(() => {
+    if (!sparkleActive) {
+      setSpinnerTick(0);
+      return;
+    }
+    const id = setInterval(() => setSpinnerTick((tk) => tk + 1), 100);
+    return () => clearInterval(id);
+  }, [sparkleActive]);
+  const spinnerFrame = Math.floor(spinnerTick / 2);
+  const dotCount = Math.floor(((spinnerFrame % SPARKLE_FRAMES.length) * 3) / SPARKLE_FRAMES.length) + 1;
+
   // Show compaction hint when waiting too long with high context usage
   const isWaitingWithNoContent = isStreaming && !isCompacting && !isRestoringStream && streamingSegments.length === 0;
   const [showCompactionHint, setShowCompactionHint] = useState(false);
@@ -792,9 +828,11 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {isStreaming && !isCompacting && streamingSegments.length > 0 && (
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
-              <div className="flex items-center gap-2">
-                <StreamingIndicator variant={generationProgress || cliPhase ? 'sparkle' : 'default'} />
-                <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.generating')}</span>
+              <div className="flex items-center gap-2.5">
+                <StreamingIndicator variant={sparkleActive ? 'sparkle' : 'default'} frame={sparkleActive ? spinnerFrame : undefined} />
+                <span className="text-sm text-gray-500 dark:text-gray-300">
+                  {sparkleActive ? <GeneratingLabel text={t('streaming.generating')} dots={dotCount} /> : t('streaming.generating')}
+                </span>
                 {generationProgressLabel && (
                   <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums">{generationProgressLabel}</span>
                 )}
@@ -807,10 +845,13 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
         {isWaitingWithNoContent && (
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
-              <div className="flex items-center gap-2">
-                <StreamingIndicator variant={generationProgress || cliPhase ? 'sparkle' : 'default'} />
+              <div className="flex items-center gap-2.5">
+                <StreamingIndicator variant={sparkleActive ? 'sparkle' : 'default'} frame={sparkleActive ? spinnerFrame : undefined} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">
-                  {cliPhaseLabel ?? (isForking ? t('streaming.forking') : t('streaming.waiting'))}
+                  {(() => {
+                    const label = cliPhaseLabel ?? (isForking ? t('streaming.forking') : t('streaming.waiting'));
+                    return sparkleActive ? <GeneratingLabel text={label} dots={dotCount} /> : label;
+                  })()}
                   {!isForking && !cliPhaseLabel && showCompactionHint && (
                     <span className="text-amber-600 dark:text-amber-400"> ({t('streaming.compactionHint')})</span>
                   )}
