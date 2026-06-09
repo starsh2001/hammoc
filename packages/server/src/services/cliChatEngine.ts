@@ -272,6 +272,13 @@ function stripAnsiForDetect(s: string): string {
 const CLI_PROGRESS_RE = /(?:\((\d+)\s*s\b[^↓\n]{0,40})?↓\s*([\d,]+)\s*tokens/g;
 /** Rolling stripped-PTY buffer cap for progress parsing (survives frame splits). */
 const CLI_PROGRESS_BUFFER_CAP = 2048;
+/**
+ * Sanity cap on a parsed token count. An ANSI-flattened in-place redraw can fuse two counters
+ * ("365" then "366" → "365366"); a single turn never emits anywhere near this many output tokens,
+ * so a larger value is a scrape artifact and is dropped (the next clean frame re-emits the real
+ * count). Paired with the malformed-grouping + implausible-jump guards in emitProgress.
+ */
+const CLI_PROGRESS_MAX_TOKENS = 2_000_000;
 
 /**
  * Conservative permission-dialog matcher. Requires a permission-specific phrase
@@ -1010,8 +1017,16 @@ export class CliChatEngine implements ChatEngine {
         const matches = [...buf.matchAll(CLI_PROGRESS_RE)];
         const last = matches[matches.length - 1];
         if (!last) return; // no counter on this frame → don't emit a phantom 0
-        const tokens = parseInt(last[2].replace(/,/g, ''), 10);
+        const rawCount = last[2];
+        // Reject a fused/garbled counter from an in-place redraw the ANSI strip flattened: a
+        // comma-grouped value must be well-formed (else two were spliced, e.g. "1,2341,234"), the
+        // magnitude must be sane, and a sudden ×50 jump into the 100k+ range is implausible for a
+        // per-frame counter. A rejected frame is simply skipped; the next clean one wins.
+        if (rawCount.includes(',') && !/^\d{1,3}(?:,\d{3})*$/.test(rawCount)) return;
+        const tokens = parseInt(rawCount.replace(/,/g, ''), 10);
         if (!Number.isFinite(tokens) || tokens === lastProgressTokens) return; // change-only throttle
+        if (tokens > CLI_PROGRESS_MAX_TOKENS) return; // absurd magnitude → scrape artifact
+        if (lastProgressTokens >= 0 && tokens > 100_000 && tokens > lastProgressTokens * 50) return; // implausible jump
         lastProgressTokens = tokens;
         clearPhase(); // spinner counter appeared → generation started; end the phase indicator
         const elapsedSeconds = last[1] ? parseInt(last[1], 10) : 0;

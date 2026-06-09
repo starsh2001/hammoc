@@ -1331,6 +1331,33 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
+    it('drops a fused / malformed counter from an in-place redraw (no token spike, recovers next frame)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      // Clean baseline.
+      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 365 tokens)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 365, elapsedSeconds: 5 }));
+      const callsBefore = onProgress.mock.calls.length;
+
+      // An in-place redraw the ANSI strip fused — "365" then "366" → "365366" (comma-less, 6
+      // digits, a ~1000x jump) — must be dropped, not surfaced as an absurd count...
+      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 365366 tokens)');
+      // ...and a malformed thousands grouping (two grouped values spliced) likewise.
+      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 1,2341,234 tokens)');
+      await wait(30);
+      expect(onProgress.mock.calls.length).toBe(callsBefore); // neither was emitted
+      expect(onProgress).not.toHaveBeenCalledWith(expect.objectContaining({ tokens: 365366 }));
+
+      // The next clean frame recovers normally.
+      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 366 tokens)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 366, elapsedSeconds: 5 }));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
     it('forwards a segment-boundary reset (high→low) as a change so the indicator never freezes (Task 1)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onProgress = vi.fn();
