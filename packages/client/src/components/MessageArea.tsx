@@ -448,11 +448,11 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   // Story 32.7: transient CLI generation progress ("↓ N tokens · Ns"). Additive next
   // to the streaming indicators below — null in SDK mode (real token streaming), so the
   // indicators keep their existing text unchanged. Its presence is the CLI-mode signal
-  // (the SDK engine never emits it) and also switches the spinner to the braille variant.
+  // (the SDK engine never emits it) and also switches the spinner to the sparkle variant.
   const generationProgress = useChatStore((s) => s.generationProgress);
 
   // Story 36.2: CLI pre-generation phase (launching/submitting/waiting); null in SDK mode
-  // and once the first block arrives. Drives the waiting-indicator label + braille spinner
+  // and once the first block arrives. Drives the waiting-indicator label + sparkle spinner
   // so the ~3s boot/inject window reads as "working" instead of a frozen spinner.
   const cliPhase = useChatStore((s) => s.cliPhase);
 
@@ -793,7 +793,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <StreamingIndicator variant={generationProgress || cliPhase ? 'braille' : 'default'} />
+                <StreamingIndicator variant={generationProgress || cliPhase ? 'sparkle' : 'default'} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">{t('streaming.generating')}</span>
                 {generationProgressLabel && (
                   <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums">{generationProgressLabel}</span>
@@ -808,7 +808,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           <div className="flex justify-start">
             <div className="max-w-[80%] bg-gray-50 dark:bg-[#263240] rounded-r-lg rounded-tl-lg border border-gray-300 dark:border-[#3a4d5e] p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <StreamingIndicator variant={generationProgress || cliPhase ? 'braille' : 'default'} />
+                <StreamingIndicator variant={generationProgress || cliPhase ? 'sparkle' : 'default'} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">
                   {cliPhaseLabel ?? (isForking ? t('streaming.forking') : t('streaming.waiting'))}
                   {!isForking && !cliPhaseLabel && showCompactionHint && (

@@ -12,43 +12,45 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /**
- * Braille spinner frames — a uniform 12-frame rotation. The stock cli-spinners "dots" set is 10
- * frames but jumps by two dots at two of its steps, which reads as a skipped/blank frame when
- * cycled quickly; filling the two missing transition glyphs (⠛, ⠶) makes every step move by
- * exactly one dot so it rotates smoothly. A single rotating glyph reads as a
- * clear, distinct motion — chosen over the dot-opacity pulse for CLI generation, where the
- * spinner sits beside the "↓ N tokens · Ns" counter and a more legible "working" cue is wanted.
- * The glyph is cycled in JS because an animated character cannot be expressed as a CSS keyframe;
+ * Sparkle spinner frames — the Claude Code CLI "working" star, twinkling small→large→small.
+ * The interactive `claude` TUI marks generation with a tear/eight-spoked asterisk that grows
+ * then shrinks (`· ✢ ✳ ✻ ✽`); the CLI engine's own PTY scrape captured exactly these glyphs
+ * (see the `✢ … ✻` spinner examples in cliChatEngine's progress-parser doc), so mirroring them
+ * keeps Hammoc's CLI spinner consistent with the real tool the user sees in a terminal. The
+ * sequence ping-pongs (…✽ ✻ ✳ ✢ back to ·) so the twinkle eases in and out instead of snapping
+ * from the largest glyph straight back to the dot. A single glyph reads as a clearer "working"
+ * cue than the dot-opacity pulse — wanted here because the spinner sits beside the
+ * "↓ N tokens · Ns" counter. Cycled in JS because an animated character cannot be a CSS keyframe;
  * the interval self-gates on variant + visibility so it only runs while actually on screen.
  */
-const BRAILLE_FRAMES = ['⠋', '⠛', '⠙', '⠹', '⠸', '⠼', '⠴', '⠶', '⠦', '⠧', '⠇', '⠏'] as const;
-const BRAILLE_INTERVAL_MS = 80;
+const SPARKLE_FRAMES = ['·', '✢', '✳', '✻', '✽', '✻', '✳', '✢'] as const;
+const SPARKLE_INTERVAL_MS = 100;
 
 interface StreamingIndicatorProps {
   /** Whether the indicator is visible */
   visible?: boolean;
-  /** Visual variant: default (gray pulse), compact (amber bounce), braille (rotating glyph — CLI) */
-  variant?: 'default' | 'compact' | 'braille';
+  /** Visual variant: default (gray pulse), compact (amber bounce), sparkle (twinkling star — CLI) */
+  variant?: 'default' | 'compact' | 'sparkle';
 }
 
 export function StreamingIndicator({ visible = true, variant = 'default' }: StreamingIndicatorProps) {
   const { t } = useTranslation('chat');
 
-  // Hooks must run unconditionally (before any early return), so the braille frame timer
+  // Hooks must run unconditionally (before any early return), so the sparkle frame timer
   // self-gates on variant + visible rather than being conditionally created.
-  const isBraille = variant === 'braille';
+  const isSparkle = variant === 'sparkle';
   const [frame, setFrame] = useState(0);
   useEffect(() => {
-    if (!isBraille || !visible) return;
+    if (!isSparkle || !visible) return;
     const id = setInterval(() => {
-      setFrame((f) => (f + 1) % BRAILLE_FRAMES.length);
-    }, BRAILLE_INTERVAL_MS);
+      setFrame((f) => (f + 1) % SPARKLE_FRAMES.length);
+    }, SPARKLE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [isBraille, visible]);
+  }, [isSparkle, visible]);
 
   if (!visible) return null;
 
-  if (isBraille) {
+  if (isSparkle) {
     return (
       <span
         className="inline-flex items-center font-mono text-base leading-none text-gray-500 dark:text-gray-300"
@@ -56,7 +58,9 @@ export function StreamingIndicator({ visible = true, variant = 'default' }: Stre
         aria-label={t('streaming.ariaLabel')}
       >
         <span className="sr-only">{t('streaming.srText')}</span>
-        <span aria-hidden="true">{BRAILLE_FRAMES[frame]}</span>
+        {/* Fixed-width centered cell: sparkle glyphs vary in advance width (· is narrow, ✽ wide),
+            so pin a 1-char box and center each frame to keep the adjacent counter text from jittering. */}
+        <span aria-hidden="true" className="inline-block w-[1ch] text-center">{SPARKLE_FRAMES[frame]}</span>
       </span>
     );
   }

@@ -69,21 +69,21 @@ describe('StreamingIndicator', () => {
     expect(dots[2]).toHaveStyle({ animationDelay: '300ms' });
   });
 
-  describe('braille variant', () => {
-    it('renders a single rotating braille glyph instead of pulsing dots', () => {
-      const { container } = render(<StreamingIndicator variant="braille" />);
+  describe('sparkle variant', () => {
+    it('renders a single sparkle glyph instead of pulsing dots', () => {
+      const { container } = render(<StreamingIndicator variant="sparkle" />);
 
       // No dot-opacity pulse in this variant
       expect(container.querySelectorAll('.animate-pulse')).toHaveLength(0);
 
-      // A single braille glyph is shown, hidden from screen readers
+      // A single sparkle glyph is shown, hidden from screen readers
       const hidden = container.querySelectorAll('[aria-hidden="true"]');
       expect(hidden).toHaveLength(1);
-      expect(hidden[0].textContent).toMatch(/[⠋⠛⠙⠹⠸⠼⠴⠶⠦⠧⠇⠏]/);
+      expect(hidden[0].textContent).toMatch(/[·✢✳✻✽]/);
     });
 
     it('keeps aria-live and screen-reader text for accessibility', () => {
-      render(<StreamingIndicator variant="braille" />);
+      render(<StreamingIndicator variant="sparkle" />);
 
       const indicator = screen.getByLabelText('Claude가 응답을 생성하고 있습니다');
       expect(indicator).toHaveAttribute('aria-live', 'polite');
@@ -91,7 +91,7 @@ describe('StreamingIndicator', () => {
     });
 
     it('returns null when visible is false', () => {
-      const { container } = render(<StreamingIndicator variant="braille" visible={false} />);
+      const { container } = render(<StreamingIndicator variant="sparkle" visible={false} />);
       expect(container.firstChild).toBeNull();
     });
   });
