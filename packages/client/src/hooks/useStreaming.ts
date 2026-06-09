@@ -967,6 +967,15 @@ export function useStreaming() {
       // Track completed turns — when message:complete arrives, convert segments to messages
       const completedMessages: HistoryMessage[] = [];
       let lastResultError: ResultErrorData | null = null;
+      // CLI progress restoration (Story 36.2 / 32.7). The server buffers cli:phase and
+      // generation:progress like every other event, so re-entering a chat mid-turn can
+      // restore the LAST value of each instead of resetting the indicator. Reset on every
+      // message:complete so only the still-running turn's progress survives. currentTurnStartTs
+      // = the first buffered event of that turn (each entry carries `ts`), used to realign the
+      // elapsed clock so it continues instead of restarting at 0 on restore.
+      let lastCliPhase: 'launching' | 'submitting' | 'waiting' | null = null;
+      let lastGenerationProgress: { tokens: number; elapsedSeconds: number } | null = null;
+      let currentTurnStartTs: number | null = null;
 
       /** Flush accumulated text into a text segment */
       const flushText = () => {
@@ -1079,6 +1088,13 @@ export function useStreaming() {
       // Process each event in the buffer
       for (const entry of data.events) {
         const { event, data: eventData } = entry;
+        // Each buffered entry carries the server timestamp (createStreamEmit stamps `ts`).
+        // The first event after the last message:complete marks the running turn's start —
+        // used below to restore the elapsed clock without restarting it at 0.
+        const entryTs = (entry as { ts?: number }).ts;
+        if (currentTurnStartTs === null && typeof entryTs === 'number') {
+          currentTurnStartTs = entryTs;
+        }
 
         switch (event) {
           case 'user:message': {
@@ -1271,6 +1287,11 @@ export function useStreaming() {
             }
             // Reset per-turn identity so next turn doesn't inherit stale ID
             messageId = null;
+            // Turn boundary: the just-finished turn's CLI progress is stale. Clear it (and
+            // the turn-start marker) so only a still-running next turn restores an indicator.
+            lastCliPhase = null;
+            lastGenerationProgress = null;
+            currentTurnStartTs = null;
             break;
           }
           case 'context:usage': {
@@ -1321,9 +1342,19 @@ export function useStreaming() {
             useChainStore.getState().applyUpdate(d.sessionId, d.items);
             break;
           }
+          // CLI progress indicators (Story 36.2 / 32.7). Unlike tool:progress these ARE
+          // replayed — but only as the LAST value (tracked here, applied once after the loop),
+          // so re-entering a chat mid-turn restores the live phase/counter instead of a reset
+          // spinner. message:complete clears them so a finished turn leaves no indicator.
+          case 'cli:phase': {
+            lastCliPhase = (eventData as { phase: 'launching' | 'submitting' | 'waiting' | null }).phase;
+            break;
+          }
+          case 'generation:progress': {
+            lastGenerationProgress = eventData as { tokens: number; elapsedSeconds: number };
+            break;
+          }
           // Skip tool:progress during replay (only elapsed times, final state is in tool:result)
-          // Skip generation:progress during replay (Story 32.7 — transient live-only counter)
-          // Skip cli:phase during replay (Story 36.2 — transient live-only phase, no case → default skip)
           // Skip permission:already-resolved (no toast during replay)
           default:
             break;
@@ -1387,6 +1418,20 @@ export function useStreaming() {
       if (activeModel) chatStateUpdate.activeModel = activeModel;
       if (isCompacting) chatStateUpdate.isCompacting = true;
       if (lastResultError) chatStateUpdate.lastResultError = lastResultError;
+
+      // Restore the in-flight CLI progress indicator (Story 36.2 / 32.7). Only when the stream
+      // is actually running (server said active:true → restoreStreaming already set isStreaming);
+      // a completed/aborted stream leaves these null. Set unconditionally (even to null) so a
+      // stale live value can't linger after restore. Realign streamingStartedAt to the running
+      // turn's first buffered event so the elapsed clock continues from the real start instead of
+      // restarting at 0 (overrides the `new Date()` set in the active-segments branch above).
+      if (useChatStore.getState().isStreaming) {
+        chatStateUpdate.cliPhase = lastCliPhase;
+        chatStateUpdate.generationProgress = lastGenerationProgress;
+        if (currentTurnStartTs !== null) {
+          chatStateUpdate.streamingStartedAt = new Date(currentTurnStartTs);
+        }
+      }
 
       // Update seen permission IDs for live event dedup
       for (const id of localSeenPermissionIds) {

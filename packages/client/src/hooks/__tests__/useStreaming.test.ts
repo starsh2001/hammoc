@@ -398,16 +398,69 @@ describe('useStreaming', () => {
       expect(mockSocket.off).toHaveBeenCalledWith('generation:progress', expect.any(Function));
     });
 
-    it('skips generation:progress during buffer replay (transient, live-only)', () => {
+    it('does not restore generation:progress when replaying an INACTIVE stream (completed/aborted)', () => {
       renderHook(() => useStreaming());
 
-      // currentSessionId is 'session-1' (beforeEach), so the replay is not session-dropped;
-      // the event still must be skipped (it falls through to the replay switch default).
+      // No active stream (isStreaming stays false): a completed/aborted buffer replay must not
+      // resurrect a transient counter.
       mockSocket.trigger('stream:buffer-replay', {
         sessionId: 'session-1',
         events: [{ event: 'generation:progress', data: { tokens: 999, elapsedSeconds: 9 } }],
       });
 
+      expect(useChatStore.getState().generationProgress).toBeNull();
+    });
+
+    it('restores the LAST generation:progress when re-entering an active stream mid-turn', () => {
+      renderHook(() => useStreaming());
+
+      // Simulate stream:status active → restoreStreaming (server confirmed a running turn),
+      // which is what leaving and returning to the chat triggers.
+      useChatStore.getState().restoreStreaming('session-1');
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'generation:progress', data: { tokens: 100, elapsedSeconds: 2 }, ts: 1000 },
+          { event: 'generation:progress', data: { tokens: 365, elapsedSeconds: 9 }, ts: 2000 },
+        ],
+      });
+
+      // The freshest counter is restored so the indicator continues instead of resetting.
+      expect(useChatStore.getState().generationProgress).toEqual({ tokens: 365, elapsedSeconds: 9 });
+    });
+
+    it('realigns the elapsed-clock start to the running turn on active replay', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [{ event: 'generation:progress', data: { tokens: 100, elapsedSeconds: 2 }, ts: 1234 }],
+      });
+
+      // streamingStartedAt is realigned to the first buffered event of the running turn (not
+      // "now"), so the elapsed seconds continue from the real start instead of restarting at 0.
+      expect(useChatStore.getState().streamingStartedAt?.getTime()).toBe(1234);
+    });
+
+    it('does not restore progress from a turn that already completed in the buffer', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'generation:progress', data: { tokens: 365, elapsedSeconds: 9 }, ts: 1000 },
+          {
+            event: 'message:complete',
+            data: { id: 'm1', sessionId: 'session-1', type: 'assistant', content: '', timestamp: '2025-01-01T00:00:00.000Z' },
+            ts: 2000,
+          },
+        ],
+      });
+
+      // message:complete is a turn boundary — the finished turn's counter is cleared.
       expect(useChatStore.getState().generationProgress).toBeNull();
     });
   });
@@ -441,7 +494,7 @@ describe('useStreaming', () => {
       expect(mockSocket.off).toHaveBeenCalledWith('cli:phase', expect.any(Function));
     });
 
-    it('skips cli:phase during buffer replay (transient, live-only)', () => {
+    it('does not restore cli:phase when replaying an INACTIVE stream', () => {
       renderHook(() => useStreaming());
 
       mockSocket.trigger('stream:buffer-replay', {
@@ -450,6 +503,21 @@ describe('useStreaming', () => {
       });
 
       expect(useChatStore.getState().cliPhase).toBeNull();
+    });
+
+    it('restores the LAST cli:phase when re-entering an active stream mid-turn', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'cli:phase', data: { phase: 'launching' }, ts: 1000 },
+          { event: 'cli:phase', data: { phase: 'waiting' }, ts: 2000 },
+        ],
+      });
+
+      expect(useChatStore.getState().cliPhase).toBe('waiting');
     });
   });
 
