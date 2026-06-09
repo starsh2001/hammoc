@@ -35,6 +35,17 @@ const THUMBNAIL_MAX_WIDTH = 400;
 const THUMBNAIL_MAX_HEIGHT = 300;
 
 /**
+ * Assistant text blocks that are pure filler — the harness emits them for an empty
+ * turn (e.g. right after the user interrupts a request). They are recorded as
+ * ordinary assistant text but carry no conversational value, so the session view
+ * hides them (exact match after trim) while the existing "no visible output →
+ * redirect" path keeps the message tree connected. Extend as new phrases surface.
+ */
+const INTERRUPT_FILLER_TEXTS = new Set<string>([
+  'No response requested.',
+]);
+
+/**
  * Parse a JSONL file and return raw messages
  * @param filePath Path to the JSONL session file
  * @returns Array of parsed raw messages
@@ -497,8 +508,8 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
             thinkingContent = (block as ThinkingContentBlock).thinking;
           } else if (block.type === 'text') {
             const text = (block as TextContentBlock).text;
-            // Skip "(no content)" placeholder
-            if (text.trim() && text.trim() !== '(no content)') {
+            // Skip empty / "(no content)" / interrupt-filler placeholder text
+            if (text.trim() && text.trim() !== '(no content)' && !INTERRUPT_FILLER_TEXTS.has(text.trim())) {
               const id = !firstFragmentEmitted ? m.uuid : `${m.uuid}-text-${results.length}`;
               firstFragmentEmitted = true;
               results.push({
@@ -549,7 +560,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
       } else {
         // Simple string content
         const text = extractTextContent(messageContent);
-        if (text.trim() && text.trim() !== '(no content)') {
+        if (text.trim() && text.trim() !== '(no content)' && !INTERRUPT_FILLER_TEXTS.has(text.trim())) {
           results.push({
             id: m.uuid,
             type: 'assistant',

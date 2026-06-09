@@ -496,6 +496,88 @@ invalid json line
       expect(transformed).toHaveLength(0);
     });
 
+    it('filters out interrupt-filler assistant message ("No response requested.")', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'No response requested.' }],
+          },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(0);
+    });
+
+    it('filters interrupt filler given as plain string content', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: { role: 'assistant', content: 'No response requested.' },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(0);
+    });
+
+    it('redirects children across a filtered interrupt-filler message (tree stays connected)', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'u1',
+          parentUuid: null,
+          type: 'user',
+          message: { role: 'user', content: 'first question' },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+        {
+          uuid: 'a1',
+          parentUuid: 'u1',
+          type: 'assistant',
+          message: { role: 'assistant', content: [{ type: 'text', text: 'No response requested.' }] },
+          timestamp: '2026-01-15T10:00:01Z',
+        },
+        {
+          uuid: 'u2',
+          parentUuid: 'a1',
+          type: 'user',
+          message: { role: 'user', content: 'second question' },
+          timestamp: '2026-01-15T10:00:02Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      // The filler turn is hidden, but the two user turns remain chained:
+      // u2's parent resolves to u1 (the filler's parent), not an orphan root.
+      expect(transformed.map((m) => m.id)).toEqual(['u1', 'u2']);
+      expect(transformed[1].parentId).toBe('u1');
+    });
+
+    it('does not over-filter a normal short assistant reply', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'assistant',
+          message: { role: 'assistant', content: [{ type: 'text', text: 'Yes, that is correct.' }] },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].content).toBe('Yes, that is correct.');
+    });
+
     it('does not set thinking field for assistant messages without thinking block', () => {
       const messages: RawJSONLMessage[] = [
         {
