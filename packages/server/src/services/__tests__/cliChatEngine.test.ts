@@ -996,6 +996,22 @@ describe('CliChatEngine', () => {
       ' Enter to select · ↑/↓ to navigate · Esc to cancel',
     ].join('\n');
 
+    // A modal wrapped in the TUI's box-drawing chrome (┌─┐ │ └─┘) — the bug report's
+    // "일) ──────" stretched row and "│"-laden labels. The scrape must strip every box glyph so
+    // labels are clean and a chrome-only fragment never becomes its own option.
+    const Q_MODAL_BOXED = [
+      ' ☐ Spinner',
+      ' Which spinner motion?',
+      ' ┌────────────────────────────────┐',
+      ' │ ❯ 1. Rotating dot ───────────── │',
+      ' │      A rotating dot.            │',
+      ' │   2. Bounce dot │ one glyph     │',
+      ' │   3. Type something.            │',
+      ' │   4. Chat about this            │',
+      ' └────────────────────────────────┘',
+      ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+    ].join('\n');
+
     async function injectThenReady(engine: CliChatEngine, canUseTool: unknown): Promise<{ turn: Promise<unknown> }> {
       const turn = engine.sendMessageWithCallbacks(
         'ask me something',
@@ -1049,6 +1065,37 @@ describe('CliChatEngine', () => {
       expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b'); // not cancelled
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Picked Green' })]);
+      await turn;
+    });
+
+    it('strips box-drawing chrome (─ │) from scraped option labels (bug: stretched / │-laden rows)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const canUseTool = vi.fn().mockResolvedValue({
+        behavior: 'allow',
+        updatedInput: { answers: { 'Which spinner motion?': 'Rotating dot' } }, // index 0
+      });
+      const { turn } = await injectThenReady(engine, canUseTool);
+
+      h.fakePty._onData?.(Q_MODAL_BOXED);
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      const [, input] = canUseTool.mock.calls[0] as [string, Record<string, unknown>];
+      // Every box glyph is stripped: labels are clean, the ──── stretch and │ separators are gone,
+      // and a chrome-only fragment never becomes its own option (affordance rows still dropped).
+      expect(input).toEqual({
+        questions: [
+          {
+            question: 'Which spinner motion?',
+            header: 'Spinner',
+            multiSelect: false,
+            options: [{ label: 'Rotating dot' }, { label: 'Bounce dot one glyph' }],
+          },
+        ],
+      });
+      const labels = (input.questions as Array<{ options: Array<{ label: string }> }>)[0].options.map((o) => o.label);
+      labels.forEach((l) => expect(l).not.toMatch(/[─-▟]/));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Picked' })]);
       await turn;
     });
 

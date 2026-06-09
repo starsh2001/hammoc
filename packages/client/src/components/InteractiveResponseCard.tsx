@@ -263,10 +263,10 @@ export function InteractiveResponseCard({
                   className="mt-0.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
                   aria-label={choice.label}
                 />
-                <div>
-                  <span className="text-sm text-gray-700 dark:text-gray-200">{choice.label}</span>
+                <div className="min-w-0">
+                  <span className="text-sm text-gray-700 dark:text-gray-200 break-words">{choice.label}</span>
                   {choice.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">{choice.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5 break-words">{choice.description}</p>
                   )}
                 </div>
               </label>
@@ -298,7 +298,7 @@ export function InteractiveResponseCard({
                 key={choice.value}
                 onClick={() => standalone ? handleSingleChoiceClick(choice) : handleMultiQuestionChoice(qIndex, choice)}
                 disabled={isDisabled}
-                className={`px-3 py-1.5 text-sm rounded-md border transition-colors
+                className={`px-3 py-1.5 text-sm rounded-md border transition-colors max-w-full min-w-0 whitespace-normal break-words text-left
                   ${!standalone && selectedSingle === choice.value
                     ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/30 dark:text-blue-300'
                     : 'border-gray-300 hover:bg-gray-100 text-gray-700 dark:border-[#455568] dark:hover:bg-[#253040] dark:text-gray-200'}

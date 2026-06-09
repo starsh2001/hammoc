@@ -344,6 +344,12 @@ function detectQuestionModal(text: string): boolean {
  * self-consistent even when a label's text is imperfectly captured.
  */
 function parseQuestionModal(buf: string): ParsedQuestion | null {
+  // Strip terminal box-drawing / block glyphs (─ │ ┌ ▏ …, U+2500–U+259F) the TUI draws around the
+  // modal. The row scrape catches them but they are chrome, never part of an answer label — they
+  // are exactly the "│"-laden and "──────"-stretched labels seen in the bug report. Collapse each
+  // run to a single space, then trim (a row that was ONLY chrome collapses to '' and is dropped).
+  const stripBoxChrome = (s: string): string =>
+    s.replace(/[─-▟]/g, ' ').replace(/\s{2,}/g, ' ').trim();
   const navIdx = buf.lastIndexOf('to navigate');
   if (navIdx < 0) return null;
   const region = buf.slice(Math.max(0, navIdx - 2500), navIdx);
@@ -354,13 +360,14 @@ function parseQuestionModal(buf: string): ParsedQuestion | null {
   // Numbered option rows; last label wins per number, then order by number.
   const byNum = new Map<number, string>();
   for (const m of region.matchAll(/(\d{1,2})\.\s+(?:\[[✔x ]?\s*\]\s*)?([^\n]*\S)/g)) {
-    byNum.set(parseInt(m[1], 10), m[2].trim());
+    byNum.set(parseInt(m[1], 10), stripBoxChrome(m[2]));
   }
   const options = [...byNum.entries()]
     .sort((a, b) => a[0] - b[0])
     .map((e) => e[1])
-    // Drop the auto-appended affordance rows — not real answer options (they trail the
-    // real options in every observed render).
+    // Drop rows that were ONLY box-drawing chrome (empty after stripBoxChrome) and the
+    // auto-appended affordance rows — none of these are real answer options.
+    .filter((l) => l.length > 0)
     .filter((l) => !/^Type something\.?$/i.test(l) && !/^Chat about this\.?$/i.test(l))
     .map((label) => ({ label }));
   if (options.length === 0) return null;
@@ -373,7 +380,7 @@ function parseQuestionModal(buf: string): ParsedQuestion | null {
     region
       .slice(0, Math.max(0, region.search(/\d{1,2}\.\s/)))
       .split('\n')
-      .map((l) => l.replace(/[←→✔☐☒❯]/g, '').trim())
+      .map((l) => stripBoxChrome(l.replace(/[←→✔☐☒❯]/g, '')))
       .filter((l) => l && l !== header)
       .pop() ??
     header ??
