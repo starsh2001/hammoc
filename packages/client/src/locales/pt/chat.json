@@ -293,7 +293,7 @@
     "generating": "Gerando...",
     "restoring": "Restaurando conversa...",
     "compactionHint": "a compactação de contexto pode estar em andamento",
-    "generationProgress": "↓ {{tokens}} tokens · {{seconds}} s",
+    "generationProgress": "↓ {{tokens}} tokens · {{time}}",
     "cliPhase": {
       "launching": "Iniciando o Claude Code…",
       "submitting": "Enviando prompt…",

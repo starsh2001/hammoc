@@ -497,19 +497,27 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     return () => clearInterval(id);
   }, [isStreaming, streamingStartedAt]);
 
+  // mm:ss elapsed clock (700s reads as 11:40); under a minute is 0:SS — one colon format, no
+  // per-locale unit text needed.
+  const elapsedClock = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
   const generationProgressLabel = generationProgress
-    ? t('streaming.generationProgress', { tokens: generationProgress.tokens, seconds: elapsedSeconds })
+    ? t('streaming.generationProgress', { tokens: generationProgress.tokens, time: elapsedClock })
     : null;
 
   // Story 36.2: localized phase label, shown in the waiting indicator before the first block.
   const cliPhaseLabel = cliPhase ? t(`streaming.cliPhase.${cliPhase}`) : null;
 
-  // CLI sparkle spinner + the "생성 중…" dots share ONE timer so they advance together. Active only
-  // in CLI sparkle mode (generationProgress/cliPhase present). The 100ms tick is held for 2 ticks
-  // per glyph (≈200ms, half speed), and the dot count cycles 1 → 2 → 3 exactly once per full spin
-  // of the star (one turn of SPARKLE_FRAMES). frame is handed to StreamingIndicator so the two
-  // never drift. (SDK mode keeps the static i18n label + its own CSS-pulse dots.)
-  const sparkleActive = isStreaming && !!(generationProgress || cliPhase);
+  // CLI sparkle spinner + the "생성 중…" dots share ONE timer so they advance together. Gated on
+  // CLI mode (project override > global pref > sdk) and isStreaming — NOT on a progress/phase
+  // signal having arrived — so the sparkle shows from the very first frame instead of flashing the
+  // SDK pulse dots at send time or across the phase→generation gap. The 100ms tick is held for 2
+  // ticks per glyph (≈200ms, half speed), and the dot count cycles 1 → 2 → 3 once per full spin of
+  // the star (one turn of SPARKLE_FRAMES). frame is handed to StreamingIndicator so the two never
+  // drift. (SDK mode keeps the static i18n label + its own CSS-pulse dots.)
+  const engineModeOverride = useChatStore((s) => s.projectSettings?.engineModeOverride);
+  const globalEngineMode = usePreferencesStore((s) => s.preferences.engineMode);
+  const isCliMode = (engineModeOverride ?? globalEngineMode ?? 'sdk') === 'cli';
+  const sparkleActive = isStreaming && isCliMode;
   const [spinnerTick, setSpinnerTick] = useState(0);
   useEffect(() => {
     if (!sparkleActive) {

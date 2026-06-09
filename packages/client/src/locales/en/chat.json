@@ -300,7 +300,7 @@
     "generating": "Generating...",
     "restoring": "Restoring conversation...",
     "compactionHint": "context compaction may be in progress",
-    "generationProgress": "↓ {{tokens}} tokens · {{seconds}}s",
+    "generationProgress": "↓ {{tokens}} tokens · {{time}}",
     "cliPhase": {
       "launching": "Launching Claude Code…",
       "submitting": "Sending prompt…",
