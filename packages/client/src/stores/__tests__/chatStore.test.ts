@@ -284,6 +284,24 @@ describe('useChatStore', () => {
       expect(segments[2]).toEqual({ type: 'text', content: 'After tool' });
     });
 
+    it('drops a late tool:call after the stream completed (no orphan card under the last answer)', () => {
+      const { startStreaming, addStreamingToolCall, completeStreaming } = useChatStore.getState();
+
+      startStreaming('session-1', 'msg-1');
+      addStreamingToolCall({ id: 'tool-1', name: 'Read' });
+      expect(useChatStore.getState().streamingSegments).toHaveLength(1);
+
+      completeStreaming();
+      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
+      expect(useChatStore.getState().isStreaming).toBe(false);
+
+      // CLI mode polls the JSONL, so a turn's final tool block can be re-emitted a beat after
+      // the completion signal. Such a late tool:call must be ignored — otherwise it lands in the
+      // now-empty live-segment area, which renders BELOW the reloaded messages as an orphan card.
+      addStreamingToolCall({ id: 'tool-2', name: 'Bash' });
+      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
+    });
+
     it('ignores empty string content', () => {
       const { startStreaming, appendStreamingContent } = useChatStore.getState();
 

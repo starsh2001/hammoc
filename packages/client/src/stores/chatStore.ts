@@ -586,6 +586,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   addStreamingToolCall: (toolCall: StreamingToolCall) => {
+    // Lifecycle guard: a stream that has already completed must not gain new live cards.
+    // CLI mode watches the session JSONL by polling, so a turn's final tool block can be
+    // re-emitted a beat AFTER the completion signal (stream:complete-messages →
+    // completeStreaming) has already swapped in the authoritative reload and cleared
+    // streamingSegments. Such a late tool:call would land in the now-empty live-segment
+    // area, which always renders BELOW the message list — an orphan tool card stuck under
+    // the last answer until the session is re-entered ("뒤로 갔다 오면 재정렬"). The reload
+    // already contains this tool in its correct position, so dropping the late live card is
+    // the correct, lossless fix. (Synthetic-typing reveals run this mutate from the preso
+    // queue, so the check lands at execution time, after completeStreaming has flipped the flag.)
+    if (!get().isStreaming) return;
     const segments = get().streamingSegments;
     // Avoid duplicates
     if (segments.some((seg) => seg.type === 'tool' && seg.toolCall.id === toolCall.id)) return;
