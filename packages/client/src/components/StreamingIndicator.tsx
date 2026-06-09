@@ -26,6 +26,26 @@ import { useTranslation } from 'react-i18next';
 export const SPARKLE_FRAMES = ['·', '✢', '✳', '✻', '✽', '✻', '✳', '✢'] as const;
 const SPARKLE_INTERVAL_MS = 200;
 
+/**
+ * Per-glyph optical vertical nudge (em, positive = down). Root cause: the sparkle glyphs are
+ * absent from the monospace stack, so the browser falls back to a symbol font that draws its
+ * asterisks high in the em-box. Under the surrounding flex `items-center`, box centers align but
+ * the glyph ink then floats ABOVE the adjacent Hangul label's optical center — the "spinner sits
+ * a bit too high" the eye picks up. Box height is NOT the cause: measured ink offset is identical
+ * whether the cell is 16/20/24px tall, because items-center pins the box center regardless of size.
+ * The only lever is moving the glyph itself. Values are the measured offset of each glyph's ink
+ * center from the label's, taken from canvas ink-pixel ground-truth (Windows / Segoe UI Symbol
+ * fallback) and confirmed independently by font-metric derivation: larger/heavier stars sit higher
+ * and need more nudge; the mid-dot already centers (≈0). em units so it scales with font-size.
+ */
+const SPARKLE_NUDGE_EM: Record<string, number> = {
+  '·': 0,
+  '✢': 0.045,
+  '✳': 0.045,
+  '✻': 0.045,
+  '✽': 0.075,
+};
+
 interface StreamingIndicatorProps {
   /** Whether the indicator is visible */
   visible?: boolean;
@@ -60,6 +80,7 @@ export function StreamingIndicator({ visible = true, variant = 'default', frame 
 
   if (isSparkle) {
     const glyph = SPARKLE_FRAMES[(frame ?? internalFrame) % SPARKLE_FRAMES.length];
+    const nudgeEm = SPARKLE_NUDGE_EM[glyph] ?? 0;
     return (
       <span
         className="inline-flex items-center font-mono text-sm text-gray-500 dark:text-gray-300"
@@ -68,8 +89,15 @@ export function StreamingIndicator({ visible = true, variant = 'default', frame 
       >
         <span className="sr-only">{t('streaming.srText')}</span>
         {/* Fixed-width centered cell: sparkle glyphs vary in advance width (· is narrow, ✽ wide),
-            so pin a 1-char box and center each frame to keep the adjacent counter text from jittering. */}
-        <span aria-hidden="true" className="inline-block w-[1ch] text-center">{glyph}</span>
+            so pin a 1-char box and center each frame to keep the adjacent counter text from jittering.
+            translateY nudges the symbol-font glyph down onto the label's optical center (see SPARKLE_NUDGE_EM). */}
+        <span
+          aria-hidden="true"
+          className="inline-block w-[1ch] text-center"
+          style={nudgeEm ? { transform: `translateY(${nudgeEm}em)` } : undefined}
+        >
+          {glyph}
+        </span>
       </span>
     );
   }
