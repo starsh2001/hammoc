@@ -11,7 +11,7 @@ import { projectService } from '../services/projectService.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('sessionController');
-import { getActiveStreamSessionIds, getJoinedSessionIdsByProject } from '../handlers/websocket.js';
+import { getActiveStreamSessionIds, getJoinedSessionIdsByProject, getActiveStreamMetaByProject } from '../handlers/websocket.js';
 
 export const sessionController = {
   /**
@@ -70,20 +70,32 @@ export const sessionController = {
       // Mark sessions that have an active background stream + merge session names
       const activeIds = new Set(getActiveStreamSessionIds());
       const joinedIds = getJoinedSessionIdsByProject(projectSlug);
+      const activeMeta = getActiveStreamMetaByProject(projectSlug);
+      const promptById = new Map(activeMeta.map(m => [m.sessionId, m.firstPrompt]));
       const sessions = result.sessions;
       const total = result.total;
 
-      // Merge socket-connected sessions that have no JSONL file yet.
+      // Merge file-less sessions that have no JSONL on disk yet.
       // Only include on the first page (offset=0) and exclude from total/hasMore
       // so pagination math stays consistent across pages.
+      //
+      // The candidate set is the UNION of (a) sessions a socket is currently viewing
+      // and (b) running background streams for this project. (b) is essential: a
+      // background stream outlives the client leaving the session view, so without it
+      // a session started and immediately navigated-away-from disappears from the list
+      // until its JSONL file appears — a window that is ~instant in SDK mode but several
+      // seconds in CLI mode, where claude's interactive TUI must boot before the first
+      // line is written. The captured firstPrompt gives that waiting row a real preview.
       const waitingSessions: SessionListResponse['sessions'] = [];
       if (offset === 0) {
         const now = new Date().toISOString();
-        for (const id of joinedIds) {
+        const candidateIds = new Set<string>([...joinedIds, ...activeMeta.map(m => m.sessionId)]);
+        for (const id of candidateIds) {
           if (!sessionService.sessionFileExists(projectSlug, id)) {
+            const rawPrompt = promptById.get(id) ?? '';
             waitingSessions.push({
               sessionId: id,
-              firstPrompt: '',
+              firstPrompt: rawPrompt ? sessionService.truncateFirstPrompt(rawPrompt) : '',
               messageCount: 0,
               created: now,
               modified: now,

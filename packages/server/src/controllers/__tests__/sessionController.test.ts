@@ -15,6 +15,8 @@ const {
   mockReadSessionNamesBySlug,
   mockGetActiveStreamSessionIds,
   mockGetJoinedSessionIdsByProject,
+  mockGetActiveStreamMetaByProject,
+  mockTruncateFirstPrompt,
 } = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
   mockIsValidPathParam: vi.fn(() => true),
@@ -22,6 +24,8 @@ const {
   mockReadSessionNamesBySlug: vi.fn(),
   mockGetActiveStreamSessionIds: vi.fn(),
   mockGetJoinedSessionIdsByProject: vi.fn(),
+  mockGetActiveStreamMetaByProject: vi.fn(),
+  mockTruncateFirstPrompt: vi.fn((s: string) => s),
 }));
 
 // Mock sessionService
@@ -30,6 +34,7 @@ vi.mock('../../services/sessionService', () => ({
     listSessionsBySlug: mockListSessionsBySlug,
     isValidPathParam: mockIsValidPathParam,
     sessionFileExists: mockSessionFileExists,
+    truncateFirstPrompt: mockTruncateFirstPrompt,
   },
 }));
 
@@ -44,6 +49,7 @@ vi.mock('../../services/projectService', () => ({
 vi.mock('../../handlers/websocket', () => ({
   getActiveStreamSessionIds: mockGetActiveStreamSessionIds,
   getJoinedSessionIdsByProject: mockGetJoinedSessionIdsByProject,
+  getActiveStreamMetaByProject: mockGetActiveStreamMetaByProject,
 }));
 
 import { sessionController } from '../sessionController';
@@ -72,6 +78,8 @@ describe('sessionController', () => {
     mockSessionFileExists.mockReturnValue(false);
     mockGetActiveStreamSessionIds.mockReturnValue([]);
     mockGetJoinedSessionIdsByProject.mockReturnValue(new Set<string>());
+    mockGetActiveStreamMetaByProject.mockReturnValue([]);
+    mockTruncateFirstPrompt.mockImplementation((s: string) => s);
     mockReadSessionNamesBySlug.mockResolvedValue({});
   });
 
@@ -212,6 +220,71 @@ describe('sessionController', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(SESSION_ERRORS.INVALID_PATH.httpStatus);
       expect(mockListSessionsBySlug).not.toHaveBeenCalled();
+    });
+
+    // Waiting-session merge (CLI boot window): a running background stream whose JSONL
+    // file does not exist yet must appear in the list even after the client left the
+    // session view (so it is NOT in joinedIds). Regression guard for the disappearing
+    // just-started CLI session.
+    it('should merge a file-less running stream as a waiting session even when not joined', async () => {
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
+      mockGetJoinedSessionIdsByProject.mockReturnValue(new Set<string>()); // client navigated away
+      mockGetActiveStreamSessionIds.mockReturnValue(['cli-1']);
+      mockGetActiveStreamMetaByProject.mockReturnValue([{ sessionId: 'cli-1', firstPrompt: 'review story 1.7' }]);
+      mockSessionFileExists.mockReturnValue(false); // JSONL not written yet
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      const arg = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(arg.sessions).toHaveLength(1);
+      expect(arg.sessions[0]).toMatchObject({
+        sessionId: 'cli-1',
+        firstPrompt: 'review story 1.7',
+        isWaiting: true,
+        isStreaming: true,
+      });
+      // Waiting rows are excluded from pagination totals
+      expect(arg.total).toBe(0);
+      expect(arg.hasMore).toBe(false);
+    });
+
+    it('should not duplicate a session that is both joined and an active stream', async () => {
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
+      mockGetJoinedSessionIdsByProject.mockReturnValue(new Set<string>(['cli-1']));
+      mockGetActiveStreamSessionIds.mockReturnValue(['cli-1']);
+      mockGetActiveStreamMetaByProject.mockReturnValue([{ sessionId: 'cli-1', firstPrompt: 'hello' }]);
+      mockSessionFileExists.mockReturnValue(false);
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      const arg = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(arg.sessions.filter((s: { sessionId: string }) => s.sessionId === 'cli-1')).toHaveLength(1);
+      expect(arg.sessions[0].firstPrompt).toBe('hello');
+    });
+
+    it('should not merge an active stream once its JSONL file exists', async () => {
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 0 });
+      mockGetActiveStreamSessionIds.mockReturnValue(['cli-1']);
+      mockGetActiveStreamMetaByProject.mockReturnValue([{ sessionId: 'cli-1', firstPrompt: 'hi' }]);
+      mockSessionFileExists.mockReturnValue(true); // file now on disk → real list owns it
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      const arg = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(arg.sessions).toHaveLength(0);
+    });
+
+    it('should not merge waiting sessions on later pages (offset>0)', async () => {
+      mockReq.query = { limit: '20', offset: '20' };
+      mockListSessionsBySlug.mockResolvedValue({ sessions: [], total: 50 });
+      mockGetActiveStreamSessionIds.mockReturnValue(['cli-1']);
+      mockGetActiveStreamMetaByProject.mockReturnValue([{ sessionId: 'cli-1', firstPrompt: 'hi' }]);
+      mockSessionFileExists.mockReturnValue(false);
+
+      await sessionController.list(mockReq as Request, mockRes as Response);
+
+      const arg = (mockRes.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(arg.sessions).toHaveLength(0); // waiting merge only on first page
     });
   });
 

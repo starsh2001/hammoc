@@ -139,6 +139,7 @@ vi.mock('../../services/projectService.js', () => ({
 vi.mock('../../handlers/websocket.js', () => ({
   getActiveStreamSessionIds: vi.fn().mockReturnValue([]),
   getJoinedSessionIdsByProject: vi.fn().mockReturnValue(new Set<string>()),
+  getActiveStreamMetaByProject: vi.fn().mockReturnValue([]),
 }));
 
 import { createApp } from '../../app.js';

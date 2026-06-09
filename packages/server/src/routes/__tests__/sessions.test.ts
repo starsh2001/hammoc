@@ -9,13 +9,14 @@ import express from 'express';
 import type { SessionListItem } from '@hammoc/shared';
 
 // Create hoisted mocks for sessionService
-const { mockListSessionsBySlug, mockIsValidPathParam, mockSessionFileExists, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds, mockGetJoinedSessionIdsByProject } = vi.hoisted(() => ({
+const { mockListSessionsBySlug, mockIsValidPathParam, mockSessionFileExists, mockReadSessionNamesBySlug, mockGetActiveStreamSessionIds, mockGetJoinedSessionIdsByProject, mockGetActiveStreamMetaByProject } = vi.hoisted(() => ({
   mockListSessionsBySlug: vi.fn(),
   mockIsValidPathParam: vi.fn(),
   mockSessionFileExists: vi.fn().mockReturnValue(false),
   mockReadSessionNamesBySlug: vi.fn().mockResolvedValue({}),
   mockGetActiveStreamSessionIds: vi.fn().mockReturnValue([]),
   mockGetJoinedSessionIdsByProject: vi.fn().mockReturnValue(new Set<string>()),
+  mockGetActiveStreamMetaByProject: vi.fn().mockReturnValue([]),
 }));
 
 // Mock sessionService
@@ -40,6 +41,7 @@ vi.mock('../../services/projectService', () => ({
 vi.mock('../../handlers/websocket', () => ({
   getActiveStreamSessionIds: mockGetActiveStreamSessionIds,
   getJoinedSessionIdsByProject: mockGetJoinedSessionIdsByProject,
+  getActiveStreamMetaByProject: mockGetActiveStreamMetaByProject,
 }));
 
 import sessionsRoutes from '../sessions';
@@ -60,6 +62,7 @@ describe('Sessions Routes', () => {
     mockReadSessionNamesBySlug.mockResolvedValue({});
     mockGetActiveStreamSessionIds.mockReturnValue([]);
     mockGetJoinedSessionIdsByProject.mockReturnValue(new Set<string>());
+    mockGetActiveStreamMetaByProject.mockReturnValue([]);
   });
 
   afterEach(() => {

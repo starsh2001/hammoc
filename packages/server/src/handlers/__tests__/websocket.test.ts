@@ -62,9 +62,11 @@ vi.mock('../../services/chatService.js', () => ({
   },
 }));
 
-// Mock SessionService - must be a real class (used with `new`)
-vi.mock('../../services/sessionService.js', () => ({
-  SessionService: class MockSessionService {
+// Mock SessionService - must be a real class (used with `new`). Also exposes the
+// `sessionService` singleton consumed by websocket.ts (chat:send uses it to derive
+// the project slug for the active-stream session list).
+vi.mock('../../services/sessionService.js', () => {
+  class MockSessionService {
     saveSessionId = vi.fn().mockResolvedValue(undefined);
     getSessionId = vi.fn().mockResolvedValue(null);
     encodeProjectPath = vi.fn().mockReturnValue('mock-project-slug');
@@ -81,8 +83,9 @@ vi.mock('../../services/sessionService.js', () => ({
         modified: new Date('2026-01-30T11:00:00Z'),
       },
     ]);
-  },
-}));
+  }
+  return { SessionService: MockSessionService, sessionService: new MockSessionService() };
+});
 
 // Mock preferencesService (Story 10.2)
 vi.mock('../../services/preferencesService.js', () => ({

@@ -29,7 +29,7 @@ import { isLocalIP, extractClientIP } from '../utils/networkUtils.js';
 import type { CanUseTool, PermissionResult } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatEngine } from '../services/chatEngine.js';
 import { createChatEngine } from '../services/chatEngineFactory.js';
-import { SessionService } from '../services/sessionService.js';
+import { SessionService, sessionService } from '../services/sessionService.js';
 import { parseSDKError, AbortedError, SDKErrorCode } from '../utils/errors.js';
 import { createSessionMiddleware } from '../middleware/session.js';
 import { config } from '../config/index.js';
@@ -153,6 +153,20 @@ interface ActiveStream {
   isFork?: boolean;
   /** Deferred usage data — included in stream:complete-messages after JSONL flush */
   deferredUsage?: ChatUsage;
+  /**
+   * Project slug (encoded cwd) captured at chat:send time. Lets the session list
+   * attribute a still-file-less stream to its project synchronously — sessionProjectMap
+   * is only populated async (after findProjectByPath resolves), too late for a list
+   * request that races the CLI boot window.
+   */
+  projectSlug?: string;
+  /**
+   * The first user prompt for this stream. A new CLI session's JSONL file does not
+   * exist until claude's interactive TUI finishes booting (~3s) and writes its first
+   * line, so the session list cannot read a label from disk during that window. This
+   * carries the prompt so a "waiting" entry shows a meaningful preview, not a blank row.
+   */
+  firstPrompt?: string;
 }
 
 // Primary maps: sessionId → ActiveStream, socketId → sessionId
@@ -493,6 +507,26 @@ export function getActiveStreamSessionIds(): string[] {
   return [...activeStreams.entries()]
     .filter(([, stream]) => stream.status === 'running')
     .map(([key]) => key);
+}
+
+/**
+ * Running streams for a project, with their captured first prompt. Used by the
+ * session list to surface a session whose JSONL file does not exist yet (the CLI
+ * boot window) and which the client may have already navigated away from — so it
+ * is no longer in getJoinedSessionIdsByProject. Prefers the synchronously-captured
+ * stream.projectSlug, falling back to the async-populated sessionProjectMap.
+ */
+export function getActiveStreamMetaByProject(
+  projectSlug: string,
+): Array<{ sessionId: string; firstPrompt: string }> {
+  const out: Array<{ sessionId: string; firstPrompt: string }> = [];
+  for (const [sessionId, stream] of activeStreams.entries()) {
+    if (stream.status !== 'running') continue;
+    const slug = stream.projectSlug ?? sessionProjectMap.get(sessionId);
+    if (slug !== projectSlug) continue;
+    out.push({ sessionId, firstPrompt: stream.firstPrompt ?? '' });
+  }
+  return out;
 }
 
 /** Get active (running) session counts grouped by project slug (in-memory, no I/O) */
@@ -1038,6 +1072,13 @@ export async function initializeWebSocket(
         resumeSessionAt: data.resumeSessionAt,
         expectedBranchTotal: data.expectedBranchTotal,
         isFork: !!data.forkSession,
+        // Captured up front so a file-less waiting session (esp. the CLI boot window)
+        // can be listed for its project with a real preview even if the client has
+        // already left the session view (joinedIds would no longer include it).
+        projectSlug: data.workingDirectory
+          ? sessionService.encodeProjectPath(data.workingDirectory)
+          : undefined,
+        firstPrompt: data.content || undefined,
       };
       activeStreams.set(streamKey, stream);
       // Bump drain generation so any pending scheduled drain is invalidated

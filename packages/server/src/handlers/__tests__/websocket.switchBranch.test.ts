@@ -50,15 +50,16 @@ vi.mock('../../services/chatService.js', () => ({
   },
 }));
 
-vi.mock('../../services/sessionService.js', () => ({
-  SessionService: class MockSessionService {
+vi.mock('../../services/sessionService.js', () => {
+  class MockSessionService {
     saveSessionId = vi.fn().mockResolvedValue(undefined);
     getSessionId = vi.fn().mockResolvedValue(null);
     encodeProjectPath = vi.fn().mockReturnValue('mock-project-slug');
     getSessionFilePath = vi.fn().mockReturnValue('/mock/session.jsonl');
     listSessions = vi.fn().mockResolvedValue([]);
-  },
-}));
+  }
+  return { SessionService: MockSessionService, sessionService: new MockSessionService() };
+});
 
 vi.mock('../../services/preferencesService.js', () => ({
   preferencesService: {
