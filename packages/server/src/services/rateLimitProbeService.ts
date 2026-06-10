@@ -18,11 +18,15 @@ const CREDENTIALS_PATH = path.join(os.homedir(), '.claude', '.credentials.json')
 const POLL_INTERVAL_MS = 120_000; // 2min polling interval
 const MAX_BACKOFF_MS = 1_800_000; // 30min max backoff on 429
 const TOKEN_CACHE_TTL_MS = 300_000; // 5min token file cache
+// Cross-check window for a screen-scraped usage-limit notice (see isLimitCorroborated).
+const LIMIT_CORROBORATION_TTL_MS = 360_000; // 6min — tolerate one missed/backed-off poll
+const LIMIT_CORROBORATION_THRESHOLD = 0.9; // a genuine "hit" sits at ~100%; 0.9 leaves cache-lag margin
 
 class RateLimitProbeService {
   private cachedToken: string | null = null;
   private tokenCachedAt = 0;
   private lastProbeResult: SubscriptionRateLimit | null = null;
+  private lastProbeAt = 0; // ms timestamp of the last successful probe (for limit corroboration freshness)
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private broadcastFn: ((data: SubscriptionRateLimit) => void) | null = null;
   private healthBroadcastFn: ((data: ApiHealthStatus) => void) | null = null;
@@ -113,6 +117,7 @@ class RateLimitProbeService {
       const body = await response.json();
       const result = this.parseUsageResponse(body);
       this.lastProbeResult = result;
+      this.lastProbeAt = Date.now();
       this.consecutiveThrottles = 0;
       this.updateApiHealth(true);
       log.debug('Rate limit probe success: 5h=%s, 7d=%s',
@@ -167,6 +172,32 @@ class RateLimitProbeService {
    */
   getCachedResult(): SubscriptionRateLimit | null {
     return this.lastProbeResult;
+  }
+
+  /**
+   * Cross-check a screen-scraped "usage limit" notice against the authoritative usage numbers.
+   * The CLI engine reads the limit notice off the PTY *screen*, which cannot tell the genuine
+   * TUI banner apart from the SAME words appearing as ordinary chat content (e.g. a session that
+   * once quoted "You've hit your weekly limit · resets …"). This grounds that fragile scrape: a
+   * real block sits at ~100% on some window, so when EVERY known window has ample headroom the
+   * on-screen text must be content, not a live notice.
+   *
+   * Returns true (corroborated → caller should fail the turn) when we lack fresh data — null or
+   * older than the TTL — so we cannot refute and must preserve prior fail-fast behavior; or when
+   * some window is at/above the cap. Returns false (refuted → caller should ignore the scrape)
+   * only when fresh data shows every window comfortably below the cap.
+   */
+  isLimitCorroborated(): boolean {
+    const r = this.lastProbeResult;
+    const fresh = r !== null && Date.now() - this.lastProbeAt < LIMIT_CORROBORATION_TTL_MS;
+    if (!fresh || !r) return true; // no/stale data → cannot refute → trust the scrape (no regression)
+    const maxUtil = Math.max(
+      r.fiveHour?.utilization ?? 0,
+      r.sevenDay?.utilization ?? 0,
+      r.sevenDayOpus?.utilization ?? 0,
+      r.sevenDaySonnet?.utilization ?? 0,
+    );
+    return maxUtil >= LIMIT_CORROBORATION_THRESHOLD;
   }
 
   /**
@@ -226,37 +257,40 @@ class RateLimitProbeService {
    * Parse usage API JSON response into SubscriptionRateLimit
    */
   private parseUsageResponse(body: unknown): SubscriptionRateLimit | null {
+    type RawWindow = { utilization: number; resets_at: string } | null | undefined;
     const data = body as {
-      five_hour?: { utilization: number; resets_at: string };
-      seven_day?: { utilization: number; resets_at: string };
+      five_hour?: RawWindow;
+      seven_day?: RawWindow;
+      seven_day_opus?: RawWindow;
+      seven_day_sonnet?: RawWindow;
     };
 
-    if (!data.five_hour && !data.seven_day) return null;
+    // API returns utilization as a 0-100 percentage; normalize to 0-1. null/absent windows
+    // (e.g. seven_day_opus on a plan with no separate Opus cap) are simply omitted.
+    const toWindow = (w: RawWindow): NonNullable<SubscriptionRateLimit['fiveHour']> | undefined => {
+      if (!w) return undefined;
+      const util = w.utilization / 100;
+      return { utilization: util, reset: w.resets_at, status: this.getStatus(util) };
+    };
+
+    const fiveHour = toWindow(data.five_hour);
+    const sevenDay = toWindow(data.seven_day);
+    const sevenDayOpus = toWindow(data.seven_day_opus);
+    const sevenDaySonnet = toWindow(data.seven_day_sonnet);
+
+    if (!fiveHour && !sevenDay && !sevenDayOpus && !sevenDaySonnet) return null;
 
     const result: SubscriptionRateLimit = {};
-
-    if (data.five_hour) {
-      // API returns utilization as 0-100 percentage; normalize to 0-1
-      const util = data.five_hour.utilization / 100;
-      result.fiveHour = {
-        utilization: util,
-        reset: data.five_hour.resets_at,
-        status: this.getStatus(util),
-      };
-    }
-
-    if (data.seven_day) {
-      const util = data.seven_day.utilization / 100;
-      result.sevenDay = {
-        utilization: util,
-        reset: data.seven_day.resets_at,
-        status: this.getStatus(util),
-      };
-    }
+    if (fiveHour) result.fiveHour = fiveHour;
+    if (sevenDay) result.sevenDay = sevenDay;
+    if (sevenDayOpus) result.sevenDayOpus = sevenDayOpus;
+    if (sevenDaySonnet) result.sevenDaySonnet = sevenDaySonnet;
 
     const maxUtil = Math.max(
-      result.fiveHour?.utilization ?? 0,
-      result.sevenDay?.utilization ?? 0,
+      fiveHour?.utilization ?? 0,
+      sevenDay?.utilization ?? 0,
+      sevenDayOpus?.utilization ?? 0,
+      sevenDaySonnet?.utilization ?? 0,
     );
     result.overallStatus = this.getStatus(maxUtil);
 

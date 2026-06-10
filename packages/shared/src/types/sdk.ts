@@ -119,6 +119,11 @@ interface RateLimitWindow {
 export interface SubscriptionRateLimit {
   fiveHour?: RateLimitWindow;
   sevenDay?: RateLimitWindow;
+  /** Weekly window scoped to Opus models — Max plans enforce a separate Opus weekly cap
+   *  that the general `sevenDay` window does NOT reflect (it can be null when not applicable). */
+  sevenDayOpus?: RateLimitWindow;
+  /** Weekly window scoped to Sonnet models (separate from the general weekly cap). */
+  sevenDaySonnet?: RateLimitWindow;
   overallStatus?: string;
 }
 
