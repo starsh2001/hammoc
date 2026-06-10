@@ -9,6 +9,7 @@ import {
   getConnectedClientsCount,
 } from '../websocket.js';
 import { ERROR_CODES } from '@hammoc/shared';
+import { projectService } from '../../services/projectService.js';
 
 // Shared mock state — accessible via vi.hoisted() for vi.mock factories
 const { mockState } = vi.hoisted(() => {
@@ -54,6 +55,19 @@ vi.mock('../../middleware/session.js', () => ({
 // Mock ChatService - real class that captures constructor args and delegates to mockState
 vi.mock('../../services/chatService.js', () => ({
   ChatService: class MockChatService {
+    constructor(...args: unknown[]) { mockState.lastCtorArgs = args[0]; }
+    sendMessageWithCallbacks(...args: unknown[]) { return mockState.sendImpl(...args); }
+    setPermissionMode() {}
+    getPermissionMode() { return mockState.permissionMode; }
+    rewindFiles(...args: unknown[]) { return mockState.rewindImpl(...args); }
+  },
+}));
+
+// Mock CliChatEngine — the factory returns this when the effective engine mode is 'cli'.
+// Delegates to the SAME mockState as the SDK mock so a CLI-mode test drives the same seam;
+// existing tests stay on 'sdk' (the default getEffectiveEngineMode mock) and never touch this.
+vi.mock('../../services/cliChatEngine.js', () => ({
+  CliChatEngine: class MockCliChatEngine {
     constructor(...args: unknown[]) { mockState.lastCtorArgs = args[0]; }
     sendMessageWithCallbacks(...args: unknown[]) { return mockState.sendImpl(...args); }
     setPermissionMode() {}
@@ -547,7 +561,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
-        undefined // onPhase gated off in SDK mode (Story 36.2)
+        undefined, // onPhase gated off in SDK mode (Story 36.2)
+        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
       );
     });
 
@@ -582,7 +597,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
-        undefined // onPhase gated off in SDK mode (Story 36.2)
+        undefined, // onPhase gated off in SDK mode (Story 36.2)
+        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
       );
     });
 
@@ -621,7 +637,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
-        undefined // onPhase gated off in SDK mode (Story 36.2)
+        undefined, // onPhase gated off in SDK mode (Story 36.2)
+        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
       );
     });
 
@@ -660,7 +677,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
-        undefined // onPhase gated off in SDK mode (Story 36.2)
+        undefined, // onPhase gated off in SDK mode (Story 36.2)
+        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
       );
     });
 
@@ -692,7 +710,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
-        undefined // onPhase gated off in SDK mode (Story 36.2)
+        undefined, // onPhase gated off in SDK mode (Story 36.2)
+        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
       );
     });
   });
@@ -929,7 +948,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
-        undefined // onPhase gated off in SDK mode (Story 36.2)
+        undefined, // onPhase gated off in SDK mode (Story 36.2)
+        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
       );
     });
 
@@ -1413,6 +1433,40 @@ describe('WebSocket Handler', () => {
       vi.advanceTimersByTime(TIMEOUT_MS + 1000);
       expect(captured!.signal.aborted).toBe(true);
       expect(captured!.signal.reason).toBe('timeout');
+
+      releaseSend();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    });
+
+    it('CLI mode never arms the inactivity timer — quiet generation is not aborted', async () => {
+      // The user removed the CLI timeout: a CLI turn can be legitimately quiet (deep thinking,
+      // a long tool run) yet the spinner stops repainting, so a blind timer would kill healthy
+      // work. The genuine stuck case (usage limit) is caught directly on the PTY by the engine.
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(projectService.getEffectiveEngineMode).mockResolvedValueOnce('cli');
+      let captured: AbortController | null = null;
+      let started = false;
+      let releaseSend!: () => void;
+      const sendHeld = new Promise<void>((r) => { releaseSend = r; });
+
+      mockState.sendImpl = vi.fn().mockImplementation(
+        async (_c: string, _cb: unknown, options: { abortController?: AbortController }) => {
+          captured = options.abortController ?? null;
+          started = true;
+          await sendHeld; // a quiet generation — SDK mode would abort here (AC4)
+          return {};
+        },
+      );
+
+      await connect();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      clientSocket.emit('chat:send', { content: 'Hi', workingDirectory: '/valid/path' });
+      await flushUntil(() => started);
+
+      // No timer was armed for CLI mode → advancing far past the timeout must NOT abort.
+      vi.advanceTimersByTime(TIMEOUT_MS * 3);
+      expect(captured).toBeInstanceOf(AbortController);
+      expect(captured!.signal.aborted).toBe(false);
 
       releaseSend();
       await new Promise<void>((resolve) => setImmediate(resolve));

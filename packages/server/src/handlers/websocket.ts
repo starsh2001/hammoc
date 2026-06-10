@@ -38,7 +38,7 @@ import { preferencesService } from '../services/preferencesService.js';
 import { getOrCreateQueueService, getQueueInstances } from '../controllers/queueController.js';
 import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
-import { shouldForwardCliProgress } from '../utils/cliEngineUtils.js';
+import { shouldForwardCliProgress, shouldForwardCliPtyMirror } from '../utils/cliEngineUtils.js';
 import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { createMcpCallRecorder } from '../services/observabilityService.js';
@@ -2775,8 +2775,17 @@ async function handleChatSend(
     // Timeout value from preferences (with env var override), clamped to 5s–30min range
     const rawTimeoutMs = effectivePrefs.chatTimeoutMs ?? config.chat.timeoutMs;
     const timeoutMs = (rawTimeoutMs >= 5000 && rawTimeoutMs <= 1800000) ? rawTimeoutMs : 300000;
+    // CLI mode has NO inactivity timeout. The activity-based timeout is an SDK-mode safeguard
+    // against a silently-stalled query; in CLI mode it does more harm than good — a turn can be
+    // legitimately quiet (deep thinking, a long tool run) yet the spinner stops repainting, so the
+    // timer would abort healthy work. The genuine stuck case it used to (slowly, confusingly) catch
+    // is now handled directly: the usage-limit notice is detected on the PTY and fails the turn
+    // immediately (cliChatEngine.detectUsageLimit), and a crashed REPL surfaces via pty.onExit.
+    // Anything else ends via end_turn or the user's Stop button. So CLI never arms the timer.
+    const isCliEngine = engineMode === 'cli';
     let lastResetSource = 'initial';
     const resetTimeout = (source?: string) => {
+      if (isCliEngine) return; // CLI mode: no inactivity timeout (see above)
       // Story 35.1: while awaiting user input (permission / AskUserQuestion) the timer
       // is paused — ignore every activity-driven reset (onActivity, raw PTY frames,
       // compact/retry) so the wait stays indefinite. canUseTool clears the pause and
@@ -2805,12 +2814,20 @@ async function handleChatSend(
     const onPhase = (phase: 'launching' | 'submitting' | 'waiting' | null) => {
       emit('cli:phase', { phase });
     };
+    // Debug PTY mirror: forward each raw claude TUI frame (ANSI intact) so a read-only
+    // terminal panel can replay exactly what the windowless PTY shows. Live-only.
+    const onPtyRaw = (chunk: string) => {
+      emit('cli:pty-raw', { chunk });
+    };
     // Story 33.3: gate the progress counter on CLI mode + the user's preference (default
     // ON, Story 33.2). In SDK mode the engine ignores the callback anyway; passing
     // `undefined` makes the gate explicit so the 'cli' + pref-OFF case emits nothing.
     const cliProgress = shouldForwardCliProgress(engineMode, effectivePrefs.cliShowGenerationProgress);
     const generationProgressCb = cliProgress ? onGenerationProgress : undefined;
     const cliPhaseCb = cliProgress ? onPhase : undefined;
+    // Debug mirror gate — a SEPARATE preference (default OFF), independent of the progress
+    // gate. Off unless the user explicitly enables the diagnostic mirror.
+    const ptyRawCb = shouldForwardCliPtyMirror(engineMode, effectivePrefs.cliPtyMirror) ? onPtyRaw : undefined;
 
     // Build shared callbacks (common logic for browser & queue paths)
     const { callbacks, sessionIdRef } = buildStreamCallbacks(
@@ -2954,7 +2971,7 @@ async function handleChatSend(
     try {
       const sendResult = await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
-      }, generationProgressCb, cliPhaseCb);
+      }, generationProgressCb, cliPhaseCb, ptyRawCb);
       // SDK may return "No conversation found" as an error result (not a thrown exception).
       // Convert to a thrown error so the retry logic below can handle it.
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
@@ -2991,13 +3008,13 @@ async function handleChatSend(
         // Run /compact to shrink context (preserves session file)
         await chatService.sendMessageWithCallbacks('/compact', callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`compact:${messageType}`);
-        }, generationProgressCb, cliPhaseCb);
+        }, generationProgressCb, cliPhaseCb, ptyRawCb);
         // Retry the original message after compaction
         log.info(`[AUTO-COMPACT] compaction done, retrying original message: sessionId=${sessionId}`);
         resetTimeout('auto-compact-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`retry:${messageType}`);
-        }, generationProgressCb, cliPhaseCb);
+        }, generationProgressCb, cliPhaseCb, ptyRawCb);
       // Resume failed for other unknown reasons — retry without resume (fresh session).
       // Guards:
       //  1. Only when resuming (not a fresh session send)
@@ -3035,7 +3052,7 @@ async function handleChatSend(
         resetTimeout('resume-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, retryOptions, canUseTool, (messageType: string) => {
           resetTimeout(`raw:${messageType}`);
-        }, generationProgressCb, cliPhaseCb);
+        }, generationProgressCb, cliPhaseCb, ptyRawCb);
       } else {
         // Not retrying — flush gated error events before re-throwing
         ungateCallbacks();
