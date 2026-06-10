@@ -567,6 +567,13 @@
     "terminalSecurityTooltip": "出于安全原因，终端在非本地网络中不可用",
     "moveToOtherSide": "将面板移到另一侧"
   },
+  "cliPtyMirror": {
+    "title": "PTY 镜像（调试）",
+    "clear": "清除",
+    "copy": "全部复制",
+    "copied": "已将镜像内容复制到剪贴板",
+    "copyFailed": "复制失败"
+  },
   "terminal": {
     "connecting": "正在连接...",
     "disconnected": "已断开连接",

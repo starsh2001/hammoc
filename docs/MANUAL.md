@@ -2042,6 +2042,7 @@ Everything interactive works the same in CLI mode as in SDK mode: live tool-call
 - **Show thinking summaries** — Surface Claude's thinking summaries while the CLI engine generates a response (default on). It is requested per session and never edits your global Claude config; whether summaries actually appear can also depend on your Claude version and authentication.
 - **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
 - **Synthetic typing** — Re-animate each completed block character-by-character as it arrives, mimicking the SDK's token-by-token feel. Purely cosmetic; off by default.
+- **PTY mirror (debug)** — Show a read-only terminal that mirrors claude's raw screen (ANSI intact) during CLI-mode chats; off by default. A diagnostic aid for when a card is slow to arrive or the progress counter freezes — it lets you watch what the otherwise-windowless CLI engine is actually doing. A copy button grabs the whole buffer so you can share it.
 - **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path you enter is invalid, Hammoc logs a warning and falls back to auto-detect rather than failing the turn.
 
 ### 13.17 Advanced Settings

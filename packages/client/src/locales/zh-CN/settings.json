@@ -90,7 +90,9 @@
         "cliCardStaggerMsDesc": "打字完成后，工具/思考卡片逐个出现的间隔（默认 500 毫秒）。",
         "cliBinaryPath": "claude 可执行文件路径",
         "cliBinaryPathDesc": "手动指定 claude 可执行文件的路径。留空则自动检测。",
-        "cliBinaryPathPlaceholder": "自动检测（留空）"
+        "cliBinaryPathPlaceholder": "自动检测（留空）",
+        "cliPtyMirror": "PTY 镜像（调试）",
+        "cliPtyMirrorDesc": "在 CLI 模式对话期间显示一个只读终端，镜像 claude 的原始屏幕。仅用于调试（默认关闭）——当响应卡住时，可查看无窗口引擎实际在做什么。"
     },
     "toast": {
         "themeChanged": "主题已更改",

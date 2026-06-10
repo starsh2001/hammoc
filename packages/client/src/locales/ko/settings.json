@@ -91,7 +91,9 @@
         "cliCardStaggerMsDesc": "타이핑이 끝난 뒤 도구·사고 카드가 하나씩 등장하는 간격입니다 (기본 500ms).",
         "cliBinaryPath": "claude 바이너리 경로",
         "cliBinaryPathDesc": "claude 실행 파일 경로를 수동으로 지정합니다. 비워 두면 자동 탐지합니다.",
-        "cliBinaryPathPlaceholder": "자동 탐지 (비워 두기)"
+        "cliBinaryPathPlaceholder": "자동 탐지 (비워 두기)",
+        "cliPtyMirror": "PTY 미러 (디버그)",
+        "cliPtyMirrorDesc": "CLI 모드 대화 중 claude의 원본 화면을 그대로 비추는 읽기 전용 터미널을 표시합니다. 디버그 전용(기본 꺼짐) — 응답이 멈출 때 창 없는 엔진이 실제로 무엇을 하는지 확인할 수 있습니다."
     },
     "toast": {
         "themeChanged": "테마가 변경되었습니다",

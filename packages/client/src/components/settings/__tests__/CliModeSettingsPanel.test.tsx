@@ -1,7 +1,7 @@
 /**
  * CliModeSettingsPanel Tests (Epic 33, Story 33.2)
- * - Renders 3 checkboxes + binary path input, reflecting the documented defaults
- *   (thinking ON, generation progress ON, synthetic typing OFF, binary path empty)
+ * - Renders 4 checkboxes + binary path input, reflecting the documented defaults
+ *   (thinking ON, generation progress ON, synthetic typing OFF, PTY mirror OFF, binary path empty)
  * - Each control routes through updatePreference with the expected cli* key
  *
  * i18n is forced to Korean in the test environment (see test-utils/setup.ts), so
@@ -35,10 +35,10 @@ describe('CliModeSettingsPanel', () => {
     vi.useRealTimers();
   });
 
-  it('TC-1: renders the title, 3 checkboxes and the binary path input', () => {
+  it('TC-1: renders the title, 4 checkboxes and the binary path input', () => {
     render(<CliModeSettingsPanel />);
     expect(screen.getByText('CLI 모드 설정')).toBeInTheDocument();
-    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+    expect(screen.getAllByRole('checkbox')).toHaveLength(4);
     expect(screen.getByLabelText('claude 바이너리 경로')).toBeInTheDocument();
   });
 
@@ -47,6 +47,7 @@ describe('CliModeSettingsPanel', () => {
     expect(screen.getByRole('checkbox', { name: /thinking 요약 표시/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /생성 진행률 표시/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /타이핑·카드 연출/ })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /PTY 미러/ })).not.toBeChecked();
     expect(screen.getByLabelText('claude 바이너리 경로')).toHaveValue('');
   });
 

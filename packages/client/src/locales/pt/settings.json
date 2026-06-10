@@ -90,7 +90,9 @@
         "cliCardStaggerMsDesc": "Intervalo entre o surgimento de cada cartão de ferramenta/raciocínio após o término da digitação (500 ms por padrão).",
         "cliBinaryPath": "Caminho do binário do claude",
         "cliBinaryPathDesc": "Substituição manual do caminho do executável claude. Deixe vazio para a detecção automática.",
-        "cliBinaryPathPlaceholder": "Detecção automática (deixar vazio)"
+        "cliBinaryPathPlaceholder": "Detecção automática (deixar vazio)",
+        "cliPtyMirror": "Espelho PTY (depuração)",
+        "cliPtyMirrorDesc": "Mostra um terminal somente leitura espelhando a tela bruta do claude durante conversas no modo CLI. Apenas diagnóstico (desativado por padrão) — use para ver o que o motor sem janela está realmente fazendo quando uma resposta trava."
     },
     "toast": {
         "themeChanged": "Tema alterado",

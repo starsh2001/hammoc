@@ -91,7 +91,9 @@
         "cliCardStaggerMsDesc": "Delay between tool/thinking cards appearing one-by-one after typing finishes (default 500ms).",
         "cliBinaryPath": "Claude binary path",
         "cliBinaryPathDesc": "Manual override for the claude executable path. Leave empty to auto-detect.",
-        "cliBinaryPathPlaceholder": "Auto-detect (leave empty)"
+        "cliBinaryPathPlaceholder": "Auto-detect (leave empty)",
+        "cliPtyMirror": "PTY mirror (debug)",
+        "cliPtyMirrorDesc": "Show a read-only terminal mirroring claude's raw screen during CLI-mode chats. Diagnostic only (default off) — use it to see what the windowless engine is actually doing when a response stalls."
     },
     "toast": {
         "themeChanged": "Theme changed",

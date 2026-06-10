@@ -268,7 +268,8 @@ export function GlobalSettingsSection() {
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
           {t('global.engineMode')}
         </legend>
-        <div className="space-y-2">
+        {/* Side-by-side cards (two prominent choices read better than a tall stack of wide buttons). */}
+        <div className="grid grid-cols-2 gap-3">
           {([
             { value: 'sdk' as const, labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk' },
             { value: 'cli' as const, labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli' },
@@ -276,9 +277,9 @@ export function GlobalSettingsSection() {
             <label
               key={opt.value}
               className={`
-                relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                relative flex flex-col gap-2 p-4 rounded-lg border cursor-pointer transition-colors
                 ${engineModePref === opt.value
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
                   : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
                 }
               `}
@@ -292,26 +293,26 @@ export function GlobalSettingsSection() {
                 className="sr-only"
                 aria-describedby={`engine-desc-${opt.value}`}
               />
-              <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                engineModePref === opt.value
-                  ? 'border-blue-500'
-                  : 'border-gray-400 dark:border-gray-500'
-              }`}>
-                {engineModePref === opt.value && (
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                )}
-              </div>
-              <div>
-                <span className={`text-sm font-medium ${engineModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+              <div className="flex items-center gap-2">
+                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  engineModePref === opt.value
+                    ? 'border-blue-500'
+                    : 'border-gray-400 dark:border-gray-500'
+                }`}>
+                  {engineModePref === opt.value && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
+                <span className={`text-base font-semibold ${engineModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                   {t(opt.labelKey)}
                 </span>
-                <p
-                  id={`engine-desc-${opt.value}`}
-                  className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
-                >
-                  {t(opt.descKey)}
-                </p>
               </div>
+              <p
+                id={`engine-desc-${opt.value}`}
+                className="text-xs text-gray-500 dark:text-gray-300 leading-snug"
+              >
+                {t(opt.descKey)}
+              </p>
             </label>
           ))}
         </div>

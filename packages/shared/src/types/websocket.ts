@@ -145,6 +145,10 @@ export interface ServerToClientEvents {
   // Story 36.2: CLI-engine pre-generation phase (boot/inject window). Transient,
   // live-only (skipped on buffer replay); a null phase hands off to generation:progress.
   'cli:phase': (data: { phase: 'launching' | 'submitting' | 'waiting' | null }) => void;
+  // CLI-engine raw screen passthrough for the debug mirror. Each unmodified PTY frame
+  // (ANSI intact). Transient, live-only (skipped on buffer replay). Gated on CLI mode +
+  // the cliPtyMirror preference (default OFF — diagnostic).
+  'cli:pty-raw': (data: { chunk: string }) => void;
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;

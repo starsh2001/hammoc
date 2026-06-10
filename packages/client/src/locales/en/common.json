@@ -602,6 +602,13 @@
     "terminalSecurityTooltip": "Terminal is not available outside the local network for security reasons",
     "moveToOtherSide": "Move panel to other side"
   },
+  "cliPtyMirror": {
+    "title": "PTY mirror (debug)",
+    "clear": "Clear",
+    "copy": "Copy all",
+    "copied": "Mirror contents copied to clipboard",
+    "copyFailed": "Copy failed"
+  },
   "terminal": {
     "connecting": "Connecting...",
     "disconnected": "Disconnected",

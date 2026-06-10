@@ -567,6 +567,13 @@
     "terminalSecurityTooltip": "セキュリティ上の理由から、ローカルネットワーク外ではターミナルを使用できません",
     "moveToOtherSide": "パネルを反対側に移動"
   },
+  "cliPtyMirror": {
+    "title": "PTYミラー（デバッグ）",
+    "clear": "クリア",
+    "copy": "全体をコピー",
+    "copied": "ミラーの内容をクリップボードにコピーしました",
+    "copyFailed": "コピーに失敗しました"
+  },
   "terminal": {
     "connecting": "接続中...",
     "disconnected": "切断",

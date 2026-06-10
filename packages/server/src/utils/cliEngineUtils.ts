@@ -24,3 +24,23 @@ export function shouldForwardCliProgress(
 ): boolean {
   return engineMode === 'cli' && (showProgressPref ?? true);
 }
+
+/**
+ * Decide whether to forward the CLI engine's raw-screen passthrough (the debug PTY
+ * mirror) to the browser.
+ *
+ * Gated on two conditions:
+ *   1. the effective engine is the CLI engine (the SDK engine has no PTY and never
+ *      calls the callback anyway), and
+ *   2. the user's `cliPtyMirror` preference is enabled (default OFF when unset — this
+ *      is a diagnostic view, off by default unlike the progress counter).
+ *
+ * When this returns false the call site passes `undefined`, so the engine's onData
+ * never invokes onPtyRaw and no `cli:pty-raw` event is emitted.
+ */
+export function shouldForwardCliPtyMirror(
+  engineMode: EngineMode,
+  mirrorPref: boolean | undefined,
+): boolean {
+  return engineMode === 'cli' && (mirrorPref ?? false);
+}

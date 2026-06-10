@@ -90,7 +90,9 @@
         "cliCardStaggerMsDesc": "タイピング完了後、ツール・思考カードが1つずつ現れる間隔です（デフォルト500ms）。",
         "cliBinaryPath": "claudeバイナリのパス",
         "cliBinaryPathDesc": "claude実行ファイルのパスを手動で指定します。空欄の場合は自動検出します。",
-        "cliBinaryPathPlaceholder": "自動検出（空欄）"
+        "cliBinaryPathPlaceholder": "自動検出（空欄）",
+        "cliPtyMirror": "PTYミラー（デバッグ）",
+        "cliPtyMirrorDesc": "CLIモードの会話中に、claudeの生画面をそのまま映す読み取り専用ターミナルを表示します。デバッグ専用（既定はオフ）— 応答が止まったときに、ウィンドウのないエンジンが実際に何をしているかを確認できます。"
     },
     "toast": {
         "themeChanged": "テーマが変更されました",

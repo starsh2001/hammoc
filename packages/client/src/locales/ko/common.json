@@ -611,6 +611,13 @@
     "terminalSecurityTooltip": "보안상 로컬 네트워크 외부에서는 터미널을 이용할 수 없습니다",
     "moveToOtherSide": "패널을 반대쪽으로 이동"
   },
+  "cliPtyMirror": {
+    "title": "PTY 미러 (디버그)",
+    "clear": "지우기",
+    "copy": "전체 복사",
+    "copied": "미러 내용을 클립보드에 복사했습니다",
+    "copyFailed": "복사에 실패했습니다"
+  },
   "terminal": {
     "connecting": "연결 중...",
     "disconnected": "연결이 끊어졌습니다",

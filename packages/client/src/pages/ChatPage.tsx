@@ -39,6 +39,7 @@ import { ChatHeader } from '../components/ChatHeader';
 import { MessageArea, type MessageAreaHandle } from '../components/MessageArea';
 import { ScrollProvider, type ScrollContextValue } from '../contexts/ScrollContext';
 import { InputArea } from '../components/InputArea';
+import { CliPtyMirror } from '../components/terminal/CliPtyMirror';
 import { PendingToolsIndicator } from '../components/PendingToolsIndicator';
 import { ChatInput } from '../components/ChatInput';
 import { QueueLockedBanner } from '../components/queue/QueueLockedBanner';
@@ -1361,6 +1362,8 @@ export function ChatPage() {
           })()}
         </MessageArea>
       </main>
+
+      <CliPtyMirror />
 
       {isStreaming && <PendingToolsIndicator segments={streamingSegments} />}
 

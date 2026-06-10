@@ -567,6 +567,13 @@
     "terminalSecurityTooltip": "O terminal não está disponível fora da rede local por motivos de segurança",
     "moveToOtherSide": "Mover painel para o outro lado"
   },
+  "cliPtyMirror": {
+    "title": "Espelho PTY (depuração)",
+    "clear": "Limpar",
+    "copy": "Copiar tudo",
+    "copied": "Conteúdo do espelho copiado para a área de transferência",
+    "copyFailed": "Falha ao copiar"
+  },
   "terminal": {
     "connecting": "Conectando...",
     "disconnected": "Desconectado",

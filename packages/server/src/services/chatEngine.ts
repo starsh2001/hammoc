@@ -49,7 +49,14 @@ export interface ChatEngine {
      * Server-side, `@hammoc/shared`-independent (mirrors onGenerationProgress). CLI-only;
      * the SDK engine ignores it (token streaming has no boot/inject gap).
      */
-    onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void
+    onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
+    /**
+     * CLI raw-screen passthrough for the debug mirror. Each unmodified PTY frame (ANSI
+     * intact). Server-side, `@hammoc/shared`-independent (mirrors onPhase). CLI-only;
+     * the SDK engine ignores it (no PTY). The CLI engine calls it only when provided —
+     * upstream gates it on the `cliPtyMirror` preference.
+     */
+    onPtyRaw?: (chunk: string) => void
   ): Promise<ChatResponse>;
 
   /** Update the permission mode mid-conversation (propagates to the live query). */

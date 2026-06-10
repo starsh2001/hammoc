@@ -90,7 +90,9 @@
         "cliCardStaggerMsDesc": "Tiempo entre la aparición de cada tarjeta de herramienta/razonamiento tras finalizar la escritura (500 ms por defecto).",
         "cliBinaryPath": "Ruta del binario de claude",
         "cliBinaryPathDesc": "Sobrescritura manual de la ruta del ejecutable claude. Déjalo vacío para la detección automática.",
-        "cliBinaryPathPlaceholder": "Detección automática (dejar vacío)"
+        "cliBinaryPathPlaceholder": "Detección automática (dejar vacío)",
+        "cliPtyMirror": "Espejo PTY (depuración)",
+        "cliPtyMirrorDesc": "Muestra una terminal de solo lectura que refleja la pantalla sin procesar de claude durante los chats en modo CLI. Solo diagnóstico (desactivado por defecto): úsalo para ver qué está haciendo realmente el motor sin ventana cuando una respuesta se atasca."
     },
     "toast": {
         "themeChanged": "Tema cambiado",
