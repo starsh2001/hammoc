@@ -176,6 +176,35 @@ describe('MessageArea', () => {
       expect(screen.getByText('Existing message')).toBeInTheDocument();
     });
 
+    it('hides an interrupt-filler text segment so it never flashes as a live bubble', () => {
+      const fillerSegment: StreamingSegment = { type: 'text', content: 'No response requested.' };
+      render(
+        <MessageArea streamingSegments={[fillerSegment]} isStreaming={true}>
+          <div>Existing message</div>
+        </MessageArea>
+      );
+
+      // The filler must not render; surrounding history stays intact.
+      expect(screen.queryByText('No response requested.')).not.toBeInTheDocument();
+      expect(screen.getByText('Existing message')).toBeInTheDocument();
+    });
+
+    it('still renders a text segment that merely starts with the filler phrase', () => {
+      const realSegment: StreamingSegment = {
+        type: 'text',
+        content: 'No response requested. but here is the real answer',
+      };
+      render(
+        <MessageArea streamingSegments={[realSegment]} isStreaming={true}>
+          {null}
+        </MessageArea>
+      );
+
+      expect(
+        screen.getByText('No response requested. but here is the real answer')
+      ).toBeInTheDocument();
+    });
+
     it('should render streaming text after history messages', () => {
       render(
         <MessageArea streamingSegments={[mockTextSegment]} isStreaming={true}>

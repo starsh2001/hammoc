@@ -15,7 +15,7 @@ import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ThinkingBlock } from './ThinkingBlock';
 import { TaskNotificationCard } from './TaskNotificationCard';
-import { getContextUsagePercent } from '@hammoc/shared';
+import { getContextUsagePercent, isInterruptFillerText } from '@hammoc/shared';
 import type { StreamingSegment } from '../stores/chatStore';
 import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, isSystemSegment, isTaskNotificationSegment, isToolSummarySegment, isResultErrorSegment, useChatStore } from '../stores/chatStore';
 import { usePreferencesStore } from '../stores/preferencesStore';
@@ -78,7 +78,7 @@ interface MessageAreaProps {
  * Hook for managing auto-scroll behavior
  */
 function useAutoScroll(
-  dependencies: unknown[],
+  depSignature: string,
   options: UseAutoScrollOptions = {}
 ) {
   const { threshold = 100, smooth = true, isLoadingMore = false, isStreaming = false } = options;
@@ -274,7 +274,7 @@ function useAutoScroll(
       isAtBottomRef.current = true;
       isInitialMountRef.current = false;
     }
-  }, [dependencies, isUserScrolledUp, smooth, isLoadingMore, isStreaming]);
+  }, [depSignature, isUserScrolledUp, smooth, isLoadingMore, isStreaming]);
 
   // Force scroll to bottom (for "new messages" button and ScrollContext)
   const scrollToBottom = useCallback((options?: { smooth?: boolean }) => {
@@ -409,6 +409,37 @@ export interface MessageAreaHandle {
   adjustScrollBy: (deltaY: number) => void;
 }
 
+/**
+ * Build a stable, value-comparable signature of everything that should trigger an auto-scroll,
+ * returned as a STRING (compared by value). The auto-scroll effect keys off this so it fires only
+ * when scroll-relevant content actually changes — never on a cosmetic re-render. In CLI mode the
+ * spinner frame, the 1-second elapsed clock, and the "↓ N tokens" counter re-render MessageArea
+ * several times a second; none of those are inputs here, so they no longer move the scroll
+ * position. (The previous dependency was a fresh ARRAY every render, so the effect ran — and
+ * snapped a scrolled-up reader back to the bottom — on every spinner tick.) Streaming text uses
+ * total LENGTH (grows as it streams) instead of the joined string, and tool *statuses* are
+ * included so a pending→done transition, which appends result content, still scrolls.
+ */
+export function computeScrollSignature(
+  scrollDependencies: unknown[],
+  streamingSegments: StreamingSegment[],
+): string {
+  const streamingTextLength = streamingSegments
+    .filter(isTextSegment)
+    .reduce((acc, s) => acc + s.content.length, 0);
+  const thinkingContentLength = streamingSegments
+    .filter(isThinkingSegment)
+    .reduce((acc, s) => acc + s.content.length, 0);
+  const toolStatuses = streamingSegments
+    .filter(isToolSegment)
+    .map((s) => s.status)
+    .join(',');
+  const depPart = scrollDependencies
+    .map((d) => (Array.isArray(d) ? d.length : d == null ? '' : typeof d === 'object' ? '·' : String(d)))
+    .join(',');
+  return [depPart, streamingTextLength, streamingSegments.length, thinkingContentLength, toolStatuses].join('|');
+}
+
 export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(function MessageArea({
   children,
   scrollDependencies = [],
@@ -421,29 +452,12 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   isLoadingMore = false,
 }, ref) {
   const { t } = useTranslation('chat');
-  // Include streaming content changes in scroll dependencies for auto-scroll during streaming
-  const lastTextContent = streamingSegments.length > 0
-    ? streamingSegments.filter(isTextSegment).map((s) => s.content).join('')
-    : '';
-  // Track thinking content growth for auto-scroll during thinking
-  const thinkingContentLength = streamingSegments
-    .filter(isThinkingSegment)
-    .reduce((acc, s) => acc + s.content.length, 0);
-  // Track tool status changes for auto-scroll when tool results arrive
-  const toolStatuses = streamingSegments
-    .filter(isToolSegment)
-    .map((s) => s.status)
-    .join(',');
-  const allScrollDependencies = [
-    ...scrollDependencies,
-    lastTextContent,
-    streamingSegments.length,
-    thinkingContentLength,
-    toolStatuses,
-  ];
+  // Value-comparable content signature (see computeScrollSignature) so auto-scroll fires only on
+  // genuine content change — never on a cosmetic CLI spinner / elapsed-clock / token-counter tick.
+  const scrollSignature = computeScrollSignature(scrollDependencies, streamingSegments);
 
   const { containerRef, bottomRef, isUserScrolledUp, scrollToBottom, scrollToElement, adjustScrollBy, handleScroll } =
-    useAutoScroll(allScrollDependencies, { ...autoScrollOptions, isLoadingMore, isStreaming });
+    useAutoScroll(scrollSignature, { ...autoScrollOptions, isLoadingMore, isStreaming });
 
   // Expose scroll functions to parent via ref
   useImperativeHandle(ref, () => ({
@@ -645,6 +659,9 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           if (isTextSegment(seg)) {
             // Skip empty/whitespace-only text segments (e.g., before thinking blocks)
             if (!seg.content.trim()) return null;
+            // Skip harness interrupt/empty-turn filler (e.g. "No response requested.")
+            // so it never flashes as a live bubble; the authoritative reload omits it too.
+            if (isInterruptFillerText(seg.content)) return null;
             const isStillStreaming = isStreaming && isLastSegmentIndex(index);
             const startedAt = useChatStore.getState().streamingStartedAt;
             return (
