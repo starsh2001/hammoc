@@ -155,6 +155,9 @@ export {
 // tool_result content sanitization (shared by server engines & client render)
 export { sanitizeToolResultContent } from './utils/toolResultContent.js';
 
+// Interrupt / empty-turn filler detection (shared by historyParser & MessageArea)
+export { INTERRUPT_FILLER_TEXTS, isInterruptFillerText } from './utils/interruptFiller.js';
+
 // Story 30.3: Harness Export/Import bundle DTOs
 export * from './types/harnessBundle.js';
 

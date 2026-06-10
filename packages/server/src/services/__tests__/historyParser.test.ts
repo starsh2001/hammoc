@@ -578,6 +578,87 @@ invalid json line
       expect(transformed[0].content).toBe('Yes, that is correct.');
     });
 
+    it('filters out an interrupt-marker user message ("[Request interrupted by user]")', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'user',
+          message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(0);
+    });
+
+    it('filters an interrupt-marker user message given as a plain string (for tool use)', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'user',
+          message: { role: 'user', content: '[Request interrupted by user for tool use]' },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      expect(transformed).toHaveLength(0);
+    });
+
+    it('does NOT filter a user message that merely starts with the filler phrase (no prefix stripping)', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: '1',
+          type: 'user',
+          message: { role: 'user', content: 'No response requested. but this is a real follow-up question' },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      // Only an exact-match-after-trim is filler; a message that merely contains the
+      // phrase stays intact so genuine quotes/questions are never mangled.
+      expect(transformed).toHaveLength(1);
+      expect(transformed[0].content).toBe('No response requested. but this is a real follow-up question');
+    });
+
+    it('redirects children across a filtered user interrupt-marker (tree stays connected)', () => {
+      const messages: RawJSONLMessage[] = [
+        {
+          uuid: 'u1',
+          parentUuid: null,
+          type: 'user',
+          message: { role: 'user', content: 'first question' },
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+        {
+          uuid: 'int1',
+          parentUuid: 'u1',
+          type: 'user',
+          message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] },
+          timestamp: '2026-01-15T10:00:01Z',
+        },
+        {
+          uuid: 'a1',
+          parentUuid: 'int1',
+          type: 'assistant',
+          message: { role: 'assistant', content: [{ type: 'text', text: 'Continuing after interrupt' }] },
+          timestamp: '2026-01-15T10:00:02Z',
+        },
+      ];
+
+      const transformed = transformToHistoryMessages(messages);
+
+      // The interrupt marker is hidden, but the assistant reply stays chained:
+      // a1's parent resolves to u1 (the marker's parent), not an orphan root.
+      expect(transformed.map((m) => m.id)).toEqual(['u1', 'a1']);
+      expect(transformed[1].parentId).toBe('u1');
+    });
+
     it('does not set thinking field for assistant messages without thinking block', () => {
       const messages: RawJSONLMessage[] = [
         {

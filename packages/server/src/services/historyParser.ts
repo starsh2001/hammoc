@@ -25,7 +25,7 @@ import type {
   ImageContentBlock,
   ImageRef,
 } from '@hammoc/shared';
-import { sanitizeToolResultContent } from '@hammoc/shared';
+import { sanitizeToolResultContent, isInterruptFillerText } from '@hammoc/shared';
 import { sessionService } from './sessionService.js';
 import { createLogger } from '../utils/logger.js';
 import sharp from 'sharp';
@@ -33,17 +33,6 @@ import { buildImageFilename, buildThumbnailFilename, buildImageUrl, getImageDir 
 
 const THUMBNAIL_MAX_WIDTH = 400;
 const THUMBNAIL_MAX_HEIGHT = 300;
-
-/**
- * Assistant text blocks that are pure filler — the harness emits them for an empty
- * turn (e.g. right after the user interrupts a request). They are recorded as
- * ordinary assistant text but carry no conversational value, so the session view
- * hides them (exact match after trim) while the existing "no visible output →
- * redirect" path keeps the message tree connected. Extend as new phrases surface.
- */
-const INTERRUPT_FILLER_TEXTS = new Set<string>([
-  'No response requested.',
-]);
 
 /**
  * Parse a JSONL file and return raw messages
@@ -509,7 +498,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
           } else if (block.type === 'text') {
             const text = (block as TextContentBlock).text;
             // Skip empty / "(no content)" / interrupt-filler placeholder text
-            if (text.trim() && text.trim() !== '(no content)' && !INTERRUPT_FILLER_TEXTS.has(text.trim())) {
+            if (text.trim() && text.trim() !== '(no content)' && !isInterruptFillerText(text)) {
               const id = !firstFragmentEmitted ? m.uuid : `${m.uuid}-text-${results.length}`;
               firstFragmentEmitted = true;
               results.push({
@@ -560,7 +549,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
       } else {
         // Simple string content
         const text = extractTextContent(messageContent);
-        if (text.trim() && text.trim() !== '(no content)' && !INTERRUPT_FILLER_TEXTS.has(text.trim())) {
+        if (text.trim() && text.trim() !== '(no content)' && !isInterruptFillerText(text)) {
           results.push({
             id: m.uuid,
             type: 'assistant',
@@ -619,7 +608,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
             });
           } else {
             const cleaned = cleanCommandTags(textContent);
-            if (cleaned.trim()) {
+            if (cleaned.trim() && !isInterruptFillerText(cleaned)) {
               const images = extractImages(messageContent, projectSlug, sessionId);
               results.push({
                 id: m.uuid,
@@ -650,7 +639,7 @@ export function transformToHistoryMessages(raw: RawJSONLMessage[], projectSlug?:
           });
         } else {
           const cleaned = cleanCommandTags(text);
-          if (cleaned.trim()) {
+          if (cleaned.trim() && !isInterruptFillerText(cleaned)) {
             results.push({
               id: m.uuid,
               type: 'user',
