@@ -78,6 +78,8 @@ vi.mock('../../utils/logger.js', () => ({
 
 // Import after mocks. historyParser (real) is pulled in transitively for parseJSONLFile.
 import { CliChatEngine } from '../cliChatEngine.js';
+// NOT mocked — the real singleton; spied per-test to drive the usage-limit corroboration guard.
+import { rateLimitProbeService } from '../rateLimitProbeService.js';
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -121,6 +123,18 @@ function assistantLine(
       stop_reason: opts.stopReason ?? 'end_turn',
       usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 2, cache_creation_input_tokens: 1 },
     },
+  });
+}
+
+function compactBoundaryLine(uuid: string, opts: { trigger?: string; preTokens?: number } = {}): string {
+  return JSON.stringify({
+    type: 'system',
+    subtype: 'compact_boundary',
+    uuid,
+    timestamp: '2026-06-04T00:00:02.000Z',
+    isMeta: false,
+    content: 'Conversation compacted',
+    compactMetadata: { trigger: opts.trigger ?? 'manual', preTokens: opts.preTokens ?? 1000, postTokens: 50 },
   });
 }
 
@@ -242,6 +256,36 @@ describe('CliChatEngine', () => {
       expect(h.cliSessionPool.dispose).toHaveBeenCalledWith('h1');
     });
 
+    it('emits live context via onContextEstimate per usage line (1M window for Opus; total = input + both caches)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onContextEstimate = vi.fn();
+      const callbacks: StreamCallbacks = { onComplete: vi.fn(), onError: vi.fn(), onContextEstimate };
+
+      const promise = engine.sendMessageWithCallbacks('hi', callbacks, { sessionId: SID, model: 'claude-opus-4-8' }, undefined, vi.fn());
+      await wait(30);
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Hi', model: 'claude-opus-4-8' })]);
+      const response = await promise;
+
+      // numerator = input(10) + cache_read(2) + cache_creation(1) = 13; Opus → 1M denominator
+      expect(onContextEstimate).toHaveBeenCalledWith(13, 1_000_000);
+      // final usage carries the same window (ring denominator, no longer the hidden-making 0)
+      expect(response.usage?.contextWindow).toBe(1_000_000);
+    });
+
+    it('uses the 200K window for a non-1M model (bare Sonnet)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onContextEstimate = vi.fn();
+      const callbacks: StreamCallbacks = { onComplete: vi.fn(), onError: vi.fn(), onContextEstimate };
+
+      const promise = engine.sendMessageWithCallbacks('hi', callbacks, { sessionId: SID, model: 'claude-sonnet-4-6' }, undefined, vi.fn());
+      await wait(30);
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Hi', model: 'claude-sonnet-4-6' })]);
+      const response = await promise;
+
+      expect(onContextEstimate).toHaveBeenCalledWith(13, 200_000);
+      expect(response.usage?.contextWindow).toBe(200_000);
+    });
+
     it('builds interactive args: --session-id (new) + --permission-mode, never --print', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj', permissionMode: 'acceptEdits' });
       const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
@@ -307,6 +351,28 @@ describe('CliChatEngine', () => {
 
       const writes = h.fakePty.write.mock.calls.map((c) => c[0]);
       expect(writes).not.toContain('hello world\r'); // text and Enter are never glued
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('does NOT blind-inject at the 4s fallback when the ❯ box has not rendered yet (slow MCP boot); injects once it does', async () => {
+      // Regression: a heavy-MCP project (e.g. taskvee ~6s boot) renders the input box past the 4s
+      // checkpoint. The old fallback blind-injected at CLI_MAX_BOOT_WAIT_MS into a box that did not
+      // exist yet → the prompt was lost and the turn hung in "응답대기중" forever. The fix only
+      // blind-injects once the ❯ marker has actually been seen.
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks('hi there', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+
+      await wait(20);
+      // Boot output WITHOUT the ❯ marker — claude is still connecting MCP servers.
+      h.fakePty._onData?.('Connecting MCP servers…\nLoading plugins…');
+      await wait(4300); // past the 4s first fallback checkpoint
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('hi there'); // box not ready → no blind inject
+
+      // The box finally renders → settle → inject.
+      h.fakePty._onData?.('❯ ');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('hi there'), { timeout: 2000 });
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;
@@ -579,6 +645,50 @@ describe('CliChatEngine', () => {
       await expect(
         engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { abortController: ac }, undefined, vi.fn()),
       ).rejects.toThrow(/aborted/i);
+    });
+  });
+
+  describe('compact completion (CLI /compact hang fix)', () => {
+    it('completes the turn on a compact_boundary line (no end_turn) instead of hanging forever', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onComplete = vi.fn();
+      const onError = vi.fn();
+      const promise = engine.sendMessageWithCallbacks('/compact', { onComplete, onError }, { sessionId: SID }, undefined, vi.fn());
+
+      await wait(30);
+      // /compact writes a synthetic stop_sequence assistant + a compact_boundary system line,
+      // but NEVER an end_turn — the boundary must complete the turn (else it hangs forever).
+      await writeSession(SID, [userLine('u1'), compactBoundaryLine('cb1')]);
+
+      const response = await promise; // resolves — no hang
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
+      expect(response.done).toBe(true);
+    });
+
+    it('ignores a PRIOR compact_boundary already in the transcript when resuming (no instant finish)', async () => {
+      // Pre-existing transcript: a PAST compaction + a past assistant turn.
+      await writeSession(SID, [userLine('u0'), compactBoundaryLine('cb-old'), assistantLine('a-old', { text: 'old' })]);
+
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onComplete = vi.fn();
+      const promise = engine.sendMessageWithCallbacks('again', { onComplete, onError: vi.fn() }, { resume: SID }, undefined, vi.fn());
+
+      await wait(30);
+      // Resume seeded the old boundary + old assistant → neither ends this turn.
+      expect(onComplete).not.toHaveBeenCalled();
+
+      // A fresh end_turn assistant arrives → now it completes (the old boundary stayed ignored).
+      await writeSession(SID, [
+        userLine('u0'),
+        compactBoundaryLine('cb-old'),
+        assistantLine('a-old', { text: 'old' }),
+        assistantLine('a-new', { text: 'fresh' }),
+      ]);
+
+      const response = await promise;
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(response.content).toBe('fresh');
     });
   });
 
@@ -1068,6 +1178,52 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
+    it('emits the prose rendered ABOVE the modal BEFORE the question card, and dedups the late JSONL copy (ordering fix)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      let chunksBeforeCard = -1;
+      const canUseTool = vi.fn().mockImplementation(async () => {
+        chunksBeforeCard = onTextChunk.mock.calls.length; // chunks emitted before the card is raised
+        return { behavior: 'allow', updatedInput: { answers: { 'Which color do you want?': 'Red' } } }; // index 0
+      });
+      const turn = engine.sendMessageWithCallbacks(
+        'ask me something',
+        { onComplete: vi.fn(), onError: vi.fn(), onTextChunk },
+        { sessionId: SID },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('ask me something'), { timeout: 2000 });
+
+      // The lead-in explanation the model rendered ABOVE the modal — flushed to the JSONL only
+      // post-answer, so it must be scraped from the screen and emitted first.
+      const prose = '현재 구조를 다 파악했습니다. 정리하면 두 가지 방식이 있습니다.';
+      h.fakePty._onData?.([
+        prose,
+        ' ☐ Color',
+        ' Which color do you want?',
+        ' ❯ 1. Red',
+        '   2. Green',
+        '   4. Type something.',
+        '   5. Chat about this',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ].join('\n'));
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      // The prose was emitted, and it preceded the card (≥1 chunk already out when canUseTool fired).
+      expect(onTextChunk).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('정리하면') }));
+      expect(chunksBeforeCard).toBeGreaterThanOrEqual(1);
+
+      // The same prose arrives in the JSONL after the answer — its live re-emit is deduped, so the
+      // explanation is shown exactly once live (the turn-end reload is authoritative regardless).
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: prose })]);
+      await turn;
+      const proseEmits = onTextChunk.mock.calls.filter((c) => String((c[0] as { content: string }).content).includes('정리하면'));
+      expect(proseEmits).toHaveLength(1);
+    });
+
     it('strips box-drawing chrome (─ │) from scraped option labels (bug: stretched / │-laden rows)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const canUseTool = vi.fn().mockResolvedValue({
@@ -1285,6 +1441,110 @@ describe('CliChatEngine', () => {
     });
   });
 
+  describe('usage-limit notice (stops the turn — the limit shows only on the PTY, never in JSONL)', () => {
+    async function injectThenReady(engine: CliChatEngine, callbacks: Partial<StreamCallbacks>): Promise<{ turn: Promise<unknown> }> {
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn(), ...callbacks } as StreamCallbacks,
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      return { turn };
+    }
+
+    it('fails the turn with the exact scraped sentence when the weekly limit is hit', async () => {
+      // Real usage data corroborates the scrape (some window at the cap) → fail fast.
+      const corroborated = vi.spyOn(rateLimitProbeService, 'isLimitCorroborated').mockReturnValue(true);
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onError = vi.fn();
+      const { turn } = await injectThenReady(engine, { onError });
+
+      // The exhaustion notice — only ever on screen; the JSONL never gets an end_turn here, so
+      // without detection the turn hangs forever.
+      h.fakePty._onData?.("✻ You've hit your weekly limit · resets 1am (Asia/Seoul)");
+
+      await expect(turn).rejects.toThrow(/weekly limit/i);
+      expect(onError).toHaveBeenCalled();
+      // The message is forwarded verbatim, including the reset time the user needs.
+      expect(String((onError.mock.calls[0][0] as Error).message)).toMatch(/resets 1am/i);
+      // PTY is torn down so the claude process does not linger at the limit screen.
+      expect(h.cliSessionPool.dispose).toHaveBeenCalled();
+      corroborated.mockRestore();
+    });
+
+    it('does NOT fail on the limit sentence painted BEFORE injection (resumed-transcript repaint)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onError = vi.fn();
+      const onComplete = vi.fn();
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete, onError } as StreamCallbacks,
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      // `claude --resume` repaints prior chat that merely QUOTED the banner. It paints
+      // pre-injection (before the ❯ readiness marker), so it must NOT fail the turn even though
+      // the exact exhaustion sentence (verb + reset clause) is on screen — this is the root-cause
+      // false positive: a session that once discussed the limit would otherwise die every turn.
+      h.fakePty._onData?.("⏺ 메시지(You've hit your weekly limit · resets 1am (Asia/Seoul)) 처리 방식");
+      await wait(40);
+      expect(onError).not.toHaveBeenCalled();
+      // The prompt box then renders → injection proceeds as usual.
+      h.fakePty._onData?.('\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      // A normal end_turn completes the turn — the repaint never blocked it.
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+      expect(onComplete).toHaveBeenCalled();
+    });
+
+    it('does NOT fail post-injection when real usage data refutes the scraped limit (false positive)', async () => {
+      // Authoritative usage shows headroom on every window → the on-screen sentence is content
+      // (e.g. claude's own answer quoted it), not a live notice.
+      const refuted = vi.spyOn(rateLimitProbeService, 'isLimitCorroborated').mockReturnValue(false);
+      try {
+        const engine = new CliChatEngine({ workingDirectory: '/proj' });
+        const onError = vi.fn();
+        const onComplete = vi.fn();
+        const { turn } = await injectThenReady(engine, { onError, onComplete });
+
+        h.fakePty._onData?.("✻ You've hit your weekly limit · resets 1am (Asia/Seoul)");
+        await wait(40);
+        expect(onError).not.toHaveBeenCalled();
+
+        // The normal JSONL end_turn still completes the turn.
+        await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+        await turn;
+        expect(onComplete).toHaveBeenCalled();
+      } finally {
+        refuted.mockRestore();
+      }
+    });
+
+    it('does NOT stop on the still-usable percentage warning (97%)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onError = vi.fn();
+      const onComplete = vi.fn();
+      const { turn } = await injectThenReady(engine, { onError, onComplete });
+
+      // At 97% generation continues — this must NOT stop the turn (false-positive guard).
+      h.fakePty._onData?.("✻ Working… You've used 97% of your weekly limit · resets 1am (Asia/Seoul)");
+      await wait(40);
+      expect(onError).not.toHaveBeenCalled();
+
+      // A normal end_turn still completes the turn afterwards.
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+      expect(onComplete).toHaveBeenCalled();
+    });
+  });
+
   describe('generation progress (Story 32.7 — spinner "↓ N tokens" parsing)', () => {
     // Drive the engine to the post-injection state (where progress parsing is live):
     // feed a boot frame with the ❯ marker, then wait until the prompt was injected.
@@ -1351,6 +1611,26 @@ describe('CliChatEngine', () => {
       expect(onProgress).not.toHaveBeenCalledWith(expect.objectContaining({ tokens: 365366 }));
 
       // The next clean frame recovers normally.
+      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 366 tokens)');
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 366, elapsedSeconds: 5 }));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('drops a fused counter on the turn\'s FIRST frame too (magnitude cap, no prior value to diff)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      // The very FIRST counter we see is already fused ("365" + "366" → "365366"). The
+      // implausible-jump guard needs a prior value, so only the magnitude cap can catch this —
+      // it must, or the "여전히 큰 숫자" leaks on the first frame (the residual Story 32.7 hole).
+      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 365366 tokens)');
+      await wait(30);
+      expect(onProgress).not.toHaveBeenCalled();
+
+      // The next clean frame emits normally (recovery).
       h.fakePty._onData?.('✢ Moseying… (5s · ↓ 366 tokens)');
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 366, elapsedSeconds: 5 }));
 

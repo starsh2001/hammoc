@@ -76,17 +76,19 @@ import type {
   TrackedToolCall,
   ToolResult,
 } from '@hammoc/shared';
-import { resolveEffectiveModel, sanitizeToolResultContent } from '@hammoc/shared';
+import { resolveEffectiveModel, sanitizeToolResultContent, effectiveModelIs1M, isAutoNative1MModel } from '@hammoc/shared';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import { watch, type FSWatcher } from 'fs';
+import { watch, mkdirSync, type FSWatcher } from 'fs';
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
+import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
+import { SDKError, SDKErrorCode } from '../utils/errors.js';
 
 const log = createLogger('cliChatEngine');
 
@@ -159,7 +161,12 @@ const BACKGROUND_HOOK_SCRIPT = path
  */
 const CLI_PROMPT_MARKER = '❯'; // Claude Code interactive input-box prompt glyph
 const CLI_BOOT_SETTLE_MS = 400; // quiet after the box marker before typing
-const CLI_MAX_BOOT_WAIT_MS = 4000; // fallback inject if the marker never renders
+const CLI_MAX_BOOT_WAIT_MS = 4000; // first fallback checkpoint: inject if the ❯ marker has settled
+// Hard ceiling when the ❯ marker has NOT appeared by the first checkpoint. A heavy startup
+// (e.g. an MCP-laden project whose input box took ~6s to render) pushes the box past 4s, and
+// injecting blind before it exists loses the prompt and hangs the turn forever. So past the
+// first checkpoint we keep waiting for the marker up to this ceiling before a last-resort inject.
+const CLI_MAX_BOOT_WAIT_NO_MARKER_MS = 20000;
 const CLI_SUBMIT_GAP_MS = 1000; // Enter sent this long after the prompt text
 
 /**
@@ -187,6 +194,9 @@ const CLI_PERMISSION_DENY_KEY = '\x1b'; // Esc → "Esc to cancel"
 
 /** Rolling post-injection ANSI buffer cap for dialog-state detection. */
 const CLI_DIALOG_BUFFER_CAP = 4000;
+
+/** Rolling ANSI buffer cap for the usage-limit notice scan (all phases). */
+const CLI_LIMIT_BUFFER_CAP = 2048;
 
 /**
  * AskUserQuestion selection-modal interception (Story 32.8 — *constrained*; the JSONL/ANSI
@@ -274,11 +284,16 @@ const CLI_PROGRESS_RE = /(?:\((\d+)\s*s\b[^↓\n]{0,40})?↓\s*([\d,]+)\s*tokens
 const CLI_PROGRESS_BUFFER_CAP = 2048;
 /**
  * Sanity cap on a parsed token count. An ANSI-flattened in-place redraw can fuse two counters
- * ("365" then "366" → "365366"); a single turn never emits anywhere near this many output tokens,
- * so a larger value is a scrape artifact and is dropped (the next clean frame re-emits the real
- * count). Paired with the malformed-grouping + implausible-jump guards in emitProgress.
+ * ("365" then "366" → "365366"); a single generation segment (the counter resets per API call)
+ * never emits anywhere near this many tokens — even max output plus a large thinking budget stays
+ * well under it — so a larger value is a scrape artifact and is dropped (the next clean frame
+ * re-emits the real count). This cap is the ONLY magnitude guard that also covers the turn's FIRST
+ * counter: the implausible-jump guard below needs a prior value, so a fused first frame ("365366")
+ * would otherwise slip through (the "여전히 큰 숫자" bug). Kept comfortably above any real
+ * segment total (~200K worst case) yet below the typical fused 6-digit artifact. Paired with the
+ * malformed-grouping + implausible-jump guards in emitProgress.
  */
-const CLI_PROGRESS_MAX_TOKENS = 2_000_000;
+const CLI_PROGRESS_MAX_TOKENS = 250_000;
 
 /**
  * Conservative permission-dialog matcher. Requires a permission-specific phrase
@@ -294,6 +309,33 @@ function detectPermissionDialog(text: string): boolean {
     /Do you want to (?:create|make|write|edit|update|apply|run|execute|read|proceed|allow)/i.test(text);
   const hasFooter = /Esc\b[^\n]{0,16}\bcancel\b/i.test(text) || /Tab\b[^\n]{0,16}\bamend\b/i.test(text);
   return hasPermPhrase && hasFooter;
+}
+
+/**
+ * Detect the subscription **usage-limit exhaustion** notice on the PTY screen and return its
+ * scraped sentence (else null). Why this exists: the interactive TUI prints "You've hit your
+ * weekly limit · resets 1am (Asia/Seoul)" ONLY on screen — it is NEVER written to the session
+ * JSONL — so the JSONL watch (how every other turn-completion is detected) never sees it and the
+ * turn would otherwise hang forever waiting for an `end_turn` that never comes. Detecting it lets
+ * the engine fail fast with the exact message claude showed (including the reset time).
+ *
+ * Conservative by construction so it can never stop a healthy turn:
+ *   - requires an exhaustion verb (hit/reached/exceeded) OR "<window> limit reached",
+ *   - requires an explicit window qualifier (weekly / 5-hour / daily / usage / session),
+ *   - requires a nearby "reset" clause (the real notice always has one),
+ *   - and explicitly EXCLUDES the still-usable percentage warning ("used 97% of your weekly
+ *     limit") — at 97% generation continues, so that must NOT stop the turn.
+ * Version-fragile (a TUI revision could reword these) — the same documented constraint as the
+ * permission/question detectors, which also read PTY *state*.
+ */
+function detectUsageLimit(text: string): string | null {
+  const m = text.match(
+    /(?:hit|reached|exceeded)\s+your\s+(?:weekly|5-hour|daily|usage|session)\s+limit\b[^\n]{0,60}|(?:weekly|usage|5-hour|daily|session)\s+limit\s+(?:reached|exceeded)\b[^\n]{0,60}/i,
+  );
+  if (!m) return null;
+  if (/\bused\s+\d+\s*%/i.test(m[0])) return null; // percentage warning — still usable, don't stop
+  if (!/\breset/i.test(m[0])) return null; // require the reset clause for confidence
+  return m[0].replace(/\s{2,}/g, ' ').trim().slice(0, 160);
 }
 
 /**
@@ -394,6 +436,61 @@ function parseQuestionModal(buf: string): ParsedQuestion | null {
     'Claude is asking a question'
   ).trim();
   return { question, header, multiSelect, options };
+}
+
+/** Normalize text to a whitespace-free lowercase key for the preceding-text dedup fingerprint. */
+function normalizeForFp(s: string): string {
+  return s.replace(/\s+/g, '').toLowerCase();
+}
+
+/**
+ * Scrape the assistant prose the TUI rendered ABOVE the question modal (the explanation that
+ * leads into the choices), else null. Why this exists (ordering fix): that prose and the
+ * AskUserQuestion are flushed to the session JSONL only AFTER the user answers (the whole
+ * assistant message lands post-selection — verified), while the question CARD is shown the moment
+ * the modal is detected on screen. So reading the prose from the file always puts it AFTER the
+ * card ("선택지 누른 뒤에 설명이 나온다"). The screen is the ONLY pre-answer source, so we scrape
+ * it and emit it first. Best-effort and lossy (collapsed to one line, may catch nothing) — the
+ * turn-end reload replaces it with the authoritative JSONL copy; the caller dedups the matching
+ * JSONL block's live re-emit.
+ *
+ * Reads the same modal region as parseQuestionModal: it slices back from the footer, finds where
+ * the modal itself begins (the header ballot-box tab ☐/☒, or the line above the first numbered
+ * option), and returns the trailing contiguous block of prose lines above it (box chrome stripped,
+ * option/footer/affordance lines excluded). Returns null for a trivial fragment so a bare modal
+ * with no lead-in prose never emits scrape noise.
+ */
+function parsePrecedingText(buf: string): string | null {
+  const navIdx = buf.lastIndexOf('to navigate');
+  if (navIdx < 0) return null;
+  const region = buf.slice(Math.max(0, navIdx - 3000), navIdx);
+  let modalStart = region.search(/[☐☒]/);
+  if (modalStart < 0) {
+    const firstOpt = region.search(/\n\s*1\.\s/);
+    modalStart = firstOpt < 0 ? -1 : region.lastIndexOf('\n', firstOpt - 1);
+  }
+  if (modalStart <= 0) return null;
+  const isNoise = (l: string): boolean =>
+    l.length === 0 ||
+    /^[\s─-▟]*$/.test(l) || // blank or pure box-drawing chrome
+    /^\d{1,2}\.\s/.test(l) || // a numbered option row
+    /❯/.test(l) || // cursor / prompt marker
+    /to\s+navigate|Enter\b[^\n]{0,12}\bselect\b|Esc\b[^\n]{0,16}\bcancel\b/i.test(l) ||
+    /Chat about this|Type something/i.test(l);
+  const lines = region
+    .slice(0, modalStart)
+    .split('\n')
+    .map((l) => l.replace(/[─-▟]/g, ' ').replace(/\s{2,}/g, ' ').trim());
+  const prose: string[] = [];
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (isNoise(lines[i])) {
+      if (prose.length > 0) break; // stop at the first noise line above the prose block
+      continue; // skip trailing noise between the prose and the modal
+    }
+    prose.unshift(lines[i]);
+  }
+  const text = prose.join(' ').trim();
+  return text.length < 16 ? null : text.slice(0, 2000);
 }
 
 /**
@@ -586,6 +683,7 @@ export class CliChatEngine implements ChatEngine {
     onRawMessage?: (messageType: string) => void,
     onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
     onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
+    onPtyRaw?: (chunk: string) => void,
   ): Promise<ChatResponse> {
     const cwd = this.workingDirectory;
     if (!cwd) {
@@ -652,6 +750,24 @@ export class CliChatEngine implements ChatEngine {
     }
     args.push('--settings', JSON.stringify(settingsObj));
 
+    // Experimental CLI debug instrumentation (HAMMOC_CLI_DEBUG=1). Adds claude's own
+    // --debug-file so its internal reasoning (including any auto-compact decision) is
+    // captured per spawn, to diagnose why claude self-compacts on some long-idle resumes.
+    // No-op unless the env flag is set; *.log is gitignored. Best-effort — instrumentation
+    // must never break a turn.
+    if (process.env.HAMMOC_CLI_DEBUG) {
+      try {
+        const dbgDir = path.join(process.cwd(), 'logs', 'claude-debug');
+        mkdirSync(dbgDir, { recursive: true });
+        const dbgSid = resumeId ?? options.sessionId ?? 'new';
+        const dbgFile = path.join(dbgDir, `${dbgSid}-${Date.now()}.log`);
+        args.push('--debug-file', dbgFile);
+        log.info(`[CLI-DEBUG] spawn resume=${resumeId ?? 'none'} sid=${dbgSid} debugFile=${dbgFile}`);
+      } catch (e) {
+        log.warn(`[CLI-DEBUG] debug-file setup failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
     // Pin this turn's session file by id whenever the id is known up front. The file
     // name is deterministic — claude writes `<id>.jsonl` for BOTH `--resume <id>` and
     // the pre-allocated `--session-id <id>` (same flag built into `args` above) — so we
@@ -685,7 +801,13 @@ export class CliChatEngine implements ChatEngine {
       if (resumeId) {
         lastSize = await fileSize(sessionFile);
         for (const m of await parseJSONLFile(sessionFile)) {
-          if (m.type === 'assistant') emittedUuids.add(m.uuid);
+          // Seed assistant uuids AND any prior compact_boundary so resume replays neither. The
+          // compact_boundary seed is load-bearing for the hang fix in `tick` below: without it a
+          // compaction already in the transcript would be re-read as "this turn ended" the instant
+          // we resume, finishing the turn before the model ever responds.
+          if (m.type === 'assistant' || (m.type === 'system' && m.subtype === 'compact_boundary')) {
+            emittedUuids.add(m.uuid);
+          }
         }
       }
       // Pre-allocated new session: the file does not exist yet (claude creates it on the
@@ -711,6 +833,7 @@ export class CliChatEngine implements ChatEngine {
       // Prompt-injection state (see CLI_* constants).
       let injected = false;
       let bootBuffer = ''; // accumulated boot output, scanned for the box marker (pre-injection only)
+      let bootMarkerSeen = false; // ❯ input box has rendered — gates the blind fallback inject (never inject before the box exists)
       let bootSettleTimer: ReturnType<typeof setTimeout> | null = null;
       let bootFallbackTimer: ReturnType<typeof setTimeout> | null = null;
       let submitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -739,6 +862,17 @@ export class CliChatEngine implements ChatEngine {
       let questionPending = false; // guards re-entry while awaiting the user's answer
       let questionSettleTimer: ReturnType<typeof setTimeout> | null = null; // modal paint settle
       let questionCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-answer)
+      // Ordering fix: when the prose above a question modal is scraped + emitted live (it is not
+      // in the JSONL until post-answer), this holds a normalized prefix of it so the matching
+      // JSONL text block's live re-emit is suppressed (no transient duplicate; reload is authoritative).
+      let scrapedPrecedingFingerprint: string | null = null;
+      // Usage-limit notice scan buffer (POST-INJECTION only — see the onData handler). The limit
+      // shows only on the PTY, never in the JSONL, so without this the turn would hang waiting for
+      // an end_turn that never arrives. Scanning is deferred until after prompt injection so the
+      // resumed-transcript repaint (which may merely *quote* the banner) cannot false-trigger it.
+      let limitBuffer = '';
+      let limitFalsePositiveLogged = false; // log a refuted (usage-contradicted) scrape once per turn
+
       // Generation-progress state (Story 32.7 — post-injection only).
       let progressBuffer = ''; // rolling stripped PTY output, scanned for the spinner counter
       let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
@@ -1057,19 +1191,60 @@ export class CliChatEngine implements ChatEngine {
       // new/untrusted folder's trust dialog is deferred, §7.3.)
       pty.onData((data: string) => {
         onRawMessage?.('cli-pty-activity');
+        // Live mirror passthrough (onPtyRaw) — a pure observer of the UNMODIFIED frame
+        // (raw, ANSI intact). It never alters the state-signal scrapes (progress / dialog
+        // / question) below; gated upstream by the cliPtyMirror preference.
+        onPtyRaw?.(data);
+        // Pre-injection (boot/resume): accumulate output until the ❯ readiness marker, then inject.
+        // The usage-limit scan deliberately does NOT run here — see the post-injection block below.
         if (!injected) {
           bootBuffer += data;
           if (bootBuffer.includes(CLI_PROMPT_MARKER)) {
+            bootMarkerSeen = true;
             if (bootSettleTimer) clearTimeout(bootSettleTimer);
             bootSettleTimer = setTimeout(injectPrompt, CLI_BOOT_SETTLE_MS);
           }
           return;
         }
-        // Post-injection: strip ANSI once and reuse the same frame for two *state*
-        // signals — generation progress (32.7) and permission dialog (32.6). They are
-        // independent (progress is always useful; the dialog branch needs canUseTool),
-        // and they co-exist per §7.1 (both are PTY state, never content).
+        // Strip ANSI once per frame — reused by the usage-limit scan and the other post-injection
+        // state signals (progress / dialog / question) below.
         const stripped = stripAnsiForDetect(data);
+        // Usage-limit exhaustion (POST-INJECTION ONLY — root-cause fix for a false positive). The
+        // "You've hit your weekly limit · resets …" notice lives ONLY on the PTY screen — never in
+        // the JSONL — so without this scan the turn would hang waiting for an end_turn that never
+        // comes. BUT the SAME words also paint on screen when `claude --resume` repaints prior
+        // conversation that merely *quoted* the banner (e.g. the very session this feature was
+        // built in), and the scrape cannot tell content from a live notice. That repaint happens
+        // BEFORE injection, whereas the genuine notice only appears once THIS turn attempts
+        // generation (after injection) — so scanning solely post-injection excludes the stale
+        // repaint. Second guard: cross-check the authoritative OAuth usage numbers (already polled
+        // every 2min). A real block sits at ~100% on some window, so if every window has headroom
+        // the on-screen text is content, not a limit → ignore it. Coded RATE_LIMIT_EXCEEDED so
+        // parseSDKError forwards the message verbatim AND the resume-retry path skips it (no
+        // pointless respawn into the same wall, which would only burn more quota).
+        limitBuffer = (limitBuffer + stripped).slice(-CLI_LIMIT_BUFFER_CAP);
+        const limitMsg = detectUsageLimit(limitBuffer);
+        if (limitMsg) {
+          if (rateLimitProbeService.isLimitCorroborated()) {
+            fail(new SDKError(limitMsg, SDKErrorCode.RATE_LIMIT_EXCEEDED));
+            return;
+          }
+          // Refuted by real usage data → the on-screen text is content, not a notice. Drop the
+          // buffer so the same screen text cannot re-match every subsequent frame, log once, and
+          // let the normal JSONL end_turn complete the turn.
+          if (!limitFalsePositiveLogged) {
+            limitFalsePositiveLogged = true;
+            log.info(
+              'CLI: ignoring scraped usage-limit notice — real usage shows headroom (false positive): %s',
+              limitMsg,
+            );
+          }
+          limitBuffer = '';
+        }
+        // Post-injection: reuse `stripped` for two *state* signals — generation progress
+        // (32.7) and permission dialog (32.6). They are independent (progress is always
+        // useful; the dialog branch needs canUseTool), and they co-exist per §7.1 (both are
+        // PTY state, never content).
         // Generation progress (Story 32.7): roll a capped buffer (survives frame
         // splits) and emit the freshest counter on change.
         if (onGenerationProgress) {
@@ -1107,6 +1282,20 @@ export class CliChatEngine implements ChatEngine {
             questionSettleTimer = setTimeout(() => {
               questionSettleTimer = null;
               const parsed = parseQuestionModal(questionBuffer);
+              // Ordering fix: emit the prose rendered ABOVE the modal BEFORE the question card.
+              // The JSONL copy of this prose is flushed only after the answer (too late), so the
+              // screen is the only pre-answer source. Lossy/best-effort; the matching JSONL block's
+              // live re-emit is deduped in handleAssistantLine, and the turn-end reload is authoritative.
+              const pre = parsePrecedingText(questionBuffer);
+              if (pre && !settled) {
+                callbacks.onTextChunk?.({
+                  sessionId: resolvedSessionId ?? '',
+                  messageId: `cli-pre-${questionCounter}`,
+                  content: pre,
+                  done: false,
+                });
+                scrapedPrecedingFingerprint = normalizeForFp(pre).slice(0, 24) || null;
+              }
               questionBuffer = ''; // consume — don't re-match the same modal text
               handleQuestion(parsed, `cli-q-${++questionCounter}`);
             }, CLI_QUESTION_SETTLE_MS);
@@ -1122,8 +1311,24 @@ export class CliChatEngine implements ChatEngine {
         fail(new Error(`claude CLI exited (code ${exitCode}) before completing the turn`));
       });
 
-      // Fallback: inject even if claude emits no boot output at all.
-      bootFallbackTimer = setTimeout(injectPrompt, CLI_MAX_BOOT_WAIT_MS);
+      // Fallback for when the ❯ marker never settles. CRITICAL: only blind-inject once the box
+      // marker has actually rendered — injecting before the input box exists loses the prompt and
+      // hangs the turn in "waiting" forever (reproduced on an MCP-heavy project whose box took ~6s,
+      // past the 4s checkpoint; the snippet-chain's near-instant next turn hit it cold). At the
+      // first checkpoint: if the marker is up, inject (output merely stayed noisy past settle);
+      // otherwise keep waiting up to the hard ceiling for onData to see the marker and inject via
+      // the settle path, blind-injecting only as a true last resort.
+      const armBootFallback = (delay: number, isFinal: boolean) => {
+        bootFallbackTimer = setTimeout(() => {
+          if (injected || settled) return;
+          if (bootMarkerSeen || isFinal) {
+            injectPrompt();
+          } else {
+            armBootFallback(CLI_MAX_BOOT_WAIT_NO_MARKER_MS - CLI_MAX_BOOT_WAIT_MS, true);
+          }
+        }, delay);
+      };
+      armBootFallback(CLI_MAX_BOOT_WAIT_MS, false);
 
       const emitSessionInitOnce = (model?: string) => {
         if (sessionInitEmitted || !resolvedSessionId) return;
@@ -1175,12 +1380,22 @@ export class CliChatEngine implements ChatEngine {
               const text = (block as TextContentBlock).text;
               if (text && text.trim() && text.trim() !== '(no content)') {
                 accumulatedText += text;
-                callbacks.onTextChunk?.({
-                  sessionId: resolvedSessionId ?? '',
-                  messageId: `${raw.uuid}-t${textIdx++}`,
-                  content: text,
-                  done: false,
-                });
+                // Ordering-fix dedup: if this block was already shown live via the pre-question
+                // PTY scrape, suppress the (now redundant) live re-emit — the reload is
+                // authoritative either way. Match on a normalized prefix (the scrape is spacing-
+                // lossy but its START is intact); consume the fingerprint so only the first
+                // matching block is suppressed. accumulatedText still includes it once.
+                const fp = scrapedPrecedingFingerprint;
+                if (fp && normalizeForFp(text).startsWith(fp)) {
+                  scrapedPrecedingFingerprint = null;
+                } else {
+                  callbacks.onTextChunk?.({
+                    sessionId: resolvedSessionId ?? '',
+                    messageId: `${raw.uuid}-t${textIdx++}`,
+                    content: text,
+                    done: false,
+                  });
+                }
               }
             } else if (block.type === 'tool_use') {
               // Story 32.9: live tool-card emission. The envelope is identical to SDK mode
@@ -1224,15 +1439,35 @@ export class CliChatEngine implements ChatEngine {
         }
 
         if (envelope?.usage) {
+          // Context-window size — the ring's *denominator*. The session JSONL carries
+          // per-request token counts but NOT the model's window, so derive it from the
+          // model: an explicit `[1m]` opt-in or an Opus auto-1M runs at 1M, else the 200K
+          // default. SDK mode pulls this from `modelUsage`; CLI mode has no such field, so
+          // it previously hard-coded `contextWindow:0` — which made the ring treat the data
+          // as missing and stay hidden the entire CLI session.
+          const contextWindowSize =
+            effectiveModelIs1M(options.model) || isAutoNative1MModel(envelope.model) ? 1_000_000 : 200_000;
           lastUsage = {
             inputTokens: envelope.usage.input_tokens ?? 0,
             outputTokens: envelope.usage.output_tokens ?? 0,
             cacheReadInputTokens: envelope.usage.cache_read_input_tokens ?? 0,
             cacheCreationInputTokens: envelope.usage.cache_creation_input_tokens ?? 0,
             totalCostUSD: 0,
-            contextWindow: 0,
+            contextWindow: contextWindowSize,
             model: envelope.model,
           };
+          // Live context — the ring's *numerator*. Every completed response writes a JSONL
+          // line carrying its exact input-context usage; forward it through the SAME
+          // `onContextEstimate` channel SDK mode uses (→ `context:estimate` → ring update) so
+          // the ring fills block-by-block *during* a turn instead of only at end_turn. The
+          // total is the real reported context (uncached input + both cache buckets), not an
+          // estimate; the client keeps the max (context only grows between compactions). Same
+          // value repeats across a response's block lines — the client's >current guard dedups.
+          const totalContextTokens =
+            (envelope.usage.input_tokens ?? 0) +
+            (envelope.usage.cache_read_input_tokens ?? 0) +
+            (envelope.usage.cache_creation_input_tokens ?? 0);
+          callbacks.onContextEstimate?.(totalContextTokens, contextWindowSize);
         }
 
         return envelope?.stop_reason === 'end_turn';
@@ -1313,6 +1548,23 @@ export class CliChatEngine implements ChatEngine {
               }
             } else if (raw.type === 'user') {
               emitToolResults(raw);
+            } else if (raw.type === 'system' && raw.subtype === 'compact_boundary') {
+              // Turn-completion signal for a compaction. claude itself writes this when it
+              // self-compacts on resume — confirmed 2026-06-10 from packages/server/logs: NO
+              // [AUTO-COMPACT] marker for the observed cases, so this is NOT a Hammoc/websocket
+              // `/compact` injection; the interactive claude binary decides to compact on some
+              // long-idle resumes (root cause still under investigation). It can also come from a
+              // user clicking the context ring (/compact). Unlike a normal turn, a compaction
+              // writes NO end_turn assistant line — only this system boundary plus a "Compacted"
+              // stdout — so without treating the boundary as completion the turn waits forever for
+              // an end_turn that never comes (the CLI compact-hang root cause). Guarded by
+              // emittedUuids so a prior compaction replayed on resume (seeded above) is ignored.
+              if (emittedUuids.has(raw.uuid)) continue;
+              emittedUuids.add(raw.uuid);
+              const cm = (raw as { compactMetadata?: { trigger?: string; preTokens?: number; postTokens?: number } }).compactMetadata;
+              log.info(`[CLI-DEBUG] compact_boundary detected: trigger=${cm?.trigger} preTokens=${cm?.preTokens} postTokens=${cm?.postTokens}`);
+              finishTurn();
+              return;
             }
           }
         } catch (err) {
