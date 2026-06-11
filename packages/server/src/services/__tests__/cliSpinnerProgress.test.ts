@@ -10,9 +10,10 @@
  *
  * Also covered: the abbreviated "↓ 1.4k tokens" form the linear regex MISSED (it broke
  * at `.`/`k`) now reads as 1400; comma form; the false-0 guard (no counter → null); a
- * segment-boundary reset read as a change; and the elapsed-clock rule — bare seconds
- * parse, while a minute form "(1m 36s ·" yields 0 (paren-anchored, current behavior
- * preserved; accurate "Xm Ys" summation is Story 37.3).
+ * segment-boundary reset read as a change; and the elapsed-clock rule (Story 37.3) —
+ * bare seconds parse ("9s" → 9), the minute form "(1m 36s ·" sums to 96 (paren-anchored
+ * Xm Ys), an in-place "1m 36s" → "1m 37s" redraw reads as the latest 97 (no fusion), and
+ * a clock-less counter row yields 0.
  *
  * server runs with `globals: false`, so vitest primitives are imported explicitly.
  */
@@ -88,15 +89,33 @@ describe('readSpinnerProgress (Story 37.2 — grid token reader)', () => {
     expect(p).toEqual({ tokens: 79, elapsedSeconds: 2 });
   });
 
-  it('parses bare-seconds elapsed but yields 0 for a minute form (Story 37.3 owns Xm Ys)', async () => {
+  it('sums the minute form "(1m 36s ·" to 96 and preserves bare seconds (Story 37.3 — Xm Ys)', async () => {
+    // bare seconds: minutes default to 0, value unchanged from before (regression 0).
     const bare = await read([drawSpinner('Flowing… (9s · ↓ 365 tokens · thinking with high effort)')]);
     expect(bare?.elapsedSeconds).toBe(9);
 
-    // "(1m 36s ·" — the char after "(" is "1m", not digits+s, so the paren-anchored
-    // clock does NOT match and elapsed falls through to 0 (CURRENT behavior preserved).
-    // The 36 must NOT leak through as seconds; summing "1m 36s" is Story 37.3's job.
+    // "(1m 36s ·" — paren-anchored Xm Ys summation now reads minutes*60 + seconds = 96
+    // (Story 37.2 deliberately pinned this to 0 and deferred the sum here; that pin is
+    // intentionally reversed). The 36 is NOT taken alone — the minute segment is summed.
     const minute = await read([drawSpinner('Flowing… (1m 36s · ↓ 365 tokens)')]);
-    expect(minute).toEqual({ tokens: 365, elapsedSeconds: 0 });
+    expect(minute).toEqual({ tokens: 365, elapsedSeconds: 96 });
+  });
+
+  it('reads an in-place "1m 36s" → "1m 37s" redraw as the latest 97 (no fusion, grid overwrites)', async () => {
+    // The clock advances on the SAME cell each frame. The grid overwrites in place, so the
+    // settled row holds only the final "1m 37s" → 97 — never a fused "136137"/"96 97".
+    const p = await read([
+      drawSpinner('Moseying… (1m 36s · ↓ 365 tokens)'),
+      drawSpinner('Moseying… (1m 37s · ↓ 366 tokens)'),
+    ]);
+    expect(p).toEqual({ tokens: 366, elapsedSeconds: 97 });
+  });
+
+  it('sums minute-form boundaries: "(2m 0s ·" → 120 and "(10m 5s ·" → 605', async () => {
+    const twoMin = await read([drawSpinner('Crunched (2m 0s · ↓ 500 tokens)')]);
+    expect(twoMin?.elapsedSeconds).toBe(120);
+    const tenMin = await read([drawSpinner('Crunched (10m 5s · ↓ 9,001 tokens)')]);
+    expect(tenMin?.elapsedSeconds).toBe(605);
   });
 
   it('takes the bottom-most counter row when more than one is present', async () => {

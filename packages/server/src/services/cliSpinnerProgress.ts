@@ -29,13 +29,32 @@
 const GRID_COUNTER_RE = /↓\s*([\d.,]+k?)\s*tokens/i;
 
 /**
- * The leading elapsed clock, paren-anchored — identical to the old linear time group
- * `\((\d+)\s*s\b`. A minute form "(1m 36s ·" does NOT match (the char after "(" is "1m",
- * not digits+s) and falls through to 0, preserving CURRENT behavior. Accurate "Xm Ys"
- * summation is Story 37.3's responsibility — out of scope here, so the format is not
- * changed and an unparsed clock yields 0.
+ * The leading elapsed clock, paren-anchored (Story 37.3 — "Xm Ys" summation). claude
+ * renders the clock as the FIRST thing after the spinner's "(" — either bare seconds
+ * "(9s ·" or a minute form "(1m 36s ·". Both the minute and second segments are optional
+ * and captured separately; an absent segment counts as 0, so bare seconds preserve their
+ * old value ("9s" → 9) and a missing clock yields 0. The "(" anchor is load-bearing: the
+ * time is always rendered right after the opening paren, so anchoring keeps a counter or
+ * prose number ("↓ 365 tokens", "thinking") from being mistaken for the clock.
  */
-const GRID_ELAPSED_RE = /\((\d+)\s*s\b/;
+const GRID_ELAPSED_RE = /\((?:(\d+)m\s*)?(?:(\d+)s\b)?/;
+
+/**
+ * Sum the paren-anchored elapsed clock on a spinner row to integer seconds. Pure — input
+ * is the rendered row, output is `minutes * 60 + seconds`. A minute form "(1m 36s ·" → 96,
+ * bare seconds "(9s ·" → 9 (minutes default to 0), and a row with no clock segment → 0
+ * (Story 37.3 AC3). Hour ("Xh") forms are unobserved and out of scope; if claude ever
+ * renders them, the same anchored-sum pattern extends. The grid overwrites the spinner
+ * cell in place, so an in-place "(1m 36s" → "(1m 37s" redraw reads as the latest value
+ * (97), never a fused "136137" — fusion is structurally impossible here too.
+ */
+function sumElapsedSeconds(row: string): number {
+  const m = GRID_ELAPSED_RE.exec(row);
+  if (!m) return 0;
+  const minutes = m[1] ? parseInt(m[1], 10) : 0;
+  const seconds = m[2] ? parseInt(m[2], 10) : 0;
+  return minutes * 60 + seconds;
+}
 
 export interface SpinnerProgress {
   tokens: number;
@@ -62,8 +81,7 @@ export function readSpinnerProgress(grid: string[]): SpinnerProgress | null {
       ? Math.round(parseFloat(raw.slice(0, -1).replace(/,/g, '')) * 1000)
       : parseInt(raw.replace(/,/g, ''), 10);
     if (!Number.isFinite(tokens)) return null;
-    const elapsed = GRID_ELAPSED_RE.exec(grid[y]);
-    return { tokens, elapsedSeconds: elapsed ? parseInt(elapsed[1], 10) : 0 };
+    return { tokens, elapsedSeconds: sumElapsedSeconds(grid[y]) };
   }
   return null;
 }

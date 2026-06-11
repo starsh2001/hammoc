@@ -1621,6 +1621,21 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
+    it('forwards a minute-form clock "(1m 36s ·" summed to elapsedSeconds 96 (Story 37.3 — Xm Ys)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      // Past 1 minute claude renders "(1m 36s ·". The grid reader now sums minutes*60 +
+      // seconds, so the wire contract's elapsedSeconds carries 96 end-to-end (reader →
+      // engine → callback) instead of the pre-37.3 false 0.
+      h.fakePty._onData?.(drawSpinner('Moseying… (1m 36s · ↓ 365 tokens)'));
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 365, elapsedSeconds: 96 }));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
     it('reads the abbreviated "↓ 1.4k tokens" form the linear regex missed (→ 1400)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onProgress = vi.fn();
