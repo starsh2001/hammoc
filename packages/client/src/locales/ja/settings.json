@@ -91,8 +91,8 @@
         "cliBinaryPath": "claudeバイナリのパス",
         "cliBinaryPathDesc": "claude実行ファイルのパスを手動で指定します。空欄の場合は自動検出します。",
         "cliBinaryPathPlaceholder": "自動検出（空欄）",
-        "cliPtyMirror": "PTYミラー（デバッグ）",
-        "cliPtyMirrorDesc": "CLIモードの会話中に、claudeの生画面をそのまま映す読み取り専用ターミナルを表示します。デバッグ専用（既定はオフ）— 応答が止まったときに、ウィンドウのないエンジンが実際に何をしているかを確認できます。"
+        "cliPtyMirror": "claude 画面ミラー",
+        "cliPtyMirrorDesc": "CLIモードの会話中に、claudeの画面をそのまま映す読み取り専用ターミナルを表示します（既定はオン — ここでオフにできます）。新しいブラウザや再読み込み時に現在の画面へ同期されるため、どの端末でも同じ画面が表示されます。"
     },
     "toast": {
         "themeChanged": "テーマが変更されました",

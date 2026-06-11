@@ -1,18 +1,21 @@
 /**
- * CliPtyMirror — read-only debug mirror of the raw claude TUI screen (CLI mode).
+ * CliPtyMirror — read-only mirror of the raw claude TUI screen (CLI mode).
  *
  * When the `cliPtyMirror` preference is ON *and* the effective engine is the CLI engine,
  * the server forwards every raw PTY frame (ANSI intact) over `cli:pty-raw`. This panel
  * renders those frames in a read-only xterm so the otherwise-windowless CLI engine's
- * actual screen is visible — the diagnostic surface for "a card never arrives / the
- * progress counter freezes". It is a pure observer:
+ * actual screen is visible. Story 37.7 promoted it from a diagnostic opt-in to a default
+ * feature (default ON, opt-out): besides watching a stalled turn, the everyday use is
+ * simply seeing claude's screen. On `session:join` the server also pushes a one-time
+ * `cli:screen-snapshot` (the current screen grid) so a newly-connected or refreshed
+ * browser initializes to the current screen instead of a blank one. It is a pure observer:
  *   - input is disabled (the engine drives the PTY by injecting keystrokes itself; a key
  *     typed here must never reach claude), and
  *   - it subscribes to the socket directly and never touches chat / message state.
  *
- * Self-gating: returns null unless CLI mode + the preference are both on, so SDK-mode
- * chats and the default (preference OFF) pay nothing — the xterm is created only while
- * the panel is actually shown.
+ * Self-gating: returns null unless CLI mode + the preference are both on (default ON), so
+ * SDK-mode chats and opt-out users pay nothing — the xterm is created only while the panel
+ * is actually shown.
  */
 
 import { useRef, useEffect, useState, useCallback } from 'react';
@@ -80,6 +83,26 @@ function MirrorPanel() {
     const onRaw = (data: { chunk: string }) => terminal.write(data.chunk);
     socket.on('cli:pty-raw', onRaw);
 
+    // Story 37.7: late-join / refresh sync. The server pushes the current screen GRID
+    // (accumulated state) on session:join — raw cli:pty-raw frames are in-place deltas, so
+    // a single last frame can't restore the screen, but the grid can. Clear xterm and write
+    // the grid as the current screen; the live raw stream that follows converges it back to
+    // a fully-styled frame (the grid is plain text — authoritative *content*, not ANSI).
+    const onSnapshot = (data: { grid: string[] }) => {
+      terminal.clear();
+      const rows = data.grid;
+      for (let i = 0; i < rows.length; i++) {
+        terminal.write(rows[i]);
+        // Server rows arrive right-trimmed (readGrid uses translateToString(true)), so most
+        // rows are < COLS and a trailing \r\n is safe. Skip the newline only for a row that
+        // genuinely fills all COLS: writing COLS chars auto-wraps the cursor, and an extra
+        // \r\n would then insert a blank line and shift the screen. The last row never needs
+        // a trailing newline.
+        if (i < rows.length - 1 && rows[i].length < COLS) terminal.write('\r\n');
+      }
+    };
+    socket.on('cli:screen-snapshot', onSnapshot);
+
     let rafId: number | null = null;
     const resizeObserver = new ResizeObserver(() => {
       if (rafId) cancelAnimationFrame(rafId);
@@ -90,6 +113,7 @@ function MirrorPanel() {
 
     return () => {
       socket.off('cli:pty-raw', onRaw);
+      socket.off('cli:screen-snapshot', onSnapshot);
       resizeObserver.disconnect();
       if (rafId) cancelAnimationFrame(rafId);
       cancelAnimationFrame(initRaf);
@@ -163,7 +187,7 @@ function MirrorPanel() {
 export function CliPtyMirror() {
   const engineModeOverride = useChatStore((s) => s.projectSettings?.engineModeOverride);
   const globalEngineMode = usePreferencesStore((s) => s.preferences.engineMode);
-  const cliPtyMirror = usePreferencesStore((s) => s.preferences.cliPtyMirror ?? false);
+  const cliPtyMirror = usePreferencesStore((s) => s.preferences.cliPtyMirror ?? true);
   const isCliMode = (engineModeOverride ?? globalEngineMode ?? 'sdk') === 'cli';
   if (!isCliMode || !cliPtyMirror) return null;
   return <MirrorPanel />;

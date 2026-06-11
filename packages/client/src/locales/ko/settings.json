@@ -92,8 +92,8 @@
         "cliBinaryPath": "claude 바이너리 경로",
         "cliBinaryPathDesc": "claude 실행 파일 경로를 수동으로 지정합니다. 비워 두면 자동 탐지합니다.",
         "cliBinaryPathPlaceholder": "자동 탐지 (비워 두기)",
-        "cliPtyMirror": "PTY 미러 (디버그)",
-        "cliPtyMirrorDesc": "CLI 모드 대화 중 claude의 원본 화면을 그대로 비추는 읽기 전용 터미널을 표시합니다. 디버그 전용(기본 꺼짐) — 응답이 멈출 때 창 없는 엔진이 실제로 무엇을 하는지 확인할 수 있습니다."
+        "cliPtyMirror": "claude 화면 미러",
+        "cliPtyMirrorDesc": "CLI 모드 대화 중 claude의 화면을 그대로 비추는 읽기 전용 터미널을 표시합니다(기본 켜짐 — 여기서 끌 수 있음). 새 브라우저나 새로고침 시 현재 화면으로 동기화되어 어느 기기에서나 같은 화면을 봅니다."
     },
     "toast": {
         "themeChanged": "테마가 변경되었습니다",

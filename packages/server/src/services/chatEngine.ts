@@ -51,10 +51,10 @@ export interface ChatEngine {
      */
     onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
     /**
-     * CLI raw-screen passthrough for the debug mirror. Each unmodified PTY frame (ANSI
+     * CLI raw-screen passthrough for the read-only mirror. Each unmodified PTY frame (ANSI
      * intact). Server-side, `@hammoc/shared`-independent (mirrors onPhase). CLI-only;
      * the SDK engine ignores it (no PTY). The CLI engine calls it only when provided —
-     * upstream gates it on the `cliPtyMirror` preference.
+     * upstream gates it on the `cliPtyMirror` preference (default ON, opt-out — Story 37.7).
      */
     onPtyRaw?: (chunk: string) => void
   ): Promise<ChatResponse>;

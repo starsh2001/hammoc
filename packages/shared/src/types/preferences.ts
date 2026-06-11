@@ -43,10 +43,12 @@ export interface UserPreferences {
   // history/replay are unaffected. Default OFF. (Client-side only — the engine never reads it.)
   cliSyntheticTyping?: boolean;
   cliBinaryPath?: string;               // manual claude binary path override ('' = auto-detect)
-  // Debug: mirror the raw claude TUI screen (ANSI) in a read-only panel during CLI-mode
-  // chats. Diagnostic only (default OFF) — lets you watch what the windowless PTY is
-  // actually doing when a turn stalls or its progress counter mis-parses. CLI mode only;
-  // the engine emits the raw frames only when this is ON.
+  // Mirror the raw claude TUI screen (ANSI) in a read-only panel during CLI-mode chats.
+  // Default feature (default ON when unset, opt-out — Story 37.7 promoted it from a
+  // diagnostic opt-in): shows claude's actual screen, and lets you watch what the
+  // windowless PTY is doing when a turn stalls. CLI mode only; the engine emits the raw
+  // frames only when this is ON. Storing `false` opts out. (Type/key unchanged — only the
+  // unset interpretation flipped OFF→ON, so no stored-value migration is needed.)
   cliPtyMirror?: boolean;
   // Delay in ms between non-text card entrances during the CLI reveal animation (above).
   // Each thinking/tool/system card waits this long after the previous segment finishes

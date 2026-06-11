@@ -568,7 +568,7 @@
     "moveToOtherSide": "Mover panel al otro lado"
   },
   "cliPtyMirror": {
-    "title": "Espejo PTY (depuración)",
+    "title": "Espejo de pantalla de claude",
     "clear": "Limpiar",
     "copy": "Copiar todo",
     "copied": "Contenido del espejo copiado al portapapeles",

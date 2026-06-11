@@ -223,7 +223,7 @@ await new Promise(r => setTimeout(r, 1500));
 1. 기본 `<TARGET>/settings` 진입 → 전역 설정에서 **"Conversation Engine"** 라디오그룹(`input[type="radio"][name="engineMode"]`, value `sdk`/`cli`)과 **"CLI Mode Settings"** 패널(`#cli-binary-path` 텍스트 입력 + 진행률·미러 체크박스)이 렌더되는지 확인
 2. CLI 선택: `input[type="radio"][name="engineMode"][value="cli"]` 클릭 → ~0.5초 후 `/api/preferences.engineMode === 'cli'` 확인
 3. 바이너리 경로 주입: `#cli-binary-path` 에 임의 경로(예: `/usr/local/bin/claude`)를 native setter + `input`/`change`/`blur` 3종 이벤트로 입력 → ~1.5초(PATCH debounce) 후 `/api/preferences.cliBinaryPath` 일치 확인
-4. 진행률·미러 토글: `global.cliShowGenerationProgress` 와 `global.cliPtyMirror` 라벨의 체크박스를 각각 클릭 → `/api/preferences` 에 각각 토글 반영 (cliPtyMirror 는 디버그용·기본 OFF)
+4. 진행률·미러 토글: `global.cliShowGenerationProgress` 와 `global.cliPtyMirror` 라벨의 체크박스를 각각 클릭 → `/api/preferences` 에 각각 토글 반영 (cliPtyMirror 는 Story 37.7 에서 **기본 ON·opt-out** 으로 승격 — 기본 체크 상태이며, 클릭하면 OFF(`false`)로 저장)
 5. 복구: 엔진을 SDK 로 되돌리고(`value="sdk"` 클릭) `#cli-binary-path` 를 빈 문자열로 비움 → `/api/preferences.engineMode === 'sdk'` + `cliBinaryPath` 미설정 확인
 
 **기대 결과**:

@@ -39,6 +39,7 @@ import { getOrCreateQueueService, getQueueInstances } from '../controllers/queue
 import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
 import { shouldForwardCliProgress, shouldForwardCliPtyMirror } from '../utils/cliEngineUtils.js';
+import { getCliScreen, deleteCliScreen } from '../services/cliScreenCache.js';
 import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { createMcpCallRecorder } from '../services/observabilityService.js';
@@ -1382,6 +1383,20 @@ export async function initializeWebSocket(
         return;
       }
 
+      // Story 37.7: CLI mirror late-join / refresh sync. If this session has a cached
+      // screen grid (handed off from the last turn's emulator), push a one-time snapshot
+      // to THIS socket so a newly-connected or refreshed browser initializes to the
+      // current claude screen, then follows live cli:pty-raw deltas. Room-wide broadcast
+      // is unnecessary (sockets already in the room are live-current). A browser refresh
+      // reconnects with a NEW socket id, so it is past the alreadyJoinedSame dedup above
+      // and receives the snapshot — only a same-socket re-join is deduped. Cache miss
+      // (e.g. SDK mode, or before the first turn ends) → no emit, blank-screen fallback,
+      // unchanged from before.
+      const cachedScreen = getCliScreen(sessionId);
+      if (cachedScreen) {
+        socket.emit('cli:screen-snapshot', { sessionId, grid: cachedScreen });
+      }
+
       if (!stream || stream.status !== 'running') {
         // Story 27.1: Deliver buffer messages via stream:history (no HTTP fetch needed).
         // Wrapped in a helper that re-checks activeStreams because the async
@@ -2302,6 +2317,9 @@ export async function initializeWebSocket(
           // Only destroy if no active stream (streaming continues in background)
           if (!activeStreams.has(disconnectSessionId)) {
             sessionBufferManager.destroy(disconnectSessionId);
+            // Story 37.7: drop the CLI mirror screen cache on the same room-empty seam
+            // (no observer left to sync) so the session-lifetime Map does not leak.
+            deleteCliScreen(disconnectSessionId);
           }
           // Notify session list viewers when no sockets remain for this session
           const slug = socketProjectRoom.get(socket.id) || sessionProjectMap.get(disconnectSessionId);
@@ -2837,8 +2855,9 @@ async function handleChatSend(
     const onPhase = (phase: 'launching' | 'submitting' | 'waiting' | null) => {
       emit('cli:phase', { phase });
     };
-    // Debug PTY mirror: forward each raw claude TUI frame (ANSI intact) so a read-only
-    // terminal panel can replay exactly what the windowless PTY shows. Live-only.
+    // PTY mirror: forward each raw claude TUI frame (ANSI intact) so the read-only mirror
+    // panel replays exactly what the windowless PTY shows. Live-only (the current-screen
+    // snapshot for late-join is a separate cli:screen-snapshot push on session:join).
     const onPtyRaw = (chunk: string) => {
       emit('cli:pty-raw', { chunk });
     };
@@ -2848,8 +2867,8 @@ async function handleChatSend(
     const cliProgress = shouldForwardCliProgress(engineMode, effectivePrefs.cliShowGenerationProgress);
     const generationProgressCb = cliProgress ? onGenerationProgress : undefined;
     const cliPhaseCb = cliProgress ? onPhase : undefined;
-    // Debug mirror gate — a SEPARATE preference (default OFF), independent of the progress
-    // gate. Off unless the user explicitly enables the diagnostic mirror.
+    // Mirror gate — a SEPARATE preference (default ON, opt-out — Story 37.7), independent
+    // of the progress gate. Forwarded unless the user explicitly turned the mirror off.
     const ptyRawCb = shouldForwardCliPtyMirror(engineMode, effectivePrefs.cliPtyMirror) ? onPtyRaw : undefined;
 
     // Build shared callbacks (common logic for browser & queue paths)

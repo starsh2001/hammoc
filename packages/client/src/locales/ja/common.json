@@ -568,7 +568,7 @@
     "moveToOtherSide": "パネルを反対側に移動"
   },
   "cliPtyMirror": {
-    "title": "PTYミラー（デバッグ）",
+    "title": "claude 画面ミラー",
     "clear": "クリア",
     "copy": "全体をコピー",
     "copied": "ミラーの内容をクリップボードにコピーしました",

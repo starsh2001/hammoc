@@ -612,7 +612,7 @@
     "moveToOtherSide": "패널을 반대쪽으로 이동"
   },
   "cliPtyMirror": {
-    "title": "PTY 미러 (디버그)",
+    "title": "claude 화면 미러",
     "clear": "지우기",
     "copy": "전체 복사",
     "copied": "미러 내용을 클립보드에 복사했습니다",

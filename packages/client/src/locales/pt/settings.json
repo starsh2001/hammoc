@@ -91,8 +91,8 @@
         "cliBinaryPath": "Caminho do binário do claude",
         "cliBinaryPathDesc": "Substituição manual do caminho do executável claude. Deixe vazio para a detecção automática.",
         "cliBinaryPathPlaceholder": "Detecção automática (deixar vazio)",
-        "cliPtyMirror": "Espelho PTY (depuração)",
-        "cliPtyMirrorDesc": "Mostra um terminal somente leitura espelhando a tela bruta do claude durante conversas no modo CLI. Apenas diagnóstico (desativado por padrão) — use para ver o que o motor sem janela está realmente fazendo quando uma resposta trava."
+        "cliPtyMirror": "Espelho de tela do claude",
+        "cliPtyMirrorDesc": "Mostra um terminal somente leitura espelhando a tela do claude durante conversas no modo CLI (ativado por padrão — desative aqui). Navegadores novos ou recarregados sincronizam com a tela atual, então todos os dispositivos mostram a mesma visão."
     },
     "toast": {
         "themeChanged": "Tema alterado",

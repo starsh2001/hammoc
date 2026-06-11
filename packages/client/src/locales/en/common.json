@@ -603,7 +603,7 @@
     "moveToOtherSide": "Move panel to other side"
   },
   "cliPtyMirror": {
-    "title": "PTY mirror (debug)",
+    "title": "claude screen mirror",
     "clear": "Clear",
     "copy": "Copy all",
     "copied": "Mirror contents copied to clipboard",

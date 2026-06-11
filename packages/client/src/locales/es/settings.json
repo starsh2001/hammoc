@@ -91,8 +91,8 @@
         "cliBinaryPath": "Ruta del binario de claude",
         "cliBinaryPathDesc": "Sobrescritura manual de la ruta del ejecutable claude. Déjalo vacío para la detección automática.",
         "cliBinaryPathPlaceholder": "Detección automática (dejar vacío)",
-        "cliPtyMirror": "Espejo PTY (depuración)",
-        "cliPtyMirrorDesc": "Muestra una terminal de solo lectura que refleja la pantalla sin procesar de claude durante los chats en modo CLI. Solo diagnóstico (desactivado por defecto): úsalo para ver qué está haciendo realmente el motor sin ventana cuando una respuesta se atasca."
+        "cliPtyMirror": "Espejo de pantalla de claude",
+        "cliPtyMirrorDesc": "Muestra una terminal de solo lectura que refleja la pantalla de claude durante los chats en modo CLI (activado por defecto: puedes desactivarlo aquí). Los navegadores nuevos o recargados se sincronizan con la pantalla actual, por lo que todos los dispositivos muestran la misma vista."
     },
     "toast": {
         "themeChanged": "Tema cambiado",

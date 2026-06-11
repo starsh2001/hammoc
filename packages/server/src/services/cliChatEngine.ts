@@ -85,6 +85,7 @@ import { watch, mkdirSync, writeFileSync, createWriteStream, type FSWatcher, typ
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
 import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS } from './cliScreenModel.js';
+import { setCliScreen } from './cliScreenCache.js';
 import { readSpinnerProgress } from './cliSpinnerProgress.js';
 import {
   detectPermissionDialog,
@@ -882,6 +883,19 @@ export class CliChatEngine implements ChatEngine {
         // store-only (next spawn `--permission-mode`). Set before screen.dispose so no closed loop
         // can read a disposed grid.
         this.activeCliControl = null;
+        // Story 37.7: hand off the per-turn emulator's FINAL grid to the session-lifetime
+        // screen cache BEFORE dispose — turn-per-process means there is no emulator between
+        // turns, so this cached grid is the only "current screen" a late-join can receive.
+        // Read BEFORE screen.dispose() (a disposed emulator can't be read — the same
+        // ordering discipline as the activeCliControl release above). Best-effort: a read
+        // failure must never break teardown.
+        if (resolvedSessionId) {
+          try {
+            setCliScreen(resolvedSessionId, screen.readGrid());
+          } catch {
+            /* ignore — snapshot succession best-effort */
+          }
+        }
         // Story 37.1: release the per-turn headless emulator on the SAME single teardown
         // path (no new dispose route) — registerDisposer routes finish/fail/onAbort/onExit
         // and server shutdown (destroyAll) all through here, so the screen model is freed

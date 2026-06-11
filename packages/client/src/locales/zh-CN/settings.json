@@ -91,8 +91,8 @@
         "cliBinaryPath": "claude 可执行文件路径",
         "cliBinaryPathDesc": "手动指定 claude 可执行文件的路径。留空则自动检测。",
         "cliBinaryPathPlaceholder": "自动检测（留空）",
-        "cliPtyMirror": "PTY 镜像（调试）",
-        "cliPtyMirrorDesc": "在 CLI 模式对话期间显示一个只读终端，镜像 claude 的原始屏幕。仅用于调试（默认关闭）——当响应卡住时，可查看无窗口引擎实际在做什么。"
+        "cliPtyMirror": "claude 屏幕镜像",
+        "cliPtyMirrorDesc": "在 CLI 模式对话期间显示一个只读终端，镜像 claude 的屏幕（默认开启——可在此关闭）。新打开或刷新的浏览器会同步到当前屏幕，因此每台设备看到的画面相同。"
     },
     "toast": {
         "themeChanged": "主题已更改",

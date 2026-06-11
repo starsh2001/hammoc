@@ -145,10 +145,16 @@ export interface ServerToClientEvents {
   // Story 36.2: CLI-engine pre-generation phase (boot/inject window). Transient,
   // live-only (skipped on buffer replay); a null phase hands off to generation:progress.
   'cli:phase': (data: { phase: 'launching' | 'submitting' | 'waiting' | null }) => void;
-  // CLI-engine raw screen passthrough for the debug mirror. Each unmodified PTY frame
+  // CLI-engine raw screen passthrough for the read-only mirror. Each unmodified PTY frame
   // (ANSI intact). Transient, live-only (skipped on buffer replay). Gated on CLI mode +
-  // the cliPtyMirror preference (default OFF — diagnostic).
+  // the cliPtyMirror preference (default ON, opt-out — Story 37.7).
   'cli:pty-raw': (data: { chunk: string }) => void;
+  // Story 37.7: CLI mirror late-join/refresh sync. The FULL current screen grid (the
+  // Story 37.1 headless emulator's accumulated viewport), pushed once to a joining socket
+  // on session:join when a cached screen exists. Unlike cli:pty-raw (live in-place
+  // deltas), this carries the whole screen state for a one-time initialize — the client
+  // clears xterm, writes the grid, then resumes live deltas. CLI mode only.
+  'cli:screen-snapshot': (data: { sessionId: string; grid: string[] }) => void;
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;

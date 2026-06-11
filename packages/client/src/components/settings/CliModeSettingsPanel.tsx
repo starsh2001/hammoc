@@ -23,7 +23,7 @@ const CLI_CHECKBOXES: {
 }[] = [
   { key: 'cliShowThinkingSummaries', labelKey: 'global.cliShowThinkingSummaries', descKey: 'global.cliShowThinkingSummariesDesc', defaultOn: true },
   { key: 'cliShowGenerationProgress', labelKey: 'global.cliShowGenerationProgress', descKey: 'global.cliShowGenerationProgressDesc', defaultOn: true },
-  { key: 'cliPtyMirror', labelKey: 'global.cliPtyMirror', descKey: 'global.cliPtyMirrorDesc', defaultOn: false },
+  { key: 'cliPtyMirror', labelKey: 'global.cliPtyMirror', descKey: 'global.cliPtyMirrorDesc', defaultOn: true },
   // Keep cliSyntheticTyping LAST: its "card stagger" sub-field renders right after this list, so the
   // parent toggle must be the final row for the nested (left-rule) sub-field to read as ITS child —
   // otherwise the sub-field hangs under whatever toggle follows (it looked like it belonged to PTY mirror).

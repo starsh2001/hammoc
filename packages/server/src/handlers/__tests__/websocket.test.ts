@@ -10,6 +10,9 @@ import {
 } from '../websocket.js';
 import { ERROR_CODES } from '@hammoc/shared';
 import { projectService } from '../../services/projectService.js';
+// Story 37.7: real (un-mocked) session-lifetime screen cache — the late-join snapshot
+// push reads it on session:join. Tests seed/clear it directly.
+import { setCliScreen, deleteCliScreen } from '../../services/cliScreenCache.js';
 
 // Shared mock state — accessible via vi.hoisted() for vi.mock factories
 const { mockState } = vi.hoisted(() => {
@@ -637,7 +640,7 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
+        undefined // onPtyRaw gated off in SDK mode (PTY mirror — CLI only)
       );
     });
 
@@ -673,7 +676,7 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
+        undefined // onPtyRaw gated off in SDK mode (PTY mirror — CLI only)
       );
     });
 
@@ -713,7 +716,7 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
+        undefined // onPtyRaw gated off in SDK mode (PTY mirror — CLI only)
       );
     });
 
@@ -753,7 +756,7 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
+        undefined // onPtyRaw gated off in SDK mode (PTY mirror — CLI only)
       );
     });
 
@@ -786,7 +789,7 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
+        undefined // onPtyRaw gated off in SDK mode (PTY mirror — CLI only)
       );
     });
   });
@@ -1024,7 +1027,7 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onPtyRaw gated off in SDK mode (debug PTY mirror)
+        undefined // onPtyRaw gated off in SDK mode (PTY mirror — CLI only)
       );
     });
 
@@ -2772,6 +2775,68 @@ describe('WebSocket Handler', () => {
 
       const newResult = await newResultPromise;
       expect(newResult.summary).toBe('## New Summary');
+    });
+  });
+
+  describe('Story 37.7: CLI mirror late-join screen snapshot', () => {
+    const SNAP_SESSION = '00000000-0000-4000-8000-0000000037a7';
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      deleteCliScreen(SNAP_SESSION);
+    });
+
+    afterEach(() => {
+      deleteCliScreen(SNAP_SESSION);
+    });
+
+    const connect = async (): Promise<ClientSocket> => {
+      const s = ioc(`http://localhost:${TEST_PORT}`, { transports: ['websocket'] });
+      await new Promise<void>((resolve) => s.on('connect', () => resolve()));
+      return s;
+    };
+
+    it('pushes a one-time cli:screen-snapshot to a joining socket when the cache has a grid', async () => {
+      const grid = ['claude > prompt', 'output line', ''];
+      setCliScreen(SNAP_SESSION, grid);
+
+      clientSocket = await connect();
+      const snapshot = new Promise<{ sessionId: string; grid: string[] }>((resolve) => {
+        clientSocket.on('cli:screen-snapshot', (d) => resolve(d));
+      });
+
+      clientSocket.emit('session:join', SNAP_SESSION, 'test-project');
+
+      await expect(snapshot).resolves.toEqual({ sessionId: SNAP_SESSION, grid });
+    });
+
+    it('emits NO snapshot on a cache miss (e.g. SDK mode / before first turn ends)', async () => {
+      // No setCliScreen — cache is empty for this session.
+      clientSocket = await connect();
+      let received = false;
+      clientSocket.on('cli:screen-snapshot', () => { received = true; });
+
+      clientSocket.emit('session:join', SNAP_SESSION, 'test-project');
+      await new Promise((resolve) => setTimeout(resolve, 120));
+
+      expect(received).toBe(false);
+    });
+
+    it('does NOT re-push the snapshot when the SAME socket re-joins the same session (dedup)', async () => {
+      setCliScreen(SNAP_SESSION, ['screen']);
+
+      clientSocket = await connect();
+      let count = 0;
+      clientSocket.on('cli:screen-snapshot', () => { count += 1; });
+
+      clientSocket.emit('session:join', SNAP_SESSION, 'test-project');
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      // Same socket re-emits session:join for the same session → past the alreadyJoinedSame
+      // dedup, no second snapshot. (A browser refresh would be a NEW socket id, not this case.)
+      clientSocket.emit('session:join', SNAP_SESSION, 'test-project');
+      await new Promise((resolve) => setTimeout(resolve, 120));
+
+      expect(count).toBe(1);
     });
   });
 });

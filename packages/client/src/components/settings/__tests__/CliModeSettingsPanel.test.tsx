@@ -1,7 +1,8 @@
 /**
  * CliModeSettingsPanel Tests (Epic 33, Story 33.2)
  * - Renders 4 checkboxes + binary path input, reflecting the documented defaults
- *   (thinking ON, generation progress ON, synthetic typing OFF, PTY mirror OFF, binary path empty)
+ *   (thinking ON, generation progress ON, synthetic typing OFF, claude screen mirror ON
+ *   per Story 37.7, binary path empty)
  * - Each control routes through updatePreference with the expected cli* key
  *
  * i18n is forced to Korean in the test environment (see test-utils/setup.ts), so
@@ -42,12 +43,13 @@ describe('CliModeSettingsPanel', () => {
     expect(screen.getByLabelText('claude 바이너리 경로')).toBeInTheDocument();
   });
 
-  it('TC-3: reflects documented defaults (thinking ON · progress ON · synthetic OFF · binary empty)', () => {
+  it('TC-3: reflects documented defaults (thinking ON · progress ON · synthetic OFF · mirror ON · binary empty)', () => {
     render(<CliModeSettingsPanel />);
     expect(screen.getByRole('checkbox', { name: /thinking 요약 표시/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /생성 진행률 표시/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /타이핑·카드 연출/ })).not.toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /PTY 미러/ })).not.toBeChecked();
+    // Story 37.7: the mirror was promoted to a default feature (default ON, opt-out).
+    expect(screen.getByRole('checkbox', { name: /claude 화면 미러/ })).toBeChecked();
     expect(screen.getByLabelText('claude 바이너리 경로')).toHaveValue('');
   });
 

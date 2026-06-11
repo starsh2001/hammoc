@@ -92,8 +92,8 @@
         "cliBinaryPath": "Claude binary path",
         "cliBinaryPathDesc": "Manual override for the claude executable path. Leave empty to auto-detect.",
         "cliBinaryPathPlaceholder": "Auto-detect (leave empty)",
-        "cliPtyMirror": "PTY mirror (debug)",
-        "cliPtyMirrorDesc": "Show a read-only terminal mirroring claude's raw screen during CLI-mode chats. Diagnostic only (default off) — use it to see what the windowless engine is actually doing when a response stalls."
+        "cliPtyMirror": "claude screen mirror",
+        "cliPtyMirrorDesc": "Show a read-only terminal mirroring claude's screen during CLI-mode chats (default on — turn it off here). New or refreshed browsers sync to the current screen, so every device shows the same view."
     },
     "toast": {
         "themeChanged": "Theme changed",
