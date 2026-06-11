@@ -80,7 +80,7 @@ import { resolveEffectiveModel, sanitizeToolResultContent, effectiveModelIs1M, i
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import { watch, mkdirSync, createWriteStream, type FSWatcher, type WriteStream } from 'fs';
+import { watch, mkdirSync, writeFileSync, createWriteStream, type FSWatcher, type WriteStream } from 'fs';
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
 import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS } from './cliScreenModel.js';
@@ -437,6 +437,22 @@ function parseQuestionModal(buf: string): ParsedQuestion | null {
     'Claude is asking a question'
   ).trim();
   return { question, header, multiSelect, options };
+}
+
+/** Best-effort dump of the pre-injection PTY screen (raw, ANSI intact) — observe-only material for the
+ *  Epic 37.6 grid classifier. NOT used to block injection: linear scrape can't tell the live input box
+ *  from resume-repainted scrollback (quoted "❯ 1. …" / tables / "Esc to cancel" from prior turns), so a
+ *  block here false-positives a normal input box (실측 2026-06-11). The real fix is the 37.1 screen grid. */
+function capturePreInjectScreen(sessionId: string | null, raw: string): string | null {
+  try {
+    const dir = path.join(process.cwd(), 'logs', 'claude-debug');
+    mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `${sessionId ?? 'unknown'}-${Date.now()}-preinject-screen.log`);
+    writeFileSync(file, raw);
+    return file;
+  } catch {
+    return null;
+  }
 }
 
 /** Normalize text to a whitespace-free lowercase key for the preceding-text dedup fingerprint. */
@@ -1016,6 +1032,11 @@ export class CliChatEngine implements ChatEngine {
       const injectPrompt = () => {
         if (injected || settled) return;
         injected = true;
+        // Story 37.6 (관찰 모드): 주입 직전 화면을 스냅샷으로 남긴다 — 차단하지 않는다. 선형 scrape
+        // 로는 resume repaint(이전 대화가 인용한 "❯ 1. Yes"·"Esc to cancel"·표 등 scrollback)를 살아있는
+        // 입력창과 구분하지 못해, 정상 입력창을 선택 메뉴로 오탐한다(실측 2026-06-11 — 무조건 차단됨).
+        // 차단은 정식 그리드 화면 분류(Epic 37.6)로 미루고, 지금은 실제 화면만 모아 그 재료로 쓴다.
+        if (process.env.HAMMOC_CLI_DEBUG) capturePreInjectScreen(resolvedSessionId, bootBuffer);
         onPhase?.('submitting'); // ❯ seen — typing the prompt now
         bootBuffer = ''; // done with readiness detection — release it
         if (bootSettleTimer) {
