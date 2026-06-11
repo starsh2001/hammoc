@@ -80,9 +80,10 @@ import { resolveEffectiveModel, sanitizeToolResultContent, effectiveModelIs1M, i
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import { watch, mkdirSync, type FSWatcher } from 'fs';
+import { watch, mkdirSync, createWriteStream, type FSWatcher, type WriteStream } from 'fs';
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
+import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS } from './cliScreenModel.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
@@ -815,6 +816,34 @@ export class CliChatEngine implements ChatEngine {
     }
 
     const { handle, pty } = cliSessionPool.spawnClaude({ cwd, args, binaryPathOverride: this.cliBinaryPath });
+    // Story 37.1: a headless screen model, one per turn (same lifecycle as the PTY),
+    // fed every PTY frame UNCONDITIONALLY (unlike the gated mirror) so the final screen
+    // grid is always reconstructed — "reconstruct always / display-only toggle" (AC3).
+    // Geometry matches the spawn geometry (120×40) so claude's in-place redraw
+    // coordinates line up. Pure foundation: no production consumer reads it yet (37.2~).
+    const screen = createCliScreenModel(CLI_SCREEN_COLS, CLI_SCREEN_ROWS);
+
+    // Story 37.1 (Task 4 — GO/NO-GO fixture capture): opt-in raw PTY frame dump. The
+    // interactive claude PTY cannot be reproduced in a dev shell (no Windows console —
+    // a constraint documented throughout Epic 32.x), so the real v2.1.162 frames that
+    // become regression fixtures are collected from the owner's live CLI chat. Gated by
+    // HAMMOC_CLI_PTY_DUMP (OFF by default — same opt-in shape as HAMMOC_CLI_DEBUG); the
+    // raw bytes (ANSI intact) are appended to a gitignored logs/cli-pty-dump/*.log.
+    // Best-effort — instrumentation must never break a turn.
+    let ptyDumpStream: WriteStream | null = null;
+    if (process.env.HAMMOC_CLI_PTY_DUMP) {
+      try {
+        const dumpDir = path.join(process.cwd(), 'logs', 'cli-pty-dump');
+        mkdirSync(dumpDir, { recursive: true });
+        const dumpSid = resumeId ?? options.sessionId ?? 'new';
+        const dumpFile = path.join(dumpDir, `${dumpSid}-${Date.now()}.log`);
+        ptyDumpStream = createWriteStream(dumpFile, { encoding: 'utf8' });
+        log.info(`[CLI-PTY-DUMP] raw frame capture → ${dumpFile}`);
+      } catch (e) {
+        log.warn(`[CLI-PTY-DUMP] setup failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
     // Story 36.2: report the pre-generation phase so the UI shows progress through the
     // ~3s boot/inject window instead of a frozen spinner. launching → (❯ seen) submitting
     // → (Enter sent) waiting → (first block) null, handing off to onGenerationProgress.
@@ -918,6 +947,22 @@ export class CliChatEngine implements ChatEngine {
         }
         dirWatcher = null;
         fileWatcher = null;
+        // Story 37.1: release the per-turn headless emulator on the SAME single teardown
+        // path (no new dispose route) — registerDisposer routes finish/fail/onAbort/onExit
+        // and server shutdown (destroyAll) all through here, so the screen model is freed
+        // alongside the timers/watchers on every exit.
+        try {
+          screen.dispose();
+        } catch {
+          /* ignore — dispose best-effort */
+        }
+        // Story 37.1 (Task 4): close the opt-in fixture dump on the same teardown path.
+        try {
+          ptyDumpStream?.end();
+          ptyDumpStream = null;
+        } catch {
+          /* ignore — dump best-effort */
+        }
       };
 
       // The pool owns PTY + watcher cleanup together (1 PTY : 1 watcher, §9-3):
@@ -1191,6 +1236,21 @@ export class CliChatEngine implements ChatEngine {
       // new/untrusted folder's trust dialog is deferred, §7.3.)
       pty.onData((data: string) => {
         onRawMessage?.('cli-pty-activity');
+        // Story 37.1: feed the headless screen model UNCONDITIONALLY (no gate), before the
+        // mirror/scrape branches so it sees the exact same raw frame. This is the code form
+        // of "reconstruct always / display-only toggle": the screen model is always supplied
+        // while the mirror below is toggled. Pure observer — does not alter the frame or any
+        // downstream scrape. Foundation only: nothing reads this grid in this story (37.2~).
+        screen.write(data);
+        // Story 37.1 (Task 4): mirror the raw frame to the opt-in fixture dump (no-op
+        // unless HAMMOC_CLI_PTY_DUMP is set). Best-effort — never break a turn.
+        if (ptyDumpStream) {
+          try {
+            ptyDumpStream.write(data);
+          } catch {
+            /* ignore — dump best-effort */
+          }
+        }
         // Live mirror passthrough (onPtyRaw) — a pure observer of the UNMODIFIED frame
         // (raw, ANSI intact). It never alters the state-signal scrapes (progress / dialog
         // / question) below; gated upstream by the cliPtyMirror preference.
