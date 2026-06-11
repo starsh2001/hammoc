@@ -1545,7 +1545,16 @@ describe('CliChatEngine', () => {
     });
   });
 
-  describe('generation progress (Story 32.7 — spinner "↓ N tokens" parsing)', () => {
+  describe('generation progress (Story 32.7 — spinner "↓ N tokens"; Story 37.2 — read from the screen grid)', () => {
+    // Story 37.2: the token source is the headless screen GRID, not a linear buffer.
+    // claude redraws the spinner counter IN PLACE (absolute cursor addressing + line
+    // erase), so test frames must model that — address a fixed row, erase it, write the
+    // line. A plain literal frame (no cursor control) would let consecutive counters run
+    // together on one rendered row; an in-place redraw overwrites the cell, so the
+    // settled grid carries only the final value (fusion is structurally impossible).
+    const ESC = '\x1b';
+    const drawSpinner = (text: string, row = 20): string => `${ESC}[${row};1H${ESC}[2K${text}`;
+
     // Drive the engine to the post-injection state (where progress parsing is live):
     // feed a boot frame with the ❯ marker, then wait until the prompt was injected.
     // Returns the turn promise WRAPPED (an async fn would auto-flatten and deadlock —
@@ -1568,71 +1577,59 @@ describe('CliChatEngine', () => {
       return { turn };
     }
 
-    it('parses the real-PTY literal "↓ N tokens" + elapsed and emits on value change (throttle)', async () => {
+    it('reads the real-PTY "↓ N tokens" + elapsed and emits on value change (throttle)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onProgress = vi.fn();
       const { turn } = await injectThenReady(engine, onProgress);
 
       // Task 1 literal: "<glyph> Verb… (Es · ↓ N tokens [· thinking with <effort> effort])".
-      h.fakePty._onData?.('✢ Moseying… (6s · ↓ 246 tokens · thinking with high effort)');
+      h.fakePty._onData?.(drawSpinner('✢ Moseying… (6s · ↓ 246 tokens · thinking with high effort)'));
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 246, elapsedSeconds: 6 }));
 
       // Same value re-render (spinner glyph cycles but counter unchanged) → no re-emit.
       const callsAfterFirst = onProgress.mock.calls.length;
-      h.fakePty._onData?.('✶ Moseying… (6s · ↓ 246 tokens · thinking with high effort)');
+      h.fakePty._onData?.(drawSpinner('✶ Moseying… (6s · ↓ 246 tokens · thinking with high effort)'));
       await wait(20);
       expect(onProgress.mock.calls.length).toBe(callsAfterFirst);
 
       // Counter climbs → emit. (Also covers the counter-only form, no thinking suffix.)
-      h.fakePty._onData?.('✻ Moseying… (8s · ↓ 312 tokens)');
+      h.fakePty._onData?.(drawSpinner('✻ Moseying… (8s · ↓ 312 tokens)'));
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 312, elapsedSeconds: 8 }));
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await turn;
     });
 
-    it('drops a fused / malformed counter from an in-place redraw (no token spike, recovers next frame)', async () => {
+    it('reads an in-place 365→366 redraw as 366 — the linear-fusion "365366" is structurally absent (AC2)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onProgress = vi.fn();
       const { turn } = await injectThenReady(engine, onProgress);
 
-      // Clean baseline.
-      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 365 tokens)');
+      // The linear buffer fused a same-cell redraw ("365" then "366" → "365366"), and the
+      // old code carried magnitude-cap / malformed-grouping / implausible-jump guards to
+      // paper over it. The grid overwrites the cell in place, so the reader sees only the
+      // FINAL value and those guards are gone (AC2) — there is nothing left to fuse.
+      h.fakePty._onData?.(drawSpinner('✢ Moseying… (5s · ↓ 365 tokens)'));
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 365, elapsedSeconds: 5 }));
-      const callsBefore = onProgress.mock.calls.length;
-
-      // An in-place redraw the ANSI strip fused — "365" then "366" → "365366" (comma-less, 6
-      // digits, a ~1000x jump) — must be dropped, not surfaced as an absurd count...
-      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 365366 tokens)');
-      // ...and a malformed thousands grouping (two grouped values spliced) likewise.
-      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 1,2341,234 tokens)');
-      await wait(30);
-      expect(onProgress.mock.calls.length).toBe(callsBefore); // neither was emitted
-      expect(onProgress).not.toHaveBeenCalledWith(expect.objectContaining({ tokens: 365366 }));
-
-      // The next clean frame recovers normally.
-      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 366 tokens)');
+      h.fakePty._onData?.(drawSpinner('✢ Moseying… (5s · ↓ 366 tokens)'));
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 366, elapsedSeconds: 5 }));
+
+      // The fused artifact can never be emitted — it does not exist in the grid.
+      expect(onProgress).not.toHaveBeenCalledWith(expect.objectContaining({ tokens: 365366 }));
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await turn;
     });
 
-    it('drops a fused counter on the turn\'s FIRST frame too (magnitude cap, no prior value to diff)', async () => {
+    it('reads the abbreviated "↓ 1.4k tokens" form the linear regex missed (→ 1400)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onProgress = vi.fn();
       const { turn } = await injectThenReady(engine, onProgress);
 
-      // The very FIRST counter we see is already fused ("365" + "366" → "365366"). The
-      // implausible-jump guard needs a prior value, so only the magnitude cap can catch this —
-      // it must, or the "여전히 큰 숫자" leaks on the first frame (the residual Story 32.7 hole).
-      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 365366 tokens)');
-      await wait(30);
-      expect(onProgress).not.toHaveBeenCalled();
-
-      // The next clean frame emits normally (recovery).
-      h.fakePty._onData?.('✢ Moseying… (5s · ↓ 366 tokens)');
-      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 366, elapsedSeconds: 5 }));
+      // The linear CLI_PROGRESS_RE used `[\d,]+`, which broke at `.`/`k` and dropped the
+      // whole frame. Reading the rendered grid captures the abbreviated form.
+      h.fakePty._onData?.(drawSpinner('Flowing… (9s · ↓ 1.4k tokens · thinking with high effort)'));
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 1400, elapsedSeconds: 9 }));
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await turn;
@@ -1643,26 +1640,28 @@ describe('CliChatEngine', () => {
       const onProgress = vi.fn();
       const { turn } = await injectThenReady(engine, onProgress);
 
-      h.fakePty._onData?.('Moseying… (16s · ↓ 614 tokens)');
+      h.fakePty._onData?.(drawSpinner('Moseying… (16s · ↓ 614 tokens)'));
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 614, elapsedSeconds: 16 }));
       // A new generation segment (after a tool use) resets BOTH counter and clock to a
       // low base — change-detection forwards it (increase-only would have suppressed it).
-      h.fakePty._onData?.('Moseying… (2s · ↓ 79 tokens)');
+      h.fakePty._onData?.(drawSpinner('Moseying… (2s · ↓ 79 tokens)'));
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 79, elapsedSeconds: 2 }));
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await turn;
     });
 
-    it('survives a frame split across two onData calls (rolling buffer)', async () => {
+    it('settles a counter split across two writes (partial-write concatenation, not fusion)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onProgress = vi.fn();
       const { turn } = await injectThenReady(engine, onProgress);
 
-      // The counter is split mid-number across frames; the rolling buffer rejoins it.
-      h.fakePty._onData?.('Moseying… (9s · ↓ 36');
-      await wait(15);
-      expect(onProgress).not.toHaveBeenCalled(); // "↓ 36" alone is not yet "N tokens"
+      // A single rendered line split across two PTY chunks (the position addressing +
+      // erase arrives with the first chunk, the rest continues at the cursor). This is a
+      // NORMAL chunk boundary, not an in-place fusion — the settled grid holds one value.
+      h.fakePty._onData?.(`${ESC}[20;1H${ESC}[2KMoseying… (9s · ↓ 36`);
+      await wait(20);
+      expect(onProgress).not.toHaveBeenCalled(); // "↓ 36" with no "tokens" yet → no counter row
       h.fakePty._onData?.('5 tokens · thinking with high effort)');
       await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 365, elapsedSeconds: 9 }));
 
@@ -1676,7 +1675,7 @@ describe('CliChatEngine', () => {
       const { turn } = await injectThenReady(engine, onProgress);
 
       // A spinner with no "↓ N tokens" (early thinking phase / interrupt footer only).
-      h.fakePty._onData?.('✢ Deliberating…  esc to interrupt');
+      h.fakePty._onData?.(drawSpinner('✢ Deliberating…  esc to interrupt'));
       await wait(30);
       expect(onProgress).not.toHaveBeenCalled();
 
@@ -1698,8 +1697,9 @@ describe('CliChatEngine', () => {
       h.fakePty._onData?.('Claude Code\n❯ ready');
       await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
 
-      // A spinner frame must not crash when there is no callback to call.
-      expect(() => h.fakePty._onData?.('Moseying… (6s · ↓ 246 tokens)')).not.toThrow();
+      // A spinner frame must not crash when there is no callback to call (the grid-read
+      // branch is gated on onGenerationProgress, so it is skipped entirely here).
+      expect(() => h.fakePty._onData?.(drawSpinner('Moseying… (6s · ↓ 246 tokens)'))).not.toThrow();
       await wait(20);
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
@@ -1726,8 +1726,10 @@ describe('CliChatEngine', () => {
       await expect(turn).rejects.toThrow(/aborted/i);
 
       const callsAtAbort = onProgress.mock.calls.length;
-      // A late spinner frame after teardown must not emit.
-      h.fakePty._onData?.('Moseying… (9s · ↓ 400 tokens)');
+      // A late spinner frame after teardown must not emit. The grid emit is async (it
+      // runs after flush() resolves), so the `settled` guard is re-checked AT EMIT TIME —
+      // the disposed-screen write/flush is a safe no-op and emitProgressFromGrid bails.
+      h.fakePty._onData?.(drawSpinner('Moseying… (9s · ↓ 400 tokens)'));
       await wait(20);
       expect(onProgress.mock.calls.length).toBe(callsAtAbort);
     });

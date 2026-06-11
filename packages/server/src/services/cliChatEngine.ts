@@ -26,8 +26,9 @@
  * keys (Enter = approve, Esc = deny); the scraped tool name/input are best-effort
  * and `updatedInput` is unsupported (claude runs its own tool). See
  * `handlePermission` below for the full constraint list. 32.7 adds the generation
- * *progress* signal (the spinner's "↓ N tokens · Ns", parsed from the same PTY frames
- * and emitted on value change via `onGenerationProgress` — see `emitProgress`) and
+ * *progress* signal (the spinner's "↓ N tokens · Ns", read from the same PTY frames
+ * and emitted on value change via `onGenerationProgress` — see `emitProgressFromGrid`,
+ * whose token source became the Story 37.1 screen grid in Story 37.2) and
  * *verifies* thinking display (mechanism-complete; see the thinking branch in
  * `handleAssistantLine`). 32.8 wires the last interactive flow — the `AskUserQuestion`
  * selection modal (`canUseTool` web question card) — also **constrained**: like the
@@ -84,6 +85,7 @@ import { watch, mkdirSync, writeFileSync, createWriteStream, type FSWatcher, typ
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
 import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS } from './cliScreenModel.js';
+import { readSpinnerProgress } from './cliSpinnerProgress.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
@@ -265,36 +267,26 @@ function stripAnsiForDetect(s: string): string {
 }
 
 /**
- * Generation-progress parser (Story 32.7). During generation the ONLY real-time PTY
- * signal is the spinner's "↓ N tokens" counter + elapsed seconds (spike §4.7). This is
- * an ANSI *state* signal (§7.1-sanctioned — the same channel as the `❯` readiness
- * marker and the permission dialog), version-fragile (a TUI revision could change the
- * wording), and never a content source — token *text* streaming stays impossible
- * (§4.5/§9-2; SDK mode keeps real streaming).
+ * Generation-progress signal (Story 32.7; token data source moved to the screen grid in
+ * Story 37.2). During generation the ONLY real-time PTY signal is the spinner's
+ * "↓ N tokens" counter + elapsed seconds (spike §4.7) — an ANSI *state* signal
+ * (§7.1-sanctioned, the same channel as the `❯` readiness marker and the permission
+ * dialog), version-fragile (a TUI revision could change the wording), and never a
+ * content source (token *text* streaming stays impossible — §4.5/§9-2; SDK mode keeps
+ * real streaming). Verified against a real PTY (claude v2.1.162 — Story 32.7 Task 1):
+ * "Moseying… (9s · ↓ 365 tokens · thinking with high effort)" and the counter-only
+ * "↓ 246 tokens" form.
  *
- * The regex matches an optional leading "(Ns · " elapsed clock then the "↓ N tokens"
- * counter, capturing both. Verified against a real PTY (claude v2.1.162 — Story 32.7
- * Task 1): "Moseying… (9s · ↓ 365 tokens · thinking with high effort)" and the
- * counter-only "↓ 246 tokens" form, structurally identical to the §4.7 baseline
- * "✢ Elucidating… (5s · ↓ 212 tokens · thinking with low effort)". The middot `·`,
- * `↓`, and `…` are printable multi-byte chars that survive `stripAnsiForDetect`.
- * Global so the *last* (freshest) match in a rolling buffer wins.
+ * The token count is now read from the *settled screen grid* (`readSpinnerProgress`):
+ * the headless model overwrites the spinner cell in place, so fusion ("365" + "366" →
+ * "365366") is structurally impossible and the old linear-scan fusion guards (digit cap
+ * `CLI_PROGRESS_MAX_TOKENS`, malformed-grouping, implausible-jump) and the linear regex
+ * `CLI_PROGRESS_RE` were dropped (they lost their only consumer). `progressBuffer` below
+ * is now dormant — progress-only, with no consumer after Story 37.2 — kept for a clean
+ * single-story revert and bulk removal in Story 37.4.
  */
-const CLI_PROGRESS_RE = /(?:\((\d+)\s*s\b[^↓\n]{0,40})?↓\s*([\d,]+)\s*tokens/g;
-/** Rolling stripped-PTY buffer cap for progress parsing (survives frame splits). */
+/** Rolling stripped-PTY buffer cap (dormant progress skeleton — removed in Story 37.4). */
 const CLI_PROGRESS_BUFFER_CAP = 2048;
-/**
- * Sanity cap on a parsed token count. An ANSI-flattened in-place redraw can fuse two counters
- * ("365" then "366" → "365366"); a single generation segment (the counter resets per API call)
- * never emits anywhere near this many tokens — even max output plus a large thinking budget stays
- * well under it — so a larger value is a scrape artifact and is dropped (the next clean frame
- * re-emits the real count). This cap is the ONLY magnitude guard that also covers the turn's FIRST
- * counter: the implausible-jump guard below needs a prior value, so a fused first frame ("365366")
- * would otherwise slip through (the "여전히 큰 숫자" bug). Kept comfortably above any real
- * segment total (~200K worst case) yet below the typical fused 6-digit artifact. Paired with the
- * malformed-grouping + implausible-jump guards in emitProgress.
- */
-const CLI_PROGRESS_MAX_TOKENS = 250_000;
 
 /**
  * Conservative permission-dialog matcher. Requires a permission-specific phrase
@@ -687,7 +679,7 @@ export class CliChatEngine implements ChatEngine {
    * resets the browser path's inactivity timer while a turn streams. It no longer keeps
    * an input-wait alive — Story 35.1 pauses that timer for the whole input-wait.
    * `onGenerationProgress` (Story 32.7) is the transient "↓ N tokens · Ns" signal
-   * parsed from the same spinner frames — emitted on value change (see `emitProgress`).
+   * read from the same spinner frames — emitted on value change (see `emitProgressFromGrid`).
    * `onPhase` (Story 36.2) reports the pre-generation boot/inject phase
    * (launching → submitting → waiting → null) so the UI shows "working" through the ~3s
    * before the first block instead of a frozen spinner; null hands off to onGenerationProgress.
@@ -919,7 +911,7 @@ export class CliChatEngine implements ChatEngine {
       let limitFalsePositiveLogged = false; // log a refuted (usage-contradicted) scrape once per turn
 
       // Generation-progress state (Story 32.7 — post-injection only).
-      let progressBuffer = ''; // rolling stripped PTY output, scanned for the spinner counter
+      let progressBuffer = ''; // dormant since Story 37.2 (token source = screen grid) — removed in 37.4
       let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
       // Story 36.2: the phase indicator ends once generation actually starts (first
       // progress counter). Idempotent — only the first call emits the null hand-off.
@@ -1202,35 +1194,29 @@ export class CliChatEngine implements ChatEngine {
       };
 
       /**
-       * Parse the freshest "↓ N tokens" counter from the rolling progress buffer and
-       * emit it through `onGenerationProgress` — but only when the value *changed*
-       * (Story 32.7). Throttling on *change* (not increase) is deliberate: Task 1
-       * observed the counter resetting at generation-segment boundaries (tool use →
-       * next API call: 614→79), so a reset is forwarded as just another change and the
-       * indicator never freezes at the prior segment's peak. Frames without a counter
-       * (e.g. a "Deliberating…" thinking-phase spinner) produce no match → no emit
-       * (false-0 guard). `matchAll` is used so the shared global regex's lastIndex is
-       * never mutated across engine instances.
+       * Read the freshest "↓ N tokens" counter from the *settled screen grid* and emit
+       * it through `onGenerationProgress` — but only when the value *changed* (Story
+       * 32.7; data source moved to the grid in Story 37.2). The grid overwrites the
+       * spinner cell in place, so fusion is structurally impossible — no fusion-defense
+       * guards needed. Preserved:
+       *   - change-only throttle (not increase-only): Task 1 observed the counter
+       *     resetting at generation-segment boundaries (tool use → next API call:
+       *     614→79), so a reset is forwarded as just another change and the indicator
+       *     never freezes at the prior segment's peak;
+       *   - false-0 guard: a frame with no counter (e.g. a "Deliberating…" thinking-
+       *     phase spinner) reads as null → no emit;
+       *   - `settled` guard: this runs ASYNC after `flush()`, so settled is re-checked
+       *     HERE at emit time — no stray emit after finish/abort;
+       *   - `clearPhase`: the first counter ends the phase indicator (idempotent).
        */
-      const emitProgress = (buf: string): void => {
-        if (!onGenerationProgress || settled) return; // no stray emit after finish/abort
-        const matches = [...buf.matchAll(CLI_PROGRESS_RE)];
-        const last = matches[matches.length - 1];
-        if (!last) return; // no counter on this frame → don't emit a phantom 0
-        const rawCount = last[2];
-        // Reject a fused/garbled counter from an in-place redraw the ANSI strip flattened: a
-        // comma-grouped value must be well-formed (else two were spliced, e.g. "1,2341,234"), the
-        // magnitude must be sane, and a sudden ×50 jump into the 100k+ range is implausible for a
-        // per-frame counter. A rejected frame is simply skipped; the next clean one wins.
-        if (rawCount.includes(',') && !/^\d{1,3}(?:,\d{3})*$/.test(rawCount)) return;
-        const tokens = parseInt(rawCount.replace(/,/g, ''), 10);
-        if (!Number.isFinite(tokens) || tokens === lastProgressTokens) return; // change-only throttle
-        if (tokens > CLI_PROGRESS_MAX_TOKENS) return; // absurd magnitude → scrape artifact
-        if (lastProgressTokens >= 0 && tokens > 100_000 && tokens > lastProgressTokens * 50) return; // implausible jump
-        lastProgressTokens = tokens;
+      const emitProgressFromGrid = (): void => {
+        if (settled || !onGenerationProgress) return; // async — re-check at emit time
+        const progress = readSpinnerProgress(screen.readGrid());
+        if (!progress) return; // no counter row → don't emit a phantom 0
+        if (progress.tokens === lastProgressTokens) return; // change-only throttle
+        lastProgressTokens = progress.tokens;
         clearPhase(); // spinner counter appeared → generation started; end the phase indicator
-        const elapsedSeconds = last[1] ? parseInt(last[1], 10) : 0;
-        onGenerationProgress({ tokens, elapsedSeconds });
+        onGenerationProgress({ tokens: progress.tokens, elapsedSeconds: progress.elapsedSeconds });
       };
 
       // S-1 heartbeat: during generation the session JSONL is silent until a block
@@ -1326,11 +1312,16 @@ export class CliChatEngine implements ChatEngine {
         // (32.7) and permission dialog (32.6). They are independent (progress is always
         // useful; the dialog branch needs canUseTool), and they co-exist per §7.1 (both are
         // PTY state, never content).
-        // Generation progress (Story 32.7): roll a capped buffer (survives frame
-        // splits) and emit the freshest counter on change.
+        // Generation progress (Story 32.7; Story 37.2: token source = screen grid).
+        // `screen.write` above is unconditional but async/buffered, so read a *settled*
+        // grid only after `flush()` resolves; schedule it non-blocking (`void …then`) to
+        // keep the hot path clear — the change-only throttle absorbs any async ordering.
+        // The `progressBuffer` accumulation below is now dormant (progress-only, no
+        // consumer after this story) — kept for a clean single-story revert; its removal
+        // is Story 37.4.
         if (onGenerationProgress) {
           progressBuffer = (progressBuffer + stripped).slice(-CLI_PROGRESS_BUFFER_CAP);
-          emitProgress(progressBuffer);
+          void screen.flush().then(emitProgressFromGrid);
         }
         // Permission modal (Story 32.6): scan a rolling stripped buffer for the dialog.
         if (canUseTool && !permissionPending) {
@@ -1428,8 +1419,8 @@ export class CliChatEngine implements ChatEngine {
         emittedUuids.add(raw.uuid);
         // Story 36.2 (AC1): the first assistant block means generation has started — end the
         // phase indicator here too, so a response that emits no spinner counter (no "↓ N tokens"
-        // frame) still leaves the waiting phase. Idempotent with emitProgress, which fires first
-        // when a spinner counter appears; whichever comes first wins, the other is a no-op.
+        // frame) still leaves the waiting phase. Idempotent with emitProgressFromGrid, which fires
+        // first when a spinner counter appears; whichever comes first wins, the other is a no-op.
         clearPhase();
         lastAssistantUuid = raw.uuid;
 
