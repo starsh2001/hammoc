@@ -20,6 +20,10 @@ import {
   detectQuestionModal,
   parseQuestionModal,
   parsePrecedingText,
+  readPermissionMode,
+  permissionModeCycleIndex,
+  isIdleInputGrid,
+  CLI_PERMISSION_MODE_CYCLE,
 } from '../cliModalDetect.js';
 
 /** Join grid rows the way `readScreenText()` does, for the line-spanning existence detectors. */
@@ -205,6 +209,65 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       ];
       // The header ballot-box tab is the top row, so there is nothing above the modal — no prose.
       expect(parsePrecedingText(rows)).toBeNull();
+    });
+  });
+
+  describe('readPermissionMode (Story 37.5 — status-row → Hammoc mode)', () => {
+    // The mode status row as claude renders it: "<glyph> <label> (shift+tab to cycle) · ← for agents".
+    const modeRow = (label: string) => ` ${label} (shift+tab to cycle) · ← for agents`;
+
+    it('maps each of the four cycle labels to its Hammoc mode', () => {
+      expect(readPermissionMode([' ❯ ', modeRow('⏵⏵ accept edits on')])).toBe('acceptEdits');
+      expect(readPermissionMode([' ❯ ', modeRow('⏸ plan mode on')])).toBe('plan');
+      expect(readPermissionMode([' ❯ ', modeRow('⏵⏵ auto mode on')])).toBe('bypassPermissions');
+    });
+
+    it('reads the ABSENCE of any mode status row as default (normal)', () => {
+      expect(readPermissionMode([' ❯ Try "fix typecheck"', ' ? for shortcuts'])).toBe('default');
+      expect(readPermissionMode([])).toBe('default');
+    });
+
+    it('does NOT accept a label row that lacks the "shift+tab to cycle" footer (AND-gate)', () => {
+      // A half-drawn frame (label painted, footer not yet) or a quoted phrase in prose must NOT win.
+      expect(readPermissionMode([' ⏸ plan mode on'])).toBe('default'); // no footer ⇒ not the live row
+      expect(readPermissionMode(['  the model said "accept edits on" in passing'])).toBe('default');
+    });
+
+    it('takes the bottom-most mode status row when more than one is present (freshest render)', () => {
+      // The grid never truly fuses, but if a stale row lingers above, the latest (bottom) row wins.
+      expect(
+        readPermissionMode([modeRow('⏸ plan mode on'), ' ❯ ', modeRow('⏵⏵ auto mode on')]),
+      ).toBe('bypassPermissions');
+    });
+  });
+
+  describe('CLI_PERMISSION_MODE_CYCLE / permissionModeCycleIndex (Story 37.5)', () => {
+    it('orders the four cycle modes exactly as claude cycles them (normal→accept→plan→auto)', () => {
+      expect(CLI_PERMISSION_MODE_CYCLE).toEqual(['default', 'acceptEdits', 'plan', 'bypassPermissions']);
+    });
+
+    it('returns the cycle index for cycle modes and -1 for the off-cycle dontAsk', () => {
+      expect(permissionModeCycleIndex('default')).toBe(0);
+      expect(permissionModeCycleIndex('acceptEdits')).toBe(1);
+      expect(permissionModeCycleIndex('plan')).toBe(2);
+      expect(permissionModeCycleIndex('bypassPermissions')).toBe(3);
+      expect(permissionModeCycleIndex('dontAsk')).toBe(-1); // off the cycle ⇒ store-only fallback
+    });
+  });
+
+  describe('isIdleInputGrid (Story 37.5 — idle input box vs. generating spinner)', () => {
+    it('is idle when the input-box marker is present and nothing is generating', () => {
+      expect(isIdleInputGrid([' ❯ Try "fix typecheck"', ' ? for shortcuts'])).toBe(true);
+      expect(isIdleInputGrid([' ❯ ', ' ⏸ plan mode on (shift+tab to cycle) · ← for agents'])).toBe(true);
+    });
+
+    it('is NOT idle on a generation spinner (esc-to-interrupt footer or a token counter)', () => {
+      expect(isIdleInputGrid([' ❯ ', '✻ Working… (3s · ↓ 42 tokens)'])).toBe(false); // counter ⇒ generating
+      expect(isIdleInputGrid([' ❯ ', '✢ Deliberating…  esc to interrupt'])).toBe(false); // active footer
+    });
+
+    it('is NOT idle when no input-box marker is on the grid', () => {
+      expect(isIdleInputGrid([' just some output', ' no prompt here'])).toBe(false);
     });
   });
 });

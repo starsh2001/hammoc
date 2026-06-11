@@ -36,6 +36,8 @@
  * [Source: docs/prd/epic-37-cli-terminal-emulation.md#story-374]
  */
 
+import type { PermissionMode } from '@hammoc/shared';
+
 /** A single scraped AskUserQuestion choice (Story 32.8 — single-question scope). */
 export interface ParsedQuestion {
   question: string;
@@ -250,4 +252,84 @@ export function parsePrecedingText(rows: string[]): string | null {
   }
   const text = prose.join(' ').trim();
   return text.length < 16 ? null : text.slice(0, 2000);
+}
+
+/**
+ * Story 37.5 — permission-mode control (the *write* application of the same settled grid).
+ *
+ * Hammoc permission modes that map 1:1 onto claude's Shift+Tab (`CSI Z`) cycle, **in cycle
+ * order**: claude cycles `normal → accept edits on → plan mode on → auto mode on → (wrap)
+ * normal` (empirically verified, claude v2.1.162). The forward step count from current→target
+ * is `(targetIdx - curIdx + N) % N`.
+ *
+ * The shared `PermissionMode` union has a FIFTH value, `dontAsk`, which has NO position on
+ * claude's cycle — it is intentionally ABSENT from this array, so `permissionModeCycleIndex`
+ * returns -1 for it and the engine routes it to the store-only / next-spawn `--permission-mode`
+ * path instead of driving a live closed loop with no reachable target.
+ *
+ * version-fragile: the `auto mode on ↔ bypassPermissions` mapping rests on the spike-observed
+ * cycle label/order plus the *semantic* assumption that "auto mode" == permission bypass; the
+ * label wording and cycle order can shift across claude versions (left as a live-verify item).
+ */
+export const CLI_PERMISSION_MODE_CYCLE: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions'];
+
+/** Cycle position of a mode, or -1 when the mode is off the Shift+Tab cycle (`dontAsk`). */
+export function permissionModeCycleIndex(mode: PermissionMode): number {
+  return CLI_PERMISSION_MODE_CYCLE.indexOf(mode);
+}
+
+/** Status-row label → Hammoc mode. Each is anchored by its claude label phrase. `default`
+ *  (normal) has NO label row, so it is read as the *absence* of any of these (see below). */
+const CLI_MODE_LABELS: Array<{ re: RegExp; mode: PermissionMode }> = [
+  { re: /accept edits on/i, mode: 'acceptEdits' },
+  { re: /plan mode on/i, mode: 'plan' },
+  { re: /auto mode on/i, mode: 'bypassPermissions' },
+];
+
+/** The mode status row renders the label together with this footer ("… (shift+tab to cycle) ·
+ *  ← for agents"). Requiring the footer on the SAME row is the AND-gate that keeps a half-drawn
+ *  frame or a quoted "plan mode on" in conversation prose from being read as the live mode (the
+ *  same conservative AND-of-footer spirit the permission / question detectors use). */
+const CLI_MODE_CYCLE_FOOTER_RE = /shift\s*\+?\s*tab\s+to\s+cycle/i;
+
+/**
+ * Read claude's current permission mode from the settled screen grid's status row (Story 37.5).
+ * Pure: input is the grid rows, output is the Hammoc `PermissionMode`. A row is accepted as the
+ * mode status row ONLY when it carries the `shift+tab to cycle` footer (AND-gate); among such
+ * rows the bottom-most (freshest rendered) wins, matching `readSpinnerProgress`. When NO mode
+ * status row is present the mode is `default` (normal) — but note this is a *weak* signal (it is
+ * the absence of a row), so the caller MUST read it from a `flush()`-settled grid: a half-drawn
+ * frame whose label has not painted yet would otherwise read transiently as `default`.
+ */
+export function readPermissionMode(grid: string[]): PermissionMode {
+  for (let y = grid.length - 1; y >= 0; y--) {
+    const row = grid[y];
+    if (!CLI_MODE_CYCLE_FOOTER_RE.test(row)) continue; // AND-gate: only a real mode status row
+    for (const { re, mode } of CLI_MODE_LABELS) {
+      if (re.test(row)) return mode;
+    }
+  }
+  // No mode status row (or a footer with no recognized label) = normal = default.
+  return 'default';
+}
+
+/**
+ * Is the settled grid showing claude's idle INPUT BOX (ready to accept a keypress), as opposed
+ * to a mid-generation spinner frame? (Story 37.5 — gates the live Shift+Tab closed loop: only an
+ * idle input box accepts a mode-cycle keypress with *verified* behavior; a spinner frame's CSI Z
+ * behavior is unverified, so a non-idle grid falls back to the next-spawn flag path.)
+ *
+ * Heuristic on a settled grid (half-drawn frames are excluded upstream by `flush()`):
+ *   - an active-generation footer ("esc to interrupt") OR a spinner counter ("↓ N tokens") ⇒ NOT idle;
+ *   - else the input-box prompt glyph (❯) present ⇒ idle.
+ *
+ * Left as a shared named helper so Story 37.6's "pre-injection screen classification" (which draws
+ * the same input-box-vs-spinner line, and likewise treats `❯` alone as insufficient) can reuse it
+ * rather than re-deriving it. This story is self-sufficient and does NOT depend on 37.6.
+ */
+export function isIdleInputGrid(grid: string[]): boolean {
+  const text = grid.join('\n');
+  if (/esc to interrupt/i.test(text)) return false; // active generation footer ⇒ generating
+  if (/↓\s*[\d.,]+k?\s*tokens/i.test(text)) return false; // spinner counter ⇒ generating
+  return /❯/.test(text); // idle input-box marker
 }

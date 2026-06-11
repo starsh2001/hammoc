@@ -1229,32 +1229,47 @@ export async function initializeWebSocket(
       const { mode, projectSlug } = data;
       const stream = activeStreams.get(sessionId);
 
-      // 1) Update SDK permission mode — only when stream is actively running
+      // Story 37.5: the CLI engine's setPermissionMode runs a live Shift+Tab closed loop and may
+      // LAND on a different mode than requested (fail-safe / off-cycle). setPermissionMode returns
+      // void (signature unchanged), so we read the *verified* applied mode back via
+      // getPermissionMode() and broadcast/persist THAT — not the inbound request value. Without the
+      // read-back the requested mode would be broadcast even on a fail-safe (the live screen never
+      // reached it), silently violating AC3 ("verified, not assumed"). SDK mode: getPermissionMode()
+      // == requested, so the read-back is a harmless no-op there.
+      let effectiveMode = mode as PermissionMode;
+      let modeDiverged = false; // verified mode differed from the request (CLI fail-safe / off-cycle)
+
+      // 1) Update the engine's permission mode — only when stream is actively running
       if (stream?.chatService && stream.status === 'running') {
         try {
           await stream.chatService.setPermissionMode(mode);
-          log.debug(`Permission mode changed to "${mode}" for session ${sessionId}`);
+          effectiveMode = stream.chatService.getPermissionMode(); // verified (closed-loop) mode
+          modeDiverged = effectiveMode !== mode;
+          log.debug(
+            `Permission mode requested "${mode}", applied "${effectiveMode}" for session ${sessionId}`,
+          );
         } catch (err) {
           log.error('Failed to change permission mode:', err);
           return; // Don't persist or broadcast a mode that failed to apply
         }
       }
 
-      // Update pending chain items so the next drain uses the new mode.
-      // Outside the running-stream block because mode can change between turns
+      // Update pending chain items so the next drain uses the new mode. Use the verified mode so a
+      // CLI fail-safe also corrects the next-spawn posture (== request on every non-CLI/non-diverged
+      // path). Outside the running-stream block because mode can change between turns
       // (e.g., during the 1s chain drain delay when no stream is active).
       const chainItems = chainState.get(sessionId);
       if (chainItems) {
         for (const item of chainItems) {
           if (item.status === 'pending' || item.status === 'sending') {
-            item.permissionMode = mode as PermissionMode;
+            item.permissionMode = effectiveMode;
           }
         }
       }
 
       // 2) Always persist per-session permission mode (read only when policy is 'always')
       // Use projectSlug from client as fallback when sessionProjectMap entry is gone (stream ended)
-      await persistSessionPermissionMode(sessionId, mode, projectSlug);
+      await persistSessionPermissionMode(sessionId, effectiveMode, projectSlug);
 
       // 3) Broadcast to other viewers based on sync policy
       let syncPolicy: 'streaming' | 'always' = 'always';
@@ -1266,8 +1281,16 @@ export async function initializeWebSocket(
       }
       if (syncPolicy === 'streaming' && stream?.status !== 'running') return;
 
-      // 'always' or ('streaming' + running) → broadcast via Socket.io room
-      socket.to(`session:${sessionId}`).emit('permission:mode-change', { mode });
+      // 'always' or ('streaming' + running) → broadcast the VERIFIED mode via Socket.io room.
+      socket.to(`session:${sessionId}`).emit('permission:mode-change', { mode: effectiveMode });
+      // Story 37.5: originator convergence. The broadcast above excludes the sending socket
+      // (socket.to), so on a fail-safe (verified ≠ requested) the SENDER's selector would stay on
+      // the wrong requested value. Echo the verified mode back to the sender ONLY in that case; the
+      // normal path (verified == requested) leaves the sender's optimistic value correct, so no
+      // redundant self-echo is sent.
+      if (modeDiverged) {
+        socket.emit('permission:mode-change', { mode: effectiveMode });
+      }
     });
 
     // Handle session:join event — attach socket to active running stream (broadcast)

@@ -66,14 +66,19 @@ const h = vi.hoisted(() => {
 
   const rewindSessionFiles = vi.fn();
 
-  return { fakePty, disposers, cliSessionPool, state, sessionService, rewindSessionFiles };
+  // A STABLE logger (returned for every createLogger call) so a test can assert the engine's
+  // own `log.warn` (Story 37.5 fail-safe warns exactly once). All methods are no-op spies, so
+  // identity-stability is the only behavior change vs. fresh-per-call.
+  const logger = { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), verbose: vi.fn() };
+
+  return { fakePty, disposers, cliSessionPool, state, sessionService, rewindSessionFiles, logger };
 });
 
 vi.mock('../cliSessionPool.js', () => ({ cliSessionPool: h.cliSessionPool }));
 vi.mock('../sessionService.js', () => ({ sessionService: h.sessionService, SessionService: class {} }));
 vi.mock('../fileRewind.js', () => ({ rewindSessionFiles: h.rewindSessionFiles }));
 vi.mock('../../utils/logger.js', () => ({
-  createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), verbose: vi.fn() }),
+  createLogger: () => h.logger,
 }));
 
 // Import after mocks. historyParser (real) is pulled in transitively for parseJSONLFile.
@@ -879,6 +884,191 @@ describe('CliChatEngine', () => {
       expect(h.fakePty.write.mock.calls.length).toBe(writeCountAtAbort); // nothing injected post-abort
     });
 
+  });
+
+  describe('permission-mode live closed loop (Story 37.5 — CSI Z Shift+Tab)', () => {
+    const CSI_Z = '\x1b[Z';
+    const modeRow = (label: string) => ` ${label} (shift+tab to cycle) · ← for agents`;
+    // An idle input box at a given mode (mode row present) or default (no mode row).
+    const idleGrid = (modeLabel?: string) =>
+      drawModal(modeLabel ? [' ❯ ', modeRow(modeLabel)] : [' ❯ Try "fix typecheck"', ' ? for shortcuts']);
+    const PERM_DIALOG = drawModal([
+      ' ● Write(probe.txt)',
+      ' Do you want to create probe.txt?',
+      ' ❯ 1. Yes',
+      '   2. Yes, allow all edits during this session',
+      '   3. No',
+      ' Esc to cancel · Tab to amend',
+    ]);
+    const countKey = (key: string) => h.fakePty.write.mock.calls.filter((c) => c[0] === key).length;
+
+    // Drive the engine to the post-injection state (where activeCliControl is live), as the
+    // permission/progress blocks do. Returns the turn promise wrapped (an async fn would auto-flatten
+    // and deadlock — the turn completes only after the test writes the session).
+    async function injectThenReady(engine: CliChatEngine, canUseTool?: unknown): Promise<{ turn: Promise<unknown> }> {
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      return { turn };
+    }
+
+    async function endTurn(turn: Promise<unknown>): Promise<void> {
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
+      await turn;
+    }
+
+    it('drives the wrap-aware step count and adopts the VERIFIED mode (default → plan = 2 steps)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(idleGrid()); // current: idle, default (no mode row)
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      const p = engine.setPermissionMode('plan'); // plan = cycle idx 2 ⇒ (2 - 0 + 4) % 4 = 2 steps
+      // Once the first Shift+Tab fired the initial read is done; feed the converged frame so the
+      // re-read verifies plan.
+      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
+      h.fakePty._onData?.(idleGrid('⏸ plan mode on'));
+      await p;
+
+      expect(countKey(CSI_Z) - before).toBe(2);
+      expect(engine.getPermissionMode()).toBe('plan'); // verified, not assumed
+      await endTurn(turn);
+    });
+
+    it('injects NOTHING when already on the target mode (0 steps)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(idleGrid('⏸ plan mode on')); // already plan
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      await engine.setPermissionMode('plan');
+      expect(countKey(CSI_Z) - before).toBe(0);
+      expect(engine.getPermissionMode()).toBe('plan');
+      await endTurn(turn);
+    });
+
+    it('wraps the cycle forward (plan → default wraps through auto = 2 steps)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(idleGrid('⏸ plan mode on')); // current: plan (idx 2)
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      const p = engine.setPermissionMode('default'); // (0 - 2 + 4) % 4 = 2 steps (wrap through auto)
+      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
+      h.fakePty._onData?.(idleGrid()); // converged to default (no mode row)
+      await p;
+
+      expect(countKey(CSI_Z) - before).toBe(2);
+      expect(engine.getPermissionMode()).toBe('default');
+      await endTurn(turn);
+    });
+
+    it('fail-safe: on non-convergence adopts the ACTUAL landed mode (not the target) + warns once', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(idleGrid()); // current: default
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      const warnBefore = h.logger.warn.mock.calls.length;
+      const p = engine.setPermissionMode('plan'); // wants plan (2 steps)
+      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
+      // The screen actually lands on acceptEdits, NOT the requested plan → fail-safe.
+      h.fakePty._onData?.(idleGrid('⏵⏵ accept edits on'));
+      await p;
+
+      expect(countKey(CSI_Z) - before).toBe(2); // bounded to the computed steps — no extra winding
+      expect(engine.getPermissionMode()).toBe('acceptEdits'); // verified actual, not the assumed target
+      expect(h.logger.warn.mock.calls.length - warnBefore).toBe(1); // warned exactly once
+      await endTurn(turn);
+    });
+
+    it('stops injecting once the turn settles mid-loop — no stray CSI Z to a dead PTY (abort race)', async () => {
+      const ac = new AbortController();
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID, abortController: ac },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      h.fakePty._onData?.(idleGrid()); // default → bypassPermissions is 3 steps (a loop long enough to abort)
+      await wait(20);
+
+      const p = engine.setPermissionMode('bypassPermissions');
+      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(0)); // first Shift+Tab fired
+      ac.abort('stop');
+      await expect(turn).rejects.toThrow(/aborted/i);
+      const keysAtAbort = countKey(CSI_Z);
+      await p; // the closed loop resolves (it bails on the dead PTY)
+      await wait(350 * 4); // well past the per-key gap (CLI_QUESTION_KEY_GAP_MS) × the remaining steps
+      expect(countKey(CSI_Z)).toBe(keysAtAbort); // no stray keys after the turn settled
+    });
+
+    it('store-only fallback when no turn is live (no control handle) — next spawn applies it', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const before = countKey(CSI_Z);
+      await engine.setPermissionMode('plan');
+      expect(engine.getPermissionMode()).toBe('plan');
+      expect(countKey(CSI_Z) - before).toBe(0);
+    });
+
+    it('store-only fallback while generating (spinner frame is not idle) — CSI Z unverified mid-gen', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(drawModal([' ❯ ', '✻ Working… (3s · ↓ 42 tokens)'])); // generating, not idle
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      await engine.setPermissionMode('plan');
+      expect(countKey(CSI_Z) - before).toBe(0);
+      expect(engine.getPermissionMode()).toBe('plan'); // stored for the next spawn
+      await endTurn(turn);
+    });
+
+    it('store-only fallback while a permission modal is up — no stray CSI Z into the modal', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      let resolvePerm: ((v: unknown) => void) | undefined;
+      const canUseTool = vi.fn(() => new Promise((r) => { resolvePerm = r; }));
+      const { turn } = await injectThenReady(engine, canUseTool);
+      h.fakePty._onData?.(PERM_DIALOG); // permissionPending = true; handlePermission awaits (pending)
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1));
+
+      const before = countKey(CSI_Z);
+      await engine.setPermissionMode('plan'); // isModalPending() ⇒ store only, BEFORE any grid read
+      expect(countKey(CSI_Z) - before).toBe(0);
+      expect(engine.getPermissionMode()).toBe('plan');
+
+      resolvePerm?.({ behavior: 'allow' });
+      await endTurn(turn);
+    });
+
+    it('store-only fallback for the off-cycle dontAsk target (no reachable cycle index)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(idleGrid()); // idle + live, yet dontAsk is off the cycle
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      await engine.setPermissionMode('dontAsk');
+      expect(countKey(CSI_Z) - before).toBe(0);
+      expect(engine.getPermissionMode()).toBe('dontAsk');
+      await endTurn(turn);
+    });
   });
 
   describe('live tool cards (Story 32.9 — onToolUse/onToolResult parity + permission-gated suppression)', () => {

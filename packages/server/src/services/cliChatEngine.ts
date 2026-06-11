@@ -94,6 +94,10 @@ import {
   detectQuestionModal,
   parseQuestionModal,
   parsePrecedingText,
+  readPermissionMode,
+  permissionModeCycleIndex,
+  isIdleInputGrid,
+  CLI_PERMISSION_MODE_CYCLE,
   type ParsedQuestion,
 } from './cliModalDetect.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
@@ -204,6 +208,15 @@ const CLI_SUBMIT_GAP_MS = 1000; // Enter sent this long after the prompt text
  */
 const CLI_PERMISSION_ALLOW_KEY = '\r'; // Enter → pre-highlighted "1. Yes"
 const CLI_PERMISSION_DENY_KEY = '\x1b'; // Esc → "Esc to cancel"
+
+/**
+ * Shift+Tab (`CSI Z` = `\x1b[Z`) — advances claude's permission-mode cycle by ONE step
+ * (normal → accept edits → plan → auto → wrap). The ONLY mechanism that cycles the mode
+ * (Meta+M is NOT a mode switch — empirically refuted, Story 37.5). Driven through the same
+ * `pty.write` path the permission/question keys use; spaced by `CLI_QUESTION_KEY_GAP_MS`
+ * (each Shift+Tab is a discrete keypress, like the menu keys).
+ */
+const CLI_PERMISSION_CYCLE_KEY = '\x1b[Z';
 
 /**
  * AskUserQuestion selection-modal interception (Story 32.8 — *constrained*; the JSONL/ANSI
@@ -371,9 +384,37 @@ async function newestNewJsonl(dir: string, baseline: Set<string>): Promise<strin
   }
 }
 
+/**
+ * Story 37.5 — the engine instance only reaches the LIVE PTY *while a turn runs*. claude's
+ * PTY, the screen model, and the turn-local modal-pending flags all live inside the
+ * `sendMessageWithCallbacks` Promise closure (turn-per-process); an instance method such as
+ * `setPermissionMode` cannot see them directly. This control handle is created *inside* that
+ * closure (so its getters capture the turn-local state) and published on the engine field
+ * `activeCliControl` for the duration of the turn, then released on the single teardown path —
+ * the same set-at-spawn / clear-at-teardown lifecycle the screen model uses. It is the bridge
+ * that lets the closed loop drive keys + read the grid + observe liveness/modal state without
+ * widening any public seam.
+ */
+interface CliLiveControl {
+  /** Inject one key into the live PTY (same path as the permission/question keys). */
+  writeKey(key: string): void;
+  /** Flush + read the settled screen grid (the same deterministic read the detectors use). */
+  readSettledGrid(): Promise<string[]>;
+  /** False once the turn settled (finish/abort/exit) — the last-line abort-race guard. */
+  isAlive(): boolean;
+  /** True while a permission/question modal is up (captures the turn-local pending flags). */
+  isModalPending(): boolean;
+}
+
 export class CliChatEngine implements ChatEngine {
   private workingDirectory: string | undefined;
   private permissionMode: PermissionMode;
+  /**
+   * Story 37.5: the live control surface for the in-flight turn (set at spawn, cleared at
+   * teardown). Null between turns — `setPermissionMode` reads it to decide live closed loop
+   * vs. store-only fallback. See `CliLiveControl`.
+   */
+  private activeCliControl: CliLiveControl | null = null;
   /**
    * Story 33.3: user-configured `claude` binary path override (global preference).
    * Forwarded to every spawn; empty/undefined = auto-detect, invalid = graceful
@@ -409,10 +450,88 @@ export class CliChatEngine implements ChatEngine {
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
-    // Stored so the next claude spawn maps it to `--permission-mode` (AC7). There is
-    // no live query to update mid-turn (unlike the SDK engine) — the interactive PTY
-    // takes its posture from launch flags.
-    this.permissionMode = mode;
+    // Story 37.5 — live Shift+Tab closed loop vs. store-only fallback. The stored
+    // `this.permissionMode` is always the authority the NEXT spawn maps to
+    // `--permission-mode` (AC7); when a live turn is idle we ALSO drive the running claude's
+    // mode in place and adopt the *verified* (screen-confirmed) mode rather than the request.
+    const control = this.activeCliControl;
+
+    // Store-only fallbacks (no live key injection). Three pre-emptive cases, in order:
+    //   (1) No live control — turn outside, OR the narrow spawn/teardown race where the handler
+    //       still sees status==='running' but `activeCliControl` is not (yet/any longer) set.
+    //   (2) A permission/question modal is up (the flag is checked BEFORE reading the grid — the
+    //       pre-emptive last line of defense, same shape as the 37.4 abort-race guard — so a stray
+    //       CSI Z can never land in a modal and disturb its key wiring).
+    //   (3) The target mode is OFF the Shift+Tab cycle (`dontAsk`) — no reachable cycle index, so
+    //       there is nothing to drive; the next spawn applies it via `--permission-mode`.
+    if (!control || control.isModalPending() || permissionModeCycleIndex(mode) < 0) {
+      this.permissionMode = mode;
+      return;
+    }
+
+    // The turn is live and modal-free — but only an IDLE input box accepts a verified mode-cycle
+    // keypress. A mid-generation spinner frame's CSI Z behavior is unverified (idle was the only
+    // observed state), so classify the settled grid and, if generating (or the PTY died), fall back
+    // to store-only (the next spawn applies `--permission-mode`).
+    if (!control.isAlive()) {
+      this.permissionMode = mode;
+      return;
+    }
+    const grid = await control.readSettledGrid();
+    if (!control.isAlive() || !isIdleInputGrid(grid)) {
+      this.permissionMode = mode;
+      return;
+    }
+
+    // Idle: drive the closed loop and adopt the VERIFIED settled mode (never the assumed target).
+    this.permissionMode = await this.cyclePermissionMode(control, mode, grid);
+  }
+
+  /**
+   * Story 37.5 — the CSI Z (Shift+Tab) closed loop. Reads the current mode from the settled grid,
+   * advances claude's cycle to `target` with wrap-aware forward steps, then RE-READS to verify the
+   * mode the screen actually landed on. Returns the VERIFIED mode (never the assumed target):
+   *   - on convergence that is `target`;
+   *   - on non-convergence (fail-safe) it is whatever the screen actually shows — the SCREEN is the
+   *     authority, so the live claude and the stored next-spawn flag never disagree. No extra keys
+   *     are injected on non-convergence (no "wind it back to the assumed target"); a single warning
+   *     is logged.
+   * `initialGrid` is the caller's already-read, idle-verified settled grid — reused as the first
+   * current-mode read so we do not double-flush.
+   */
+  private async cyclePermissionMode(
+    control: CliLiveControl,
+    target: PermissionMode,
+    initialGrid: string[],
+  ): Promise<PermissionMode> {
+    const N = CLI_PERMISSION_MODE_CYCLE.length;
+    const targetIdx = permissionModeCycleIndex(target); // caller guaranteed >= 0
+    const current = readPermissionMode(initialGrid);
+    const curIdx = permissionModeCycleIndex(current); // read from cycle labels ⇒ always >= 0
+    // Wrap-aware forward step count, bounded to [0, N-1] — so at most N-1 keypresses: the cycle
+    // length is the hard injection ceiling (a turn that can't reach the target within one lap is
+    // abnormal, so we never keep spinning). 0 steps ⇒ already on target ⇒ inject nothing.
+    const steps = (((targetIdx - curIdx) % N) + N) % N;
+    for (let i = 0; i < steps; i++) {
+      if (!control.isAlive()) return current; // PTY died mid-loop — stop, report last known
+      control.writeKey(CLI_PERMISSION_CYCLE_KEY);
+      // Discrete keypresses, spaced like the menu keys (a coalesced burst could drop a step).
+      await new Promise((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
+    }
+    // Re-read is async; re-check liveness before trusting the grid (37.4 abort-race shape — never
+    // adopt a grid read after the PTY was torn down).
+    if (!control.isAlive()) return current;
+    const finalGrid = await control.readSettledGrid();
+    if (!control.isAlive()) return current;
+    const verified = readPermissionMode(finalGrid);
+    if (verified !== target) {
+      // Fail-safe: do NOT inject more. Adopt the ACTUAL landed mode as the authority (not the
+      // target) so the live screen and the stored next-spawn flag stay in lockstep. Warn once.
+      log.warn(
+        `CLI permission-mode cycle did not converge: target=${target} landed=${verified} (steps=${steps}) — adopting the verified on-screen mode`,
+      );
+    }
+    return verified;
   }
 
   /**
@@ -692,6 +811,21 @@ export class CliChatEngine implements ChatEngine {
         onPhase?.(null);
       };
 
+      // Story 37.5: publish the live control surface for THIS turn. Created here (inside the turn
+      // closure) so its getters capture the turn-local `settled` / `permissionPending` /
+      // `questionPending` that the instance method `setPermissionMode` cannot reach directly
+      // (out-of-scope). `writeKey` reuses the modal-key `pty.write` path; `readSettledGrid` reuses
+      // the same flush→readGrid deterministic read the detectors use. Released on teardown (below).
+      this.activeCliControl = {
+        writeKey: (key: string) => pty.write(key),
+        readSettledGrid: async () => {
+          await screen.flush();
+          return screen.readGrid();
+        },
+        isAlive: () => !settled,
+        isModalPending: () => permissionPending || questionPending,
+      };
+
       const teardown = () => {
         if (pollTimer) {
           clearInterval(pollTimer);
@@ -725,6 +859,11 @@ export class CliChatEngine implements ChatEngine {
         }
         dirWatcher = null;
         fileWatcher = null;
+        // Story 37.5: release the live control surface on the SAME single teardown path — once the
+        // turn is gone there is no live PTY to drive, so a later setPermissionMode falls back to
+        // store-only (next spawn `--permission-mode`). Set before screen.dispose so no closed loop
+        // can read a disposed grid.
+        this.activeCliControl = null;
         // Story 37.1: release the per-turn headless emulator on the SAME single teardown
         // path (no new dispose route) — registerDisposer routes finish/fail/onAbort/onExit
         // and server shutdown (destroyAll) all through here, so the screen model is freed

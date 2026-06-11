@@ -474,6 +474,81 @@ describe('WebSocket Handler', () => {
     });
   });
 
+  describe('permission:mode-change — verified-mode readback + originator convergence (Story 37.5)', () => {
+    let clientSocket2: ClientSocket;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(existsSync).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      if (clientSocket2?.connected) clientSocket2.disconnect();
+    });
+
+    // Open two clients, start a RUNNING stream owned by clientSocket (sendImpl never resolves so
+    // status stays 'running' and setPermissionMode is actually invoked), and join clientSocket2 as a
+    // room viewer. `verifiedMode` is what the engine's getPermissionMode() reports back (the read-back
+    // the handler broadcasts) — set ≠ request to model a CLI fail-safe / off-cycle landing.
+    async function runningStreamWithViewer(sessionId: string, verifiedMode: string): Promise<void> {
+      mockState.sendImpl = vi.fn(() => new Promise<never>(() => {})); // never resolves → stays running
+      mockState.permissionMode = verifiedMode; // mock getPermissionMode() returns this (the verified mode)
+
+      clientSocket = ioc(`http://localhost:${TEST_PORT}`, { transports: ['websocket'] });
+      clientSocket2 = ioc(`http://localhost:${TEST_PORT}`, { transports: ['websocket'] });
+      await Promise.all([
+        new Promise<void>((r) => clientSocket.on('connect', () => r())),
+        new Promise<void>((r) => clientSocket2.on('connect', () => r())),
+      ]);
+
+      clientSocket.emit('chat:send', { sessionId, content: 'hi', workingDirectory: '/valid/path' });
+      await new Promise((r) => setTimeout(r, 150)); // let the stream reach running + chatService set
+      expect(mockState.sendImpl).toHaveBeenCalled();
+
+      clientSocket2.emit('session:join', sessionId); // join the broadcast room as a viewer
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    it('broadcasts the VERIFIED applied mode (getPermissionMode read-back), not the requested mode', async () => {
+      // Engine "lands" on plan though bypassPermissions was requested (fail-safe / off-cycle).
+      await runningStreamWithViewer('perm-375-readback', 'plan');
+
+      const viewerMsg = new Promise<{ mode: string }>((r) =>
+        clientSocket2.on('permission:mode-change', (m) => r(m)),
+      );
+      const originatorMsg = new Promise<{ mode: string }>((r) =>
+        clientSocket.on('permission:mode-change', (m) => r(m)),
+      );
+
+      clientSocket.emit('permission:mode-change', { mode: 'bypassPermissions', projectSlug: 'mock-project-slug' });
+
+      // Viewer (room broadcast, sender excluded) gets the VERIFIED mode — NOT the inbound request.
+      await expect(viewerMsg).resolves.toEqual({ mode: 'plan' });
+      // Originator convergence: on divergence the sender ALSO receives the verified mode (its
+      // optimistic selector was on the wrong request value).
+      await expect(originatorMsg).resolves.toEqual({ mode: 'plan' });
+    });
+
+    it('does NOT self-echo to the originator when the verified mode equals the request (normal path)', async () => {
+      // Engine verifies exactly the requested mode → no divergence → no redundant self-echo.
+      await runningStreamWithViewer('perm-375-noecho', 'acceptEdits');
+
+      let selfEcho = false;
+      clientSocket.on('permission:mode-change', () => {
+        selfEcho = true;
+      });
+      const viewerMsg = new Promise<{ mode: string }>((r) =>
+        clientSocket2.on('permission:mode-change', (m) => r(m)),
+      );
+
+      clientSocket.emit('permission:mode-change', { mode: 'acceptEdits', projectSlug: 'mock-project-slug' });
+
+      await expect(viewerMsg).resolves.toEqual({ mode: 'acceptEdits' }); // viewer still gets the broadcast
+      await new Promise((r) => setTimeout(r, 100));
+      expect(selfEcho).toBe(false); // sender (socket.to excludes it) gets no echo on the normal path
+    });
+  });
+
   describe('chat:send event handler', () => {
     beforeEach(() => {
       vi.clearAllMocks();
