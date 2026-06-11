@@ -333,3 +333,64 @@ export function isIdleInputGrid(grid: string[]): boolean {
   if (/↓\s*[\d.,]+k?\s*tokens/i.test(text)) return false; // spinner counter ⇒ generating
   return /❯/.test(text); // idle input-box marker
 }
+
+/**
+ * Story 37.6 — PRE-INJECTION screen classification (the *read* sibling of 37.4's post-injection
+ * detectors). The boot/resume readiness check used to be a single linear test —
+ * `bootBuffer.includes('❯')` → inject. But `❯` is a *shared* glyph: claude paints it for the idle
+ * input box, for the highlighted row of a selection menu, AND inside the permission dialog. So the
+ * marker is *necessary but not sufficient*; a resume frame that lands on a selection menu reads `❯`
+ * and the old path injected an Enter into the first option (e.g. `/compact`), losing the prompt and
+ * compacting the conversation (실측 2026-06-11).
+ *
+ * This 3-way classifier of the SETTLED grid removes that ambiguity:
+ *   - `selection`  — a recognized selection menu/modal: the 32.6 permission dialog OR the 32.8
+ *                    question modal (both AND-gated detectors, reused verbatim), OR a generic
+ *                    numbered-option list THAT ALSO carries a live selection footer.
+ *   - `input-box`  — no selection signature AND `isIdleInputGrid` holds (an `❯` is present with no
+ *                    mid-generation spinner). This is the ONLY class that injects (AC1).
+ *   - `unknown`    — neither. The caller presses NO blind key and (at the decisive checkpoint) ends
+ *                    the turn with an explicit error ("모르면 치지 않는다", AC3).
+ *
+ * The **footer AND-gate is essential** (AC2): a resume-repaint can quote a prior turn's "❯ 1. Yes"
+ * / numbered list / table in the scrollback BODY, but the *live* nav/cancel footer renders only at
+ * the bottom of an actually-live selection box. Requiring the footer alongside the numbered rows
+ * stops quoted scrollback from being mistaken for a live menu — the same half-drawn / quoted-text
+ * defense the permission/question detectors already use.
+ *
+ * Pure by construction (grid rows in, union out) so the screen-less unit tests drive it with
+ * hand-built rows. **Settled-grid precondition:** the `input-box`/`selection` distinction partly
+ * rests on the *absence* of a row (no footer ⇒ not a live menu), a weak signal that a half-drawn
+ * frame can transiently violate, so the CALLER must classify only an `await flush()`-settled grid
+ * (37.5 weak-signal discipline). Still version-fragile (the option/footer wording can shift across
+ * claude TUI revisions) — the grid removes the *fusion* failure mode, not the wording fragility.
+ *
+ * @see docs/stories/37.6.story.md
+ * [Source: docs/prd/epic-37-cli-terminal-emulation.md#story-376]
+ */
+export type PreInjectScreen = 'input-box' | 'selection' | 'unknown';
+
+/** A LIVE selection footer (bottom-of-box nav/cancel affordance) — the AND-gate partner that keeps
+ *  quoted scrollback ("❯ 1. Yes" in resume-repaint prose) from reading as a live menu. */
+const CLI_SELECTION_FOOTER_RE = /to\s+navigate|Esc\b[^\n]{0,16}\bcancel\b|↑\s*\/?\s*↓/i;
+/** A numbered option row ("1. …" / " 2. …"), anchored at the row start (one option per grid row). */
+const CLI_NUMBERED_OPTION_RE = /^\s*\d{1,2}\.\s/;
+
+/**
+ * Classify a SETTLED screen grid as input box / selection menu / unknown for the pre-injection
+ * readiness gate (Story 37.6). MUST be called on a `flush()`-settled grid (see the absence-signal
+ * note above). Pure — no node-pty / no engine state.
+ */
+export function classifyPreInjectScreen(grid: string[]): PreInjectScreen {
+  const text = grid.join('\n');
+  // (1) Recognized selection menus/modals, OR a numbered list WITH a live footer (AND-gate).
+  const hasNumberedOption = grid.some((row) => CLI_NUMBERED_OPTION_RE.test(row));
+  const hasSelectionFooter = CLI_SELECTION_FOOTER_RE.test(text);
+  if (detectPermissionDialog(text) || detectQuestionModal(text) || (hasNumberedOption && hasSelectionFooter)) {
+    return 'selection';
+  }
+  // (2) A verified idle input box (no selection signature + `❯` present + not mid-generation).
+  if (isIdleInputGrid(grid)) return 'input-box';
+  // (3) Neither — do not press blind keys (AC3).
+  return 'unknown';
+}

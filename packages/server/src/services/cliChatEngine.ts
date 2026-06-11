@@ -97,8 +97,10 @@ import {
   readPermissionMode,
   permissionModeCycleIndex,
   isIdleInputGrid,
+  classifyPreInjectScreen,
   CLI_PERMISSION_MODE_CYCLE,
   type ParsedQuestion,
+  type PreInjectScreen,
 } from './cliModalDetect.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
@@ -263,16 +265,26 @@ const CLI_QUESTION_SETTLE_MS = 400;
  */
 const CLI_QUESTION_KEY_GAP_MS = 350;
 
-/** Best-effort dump of the pre-injection PTY screen (raw, ANSI intact) — observe-only material for the
- *  Epic 37.6 grid classifier. NOT used to block injection: linear scrape can't tell the live input box
- *  from resume-repainted scrollback (quoted "❯ 1. …" / tables / "Esc to cancel" from prior turns), so a
- *  block here false-positives a normal input box (실측 2026-06-11). The real fix is the 37.1 screen grid. */
-function capturePreInjectScreen(sessionId: string | null, raw: string): string | null {
+/** Best-effort dump of the pre-injection PTY screen for the Epic 37.6 grid classifier. Story 37.6
+ *  extends it from raw-only (observe-only) to ALSO enclosing the settled grid + the classifier's
+ *  verdict (`input-box` / `selection` / `unknown`), so an `unknown`/`selection` screen's identity can
+ *  be captured (the AC4 extension-point material) and an explicit-error fail can name the snapshot for
+ *  the operator (AC3 — expose, don't blind-inject). Best-effort: never breaks a turn. */
+function capturePreInjectScreen(
+  sessionId: string | null,
+  raw: string,
+  grid?: string[],
+  classification?: PreInjectScreen,
+): string | null {
   try {
     const dir = path.join(process.cwd(), 'logs', 'claude-debug');
     mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `${sessionId ?? 'unknown'}-${Date.now()}-preinject-screen.log`);
-    writeFileSync(file, raw);
+    const gridSection =
+      grid !== undefined
+        ? `\n\n===== SETTLED GRID (classification: ${classification ?? 'n/a'}) =====\n${grid.join('\n')}`
+        : '';
+    writeFileSync(file, raw + gridSection);
     return file;
   } catch {
     return null;
@@ -761,6 +773,8 @@ export class CliChatEngine implements ChatEngine {
       let bootMarkerSeen = false; // ❯ input box has rendered — gates the blind fallback inject (never inject before the box exists)
       let bootSettleTimer: ReturnType<typeof setTimeout> | null = null;
       let bootFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+      let bootRecoverTimer: ReturnType<typeof setTimeout> | null = null; // Story 37.6: post-Esc re-classify timer
+      let escRecoveryUsed = false; // Story 37.6: the one-shot Esc selection-menu recovery (no key hammering)
       let submitTimer: ReturnType<typeof setTimeout> | null = null;
       // Permission-dialog state (Story 32.6 — post-injection only). Story 37.4: detection reads
       // the settled screen grid (no rolling buffer); `permissionPending` is the per-modal re-fire
@@ -838,6 +852,10 @@ export class CliChatEngine implements ChatEngine {
         if (bootFallbackTimer) {
           clearTimeout(bootFallbackTimer);
           bootFallbackTimer = null;
+        }
+        if (bootRecoverTimer) {
+          clearTimeout(bootRecoverTimer);
+          bootRecoverTimer = null;
         }
         if (submitTimer) {
           clearTimeout(submitTimer);
@@ -933,12 +951,10 @@ export class CliChatEngine implements ChatEngine {
       const injectPrompt = () => {
         if (injected || settled) return;
         injected = true;
-        // Story 37.6 (관찰 모드): 주입 직전 화면을 스냅샷으로 남긴다 — 차단하지 않는다. 선형 scrape
-        // 로는 resume repaint(이전 대화가 인용한 "❯ 1. Yes"·"Esc to cancel"·표 등 scrollback)를 살아있는
-        // 입력창과 구분하지 못해, 정상 입력창을 선택 메뉴로 오탐한다(실측 2026-06-11 — 무조건 차단됨).
-        // 차단은 정식 그리드 화면 분류(Epic 37.6)로 미루고, 지금은 실제 화면만 모아 그 재료로 쓴다.
-        if (process.env.HAMMOC_CLI_DEBUG) capturePreInjectScreen(resolvedSessionId, bootBuffer);
-        onPhase?.('submitting'); // ❯ seen — typing the prompt now
+        // Story 37.6: the pre-injection snapshot is now taken UPSTREAM by attemptInjectFromGrid (it
+        // holds the settled grid + classification). Injection is reached only on the verified
+        // `input-box` path, so there is no blind inject left to capture here.
+        onPhase?.('submitting'); // input box verified — typing the prompt now
         bootBuffer = ''; // done with readiness detection — release it
         if (bootSettleTimer) {
           clearTimeout(bootSettleTimer);
@@ -947,6 +963,10 @@ export class CliChatEngine implements ChatEngine {
         if (bootFallbackTimer) {
           clearTimeout(bootFallbackTimer);
           bootFallbackTimer = null;
+        }
+        if (bootRecoverTimer) {
+          clearTimeout(bootRecoverTimer);
+          bootRecoverTimer = null;
         }
         try {
           pty.write(promptToInject);
@@ -963,6 +983,98 @@ export class CliChatEngine implements ChatEngine {
         } catch (err) {
           fail(err instanceof Error ? err : new Error(String(err)));
         }
+      };
+
+      /**
+       * Story 37.6 — pre-injection screen classification gate. The `❯` readiness marker is a
+       * *shared* glyph (idle input box, selection-menu highlight, and permission dialog all paint
+       * it), so its presence is necessary but NOT sufficient to inject. Once boot output settles we
+       * read the SETTLED grid (37.1) and act on a 3-way verdict instead of blind-injecting:
+       *   - `input-box`  → inject (AC1, the only injecting path).
+       *   - `selection`  → never let an Enter hit the first option (AC2). A *recognized* menu is
+       *                    safe to cancel with Esc (32.8's deadlock-guard key) — try ONCE, then
+       *                    re-classify (AC4). No second key if Esc fails to recover.
+       *   - `unknown`    → press NO blind key (AC3); at the decisive checkpoint, end the turn with
+       *                    an explicit error and expose the screen.
+       * This replaces the old `bootBuffer.includes('❯')`→inject path that mis-injected an Enter into
+       * a resume-time selection menu's first option (e.g. `/compact`), losing the prompt (실측
+       * 2026-06-11). `screen.write(data)` runs unconditionally before the boot branch, so the
+       * settled grid is already readable here (the 37.1 foundation that makes this possible).
+       */
+      const snapshotPreInject = (grid: string[], classification: PreInjectScreen): string | null =>
+        capturePreInjectScreen(resolvedSessionId, bootBuffer, grid, classification);
+
+      /** AC3 hard-fail: never blind-inject — expose the screen (snapshot path + grid text) and end the
+       *  turn with an explicit error so the operator can see what the pre-injection screen was. */
+      const failUnready = (reason: string, grid: string[], classification: PreInjectScreen) => {
+        if (injected || settled) return;
+        const snapPath = snapshotPreInject(grid, classification);
+        log.warn(
+          `CLI boot: ${reason} — withholding injection (no blind key). Screen (${classification}):\n${grid.join('\n').trim()}`,
+        );
+        fail(
+          new Error(
+            `CLI boot aborted: ${reason}. The pre-injection screen was not a usable input box` +
+              (snapPath ? ` (screen snapshot: ${snapPath})` : '') +
+              '.',
+          ),
+        );
+      };
+
+      /**
+       * Decide from the SETTLED grid (flush first — absence-based signals must not read a half-drawn
+       * frame, 37.5 weak-signal discipline). `isFinal` marks the decisive ceiling checkpoint: a
+       * non-input-box that cannot be recovered ends the turn; a non-final settle simply waits for the
+       * ceiling fallback. Async (`flush().then`), so `injected`/`settled` are re-checked at read time.
+       */
+      const attemptInjectFromGrid = (isFinal: boolean) => {
+        if (injected || settled) return;
+        void screen.flush().then(() => {
+          if (injected || settled) return;
+          const grid = screen.readGrid();
+          const classification = classifyPreInjectScreen(grid);
+          if (process.env.HAMMOC_CLI_DEBUG) snapshotPreInject(grid, classification);
+          if (classification === 'input-box') {
+            injectPrompt(); // AC1 — verified input box
+            return;
+          }
+          if (classification === 'selection') {
+            // AC2: never inject (an Enter would select the first option). AC4: a recognized menu is
+            // safe to cancel with Esc — try ONCE, then re-classify; no key hammering.
+            if (!escRecoveryUsed) {
+              escRecoveryUsed = true;
+              log.info('CLI boot: pre-injection screen is a selection menu — sending Esc to recover the input box (37.6 AC4)');
+              try {
+                pty.write(CLI_QUESTION_ESC_KEY);
+              } catch (err) {
+                log.warn(`CLI boot: Esc recovery write failed: ${err instanceof Error ? err.message : String(err)}`);
+              }
+              bootRecoverTimer = setTimeout(() => {
+                bootRecoverTimer = null;
+                if (injected || settled) return;
+                void screen.flush().then(() => {
+                  if (injected || settled) return;
+                  const grid2 = screen.readGrid();
+                  const class2 = classifyPreInjectScreen(grid2);
+                  if (class2 === 'input-box') {
+                    injectPrompt(); // recovered to the input box → AC1
+                    return;
+                  }
+                  // Not recovered. Do NOT hammer more keys; fail now if decisive, else wait for the ceiling.
+                  if (isFinal) failUnready('selection menu did not recover to an input box after Esc', grid2, class2);
+                });
+              }, CLI_QUESTION_SETTLE_MS);
+              return;
+            }
+            // Esc already spent on this turn — no more keys.
+            if (isFinal) failUnready('selection menu persists after the one Esc recovery', grid, classification);
+            return;
+          }
+          // classification === 'unknown' — blind keys forbidden (AC3). Expose only; the ceiling
+          // checkpoint escalates to an explicit error.
+          if (isFinal)
+            failUnready('pre-injection screen is neither an input box nor a recognized selection menu', grid, classification);
+        });
       };
 
       /**
@@ -1276,16 +1388,18 @@ export class CliChatEngine implements ChatEngine {
         // (raw, ANSI intact). It never alters the grid-based state detection (progress /
         // limit / dialog / question) below; gated upstream by the cliPtyMirror preference.
         onPtyRaw?.(data);
-        // Pre-injection (boot/resume): accumulate output until the ❯ readiness marker, then inject.
-        // The grid detectors deliberately do NOT run here — consumeSettledGrid is post-injection only,
-        // which is what excludes the resumed-transcript repaint (a merely-quoted limit banner / a
-        // quoted "❯ 1. …" menu) from false-triggering.
+        // Pre-injection (boot/resume): accumulate output until the ❯ readiness marker, then classify
+        // the SETTLED grid before injecting (Story 37.6). The `❯` marker is a cheap, NECESSARY-but-
+        // insufficient trigger (it is shared by the input box, selection menus, and the permission
+        // dialog) — so it only arms the settle timer; the actual decision (`input-box`/`selection`/
+        // `unknown`) is made by attemptInjectFromGrid on the flushed grid. The POST-injection grid
+        // detectors (consumeSettledGrid) still run only after injection.
         if (!injected) {
           bootBuffer += data;
           if (bootBuffer.includes(CLI_PROMPT_MARKER)) {
             bootMarkerSeen = true;
             if (bootSettleTimer) clearTimeout(bootSettleTimer);
-            bootSettleTimer = setTimeout(injectPrompt, CLI_BOOT_SETTLE_MS);
+            bootSettleTimer = setTimeout(() => attemptInjectFromGrid(false), CLI_BOOT_SETTLE_MS);
           }
           return;
         }
@@ -1305,18 +1419,20 @@ export class CliChatEngine implements ChatEngine {
         fail(new Error(`claude CLI exited (code ${exitCode}) before completing the turn`));
       });
 
-      // Fallback for when the ❯ marker never settles. CRITICAL: only blind-inject once the box
-      // marker has actually rendered — injecting before the input box exists loses the prompt and
-      // hangs the turn in "waiting" forever (reproduced on an MCP-heavy project whose box took ~6s,
-      // past the 4s checkpoint; the snippet-chain's near-instant next turn hit it cold). At the
-      // first checkpoint: if the marker is up, inject (output merely stayed noisy past settle);
-      // otherwise keep waiting up to the hard ceiling for onData to see the marker and inject via
-      // the settle path, blind-injecting only as a true last resort.
+      // Fallback for when the ❯ marker never settles. CRITICAL: never inject before the box marker
+      // has rendered — injecting before the input box exists loses the prompt and hangs the turn in
+      // "waiting" forever (reproduced on an MCP-heavy project whose box took ~6s, past the 4s
+      // checkpoint; the snippet-chain's near-instant next turn hit it cold). The `bootMarkerSeen`
+      // gate + ceiling timing skeleton are preserved; Story 37.6 changes only the FINAL decision:
+      // the firing of this fallback is the DECISIVE checkpoint, so it routes through
+      // attemptInjectFromGrid(isFinal=true) — `input-box` injects (rescues a normal box whose settle
+      // merely lagged behind noise, AC5 hang prevention); `selection`/`unknown` no longer blind-inject
+      // but end the turn with an explicit error (AC3) instead.
       const armBootFallback = (delay: number, isFinal: boolean) => {
         bootFallbackTimer = setTimeout(() => {
           if (injected || settled) return;
           if (bootMarkerSeen || isFinal) {
-            injectPrompt();
+            attemptInjectFromGrid(true); // decisive: grid-verified inject or explicit-error fail
           } else {
             armBootFallback(CLI_MAX_BOOT_WAIT_NO_MARKER_MS - CLI_MAX_BOOT_WAIT_MS, true);
           }

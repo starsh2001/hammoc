@@ -23,6 +23,7 @@ import {
   readPermissionMode,
   permissionModeCycleIndex,
   isIdleInputGrid,
+  classifyPreInjectScreen,
   CLI_PERMISSION_MODE_CYCLE,
 } from '../cliModalDetect.js';
 
@@ -268,6 +269,75 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
 
     it('is NOT idle when no input-box marker is on the grid', () => {
       expect(isIdleInputGrid([' just some output', ' no prompt here'])).toBe(false);
+    });
+  });
+
+  describe('classifyPreInjectScreen (Story 37.6 — pre-injection 3-way classifier)', () => {
+    it('classifies a plain idle input box (just ❯) as input-box', () => {
+      expect(classifyPreInjectScreen([' ❯ Try "fix typecheck"', ' ? for shortcuts'])).toBe('input-box');
+      expect(classifyPreInjectScreen([' ❯ ', ' ⏸ plan mode on (shift+tab to cycle) · ← for agents'])).toBe('input-box');
+    });
+
+    it('classifies a numbered option list WITH a live nav/cancel footer as selection', () => {
+      expect(
+        classifyPreInjectScreen([
+          ' Pick an option',
+          ' ❯ 1. First',
+          '   2. Second',
+          '   3. Third',
+          ' Use ↑/↓ to navigate · Enter to select · Esc to cancel',
+        ]),
+      ).toBe('selection');
+    });
+
+    it('classifies the 32.6 permission dialog and the 32.8 question modal as selection', () => {
+      // Permission dialog (phrase AND footer — detectPermissionDialog signature).
+      expect(
+        classifyPreInjectScreen([
+          ' ● Write(probe.txt)',
+          ' Do you want to create probe.txt?',
+          ' ❯ 1. Yes',
+          '   2. Yes, allow all edits during this session',
+          '   3. No',
+          ' Esc to cancel · Tab to amend',
+        ]),
+      ).toBe('selection');
+      // AskUserQuestion modal (nav footer AND the "Chat about this" affordance — detectQuestionModal).
+      expect(
+        classifyPreInjectScreen([
+          ' ☐ Which color?',
+          ' ❯ 1. Red',
+          '   2. Green',
+          ' Enter to select · ↑/↓ to navigate',
+          ' Chat about this',
+        ]),
+      ).toBe('selection');
+    });
+
+    it('does NOT mistake resume-repaint scrollback (quoted "❯ 1. …" / numbered list, NO live footer) for a selection', () => {
+      // A prior turn's menu quoted in the repainted transcript body has no live nav/cancel footer, so
+      // the footer AND-gate withholds `selection`; with ❯ present it reads as a (recoverable) input box.
+      expect(
+        classifyPreInjectScreen([
+          ' Earlier you said:',
+          ' ❯ 1. Yes',
+          '   2. No',
+          ' ❯ ',
+        ]),
+      ).toBe('input-box');
+      // Same quoted list but with no live input box marker either → unknown (no blind key).
+      expect(classifyPreInjectScreen([' Earlier you said:', ' 1. Yes', '   2. No'])).toBe('unknown');
+    });
+
+    it('classifies an unrecognized screen (neither input box nor known menu) as unknown', () => {
+      expect(classifyPreInjectScreen([' Connecting MCP servers…', ' Loading plugins…'])).toBe('unknown');
+      expect(classifyPreInjectScreen([])).toBe('unknown');
+    });
+
+    it('does NOT classify a mid-generation spinner frame as input-box', () => {
+      // ❯ present but an active-generation footer/counter ⇒ isIdleInputGrid is false ⇒ not input-box.
+      expect(classifyPreInjectScreen([' ❯ ', '✢ Deliberating…  esc to interrupt'])).toBe('unknown');
+      expect(classifyPreInjectScreen([' ❯ ', '✻ Working… (3s · ↓ 42 tokens)'])).toBe('unknown');
     });
   });
 });

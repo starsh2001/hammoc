@@ -739,6 +739,118 @@ describe('CliChatEngine', () => {
     });
   });
 
+  describe('pre-injection screen classification (Story 37.6 — block/recover before injecting)', () => {
+    // A resume-time SELECTION menu painted as claude renders it (absolute-addressed rows + a live
+    // nav/cancel footer). The first option is the dangerous one (an Enter here would select it —
+    // e.g. `/compact` — losing the prompt). All rows carry `❯`/numbers so the LINEAR bootBuffer
+    // still trips the cheap marker, but the GRID classifier must read it as `selection`, not inject.
+    const SELECTION_MENU = drawModal([
+      ' Resume — pick an action',
+      ' ❯ 1. /compact (summarize & continue)',
+      '   2. Keep the full history',
+      '   3. Cancel',
+      ' ↑/↓ to navigate · Enter to select · Esc to cancel',
+    ]);
+    const INPUT_BOX = drawModal([' ❯ ', ' ? for shortcuts']);
+
+    it('does NOT inject (Enter 0) on a selection menu — sends exactly one Esc to recover (AC2/AC4)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'my real prompt',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.(SELECTION_MENU);
+
+      // The one-shot Esc recovery key is written (selection menus are safe to cancel)…
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 });
+      // …but the prompt text and a bare Enter are NEVER written into the menu (no first-option select).
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('my real prompt');
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\r');
+      // Esc is capped at ONE — no key hammering even as more identical frames arrive.
+      h.fakePty._onData?.(SELECTION_MENU);
+      await wait(60);
+      const escCount = h.fakePty.write.mock.calls.filter((c) => c[0] === '\x1b').length;
+      expect(escCount).toBe(1);
+
+      // Recover so the turn can finish cleanly: the screen becomes an input box → re-classify → inject.
+      h.fakePty._onData?.(INPUT_BOX);
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('my real prompt'), { timeout: 2000 });
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('recovers to the input box after Esc and injects normally (AC4 general path)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'hello world',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.(SELECTION_MENU);
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 });
+      // Esc dismissed the menu → claude repaints the input box → the post-Esc re-classify injects.
+      h.fakePty._onData?.(INPUT_BOX);
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('hello world'), { timeout: 2000 });
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\r'), { timeout: 3000 });
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('on an UNKNOWN screen presses no key and ends the turn with an explicit error (AC3)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onError = vi.fn();
+      // A ❯ is in the linear buffer (cheap marker trips), but the settled grid is a mid-generation
+      // spinner — neither an idle input box nor a recognized menu → `unknown`. No blind key allowed.
+      const UNKNOWN = drawModal([' ❯ ', '✢ Forging…  esc to interrupt']);
+      const promise = engine.sendMessageWithCallbacks(
+        'prompt that must not be lost',
+        { onComplete: vi.fn(), onError },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.(UNKNOWN);
+
+      // The decisive (ceiling) checkpoint reclassifies and fails explicitly rather than blind-injecting.
+      await expect(promise).rejects.toThrow(/CLI boot aborted/i);
+      expect(onError).toHaveBeenCalledTimes(1);
+      // No key was ever pressed into the unknown screen (no prompt, no Enter, no Esc).
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('prompt that must not be lost');
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\r');
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
+    }, 10000);
+
+    it('still injects a normal input box (regression 0) and rescues a noisy box via the ceiling (AC5)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'hi there',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        undefined,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      // Keep repainting the SAME normal input box faster than the settle window, so the settle timer
+      // never fires and the 4s ceiling checkpoint must reclassify it as input-box and inject (not hang).
+      const noise = setInterval(() => h.fakePty._onData?.(INPUT_BOX), 150);
+      try {
+        await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('hi there'), { timeout: 6000 });
+      } finally {
+        clearInterval(noise);
+      }
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    }, 10000);
+  });
+
   describe('permission round-trip (Story 32.6 — constrained, canUseTool reuse)', () => {
     // The permission modal as claude PAINTS it (Story 37.4 — absolute-addressed box rows the
     // grid reconstructs). Strong markers: a "Do you want to <verb>…?" sentence + the fully-
