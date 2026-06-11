@@ -83,6 +83,17 @@ import { rateLimitProbeService } from '../rateLimitProbeService.js';
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+// Story 37.4: the permission / question / usage-limit detectors now read the headless screen
+// GRID, not a linear ANSI-stripped buffer. claude paints each modal row at an ABSOLUTE cursor
+// position; a plain "\n"-joined frame would staircase (each line starting where the last ended)
+// and wrap past 120 cols, breaking the grid layout the detectors read. So modal frames are
+// rendered the way claude renders them: clear the screen, then address + erase + write each row
+// (the same in-place model the 37.2 `drawSpinner` helper uses). Clearing first means a frame's
+// rows are the ONLY thing on the grid, so a prior boot banner can't leak into a row scrape.
+const ESC = '\x1b';
+const drawModal = (lines: string[], startRow = 4): string =>
+  `${ESC}[2J${ESC}[H` + lines.map((line, i) => `${ESC}[${startRow + i};1H${ESC}[2K${line}`).join('');
+
 const SID = '11111111-1111-4111-8111-111111111111';
 
 function userLine(uuid: string): string {
@@ -724,9 +735,10 @@ describe('CliChatEngine', () => {
   });
 
   describe('permission round-trip (Story 32.6 — constrained, canUseTool reuse)', () => {
-    // The permission modal the engine sees AFTER its ANSI strip. Strong markers:
-    // a "Do you want to <verb>…?" sentence + the fully-rendered footer.
-    const PERM_DIALOG = [
+    // The permission modal as claude PAINTS it (Story 37.4 — absolute-addressed box rows the
+    // grid reconstructs). Strong markers: a "Do you want to <verb>…?" sentence + the fully-
+    // rendered footer (the AND-of-footer is what withholds detection on a half-drawn dialog).
+    const PERM_DIALOG = drawModal([
       ' ● Write(probe.txt)',
       ' Create file',
       ' probe.txt',
@@ -735,7 +747,7 @@ describe('CliChatEngine', () => {
       '   2. Yes, allow all edits during this session (shift+tab)',
       '   3. No',
       ' Esc to cancel · Tab to amend',
-    ].join('\n');
+    ]);
 
     // Drive the engine to the post-injection state (where dialog detection is live):
     // feed a boot frame with the ❯ marker, then wait until the prompt was injected.
@@ -802,9 +814,10 @@ describe('CliChatEngine', () => {
       const { turn } = await injectThenReady(engine, canUseTool);
 
       // (a) echoed prompt + generation footer: has "esc to interrupt" but no perm phrase.
-      h.fakePty._onData?.('❯ run the bash command\n· Actioning…  esc to interrupt');
-      // (b) half-rendered dialog: perm phrase present, but the footer (full render) absent.
-      h.fakePty._onData?.(' Do you want to create probe.txt?\n ❯ 1. Yes');
+      h.fakePty._onData?.(drawModal(['❯ run the bash command', '· Actioning…  esc to interrupt']));
+      // (b) half-rendered dialog: perm phrase present, but the footer (full render) absent —
+      // on the grid the footer row simply has not been painted yet, so detection withholds.
+      h.fakePty._onData?.(drawModal([' Do you want to create probe.txt?', ' ❯ 1. Yes']));
       await wait(60);
 
       expect(canUseTool).not.toHaveBeenCalled();
@@ -904,7 +917,7 @@ describe('CliChatEngine', () => {
     }
 
     const PERM_DIALOG = (verb = 'create', file = 'probe.txt') =>
-      [` Do you want to ${verb} ${file}?`, ' ❯ 1. Yes', '   2. Yes, allow all edits during this session', ' Esc to cancel · Tab to amend'].join('\n');
+      drawModal([` Do you want to ${verb} ${file}?`, ' ❯ 1. Yes', '   2. Yes, allow all edits during this session', ' Esc to cancel · Tab to amend']);
 
     it('emits onToolUse (SDK TrackedToolCall mapping) + onToolResult for an auto-approved tool, then completes', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
@@ -1064,7 +1077,7 @@ describe('CliChatEngine', () => {
     // a header tab, the question, numbered options, the auto-appended "Type something" /
     // "Chat about this" rows, and the nav footer ("Enter to select · ↑/↓ to navigate")
     // which (with "Chat about this") is distinct from a permission dialog.
-    const Q_MODAL_SINGLE = [
+    const Q_MODAL_SINGLE = drawModal([
       ' ☐ Color',
       ' Which color do you want?',
       ' ❯ 1. Red',
@@ -1076,10 +1089,10 @@ describe('CliChatEngine', () => {
       '   4. Type something.',
       '   5. Chat about this',
       ' Enter to select · ↑/↓ to navigate · Esc to cancel',
-    ].join('\n');
+    ]);
 
     // multiSelect: checkboxes "[ ]" + a header "✔ Submit" tab reached with → (Task 1).
-    const Q_MODAL_MULTI = [
+    const Q_MODAL_MULTI = drawModal([
       ' ←  ☐ Pets  ✔ Submit  →',
       ' Which pets do you want? Choose any.',
       ' ❯ 1. [ ] Cat',
@@ -1092,11 +1105,11 @@ describe('CliChatEngine', () => {
       '      Submit',
       '   5. Chat about this',
       ' Enter to select · ↑/↓ to navigate · Esc to cancel',
-    ].join('\n');
+    ]);
 
     // A 2-question (tabbed) modal: >1 ballot-box tab in the header → NOT a single
     // round-trip, so the constrained bridge guards it (Esc) rather than half-answering.
-    const Q_MODAL_MULTIQ = [
+    const Q_MODAL_MULTIQ = drawModal([
       ' ←  ☐ Color  ☐ Size  ✔ Submit  →',
       ' Which color do you want?',
       ' ❯ 1. Red',
@@ -1104,12 +1117,13 @@ describe('CliChatEngine', () => {
       '   4. Type something.',
       '   5. Chat about this',
       ' Enter to select · ↑/↓ to navigate · Esc to cancel',
-    ].join('\n');
+    ]);
 
-    // A modal wrapped in the TUI's box-drawing chrome (┌─┐ │ └─┘) — the bug report's
-    // "일) ──────" stretched row and "│"-laden labels. The scrape must strip every box glyph so
-    // labels are clean and a chrome-only fragment never becomes its own option.
-    const Q_MODAL_BOXED = [
+    // A modal wrapped in the TUI's box-drawing chrome (┌─┐ │ └─┘) — the 32.8 bug report's
+    // "──────" stretched row and "│"-laden labels. On the GRID each numbered option lands on its
+    // OWN row, so the per-row stripBoxChrome removes the border cells and leaves the label body
+    // intact — the structural resolution of the box-chrome fusion (Story 37.4 AC1).
+    const Q_MODAL_BOXED = drawModal([
       ' ☐ Spinner',
       ' Which spinner motion?',
       ' ┌────────────────────────────────┐',
@@ -1120,7 +1134,7 @@ describe('CliChatEngine', () => {
       ' │   4. Chat about this            │',
       ' └────────────────────────────────┘',
       ' Enter to select · ↑/↓ to navigate · Esc to cancel',
-    ].join('\n');
+    ]);
 
     async function injectThenReady(engine: CliChatEngine, canUseTool: unknown): Promise<{ turn: Promise<unknown> }> {
       const turn = engine.sendMessageWithCallbacks(
@@ -1200,7 +1214,7 @@ describe('CliChatEngine', () => {
       // The lead-in explanation the model rendered ABOVE the modal — flushed to the JSONL only
       // post-answer, so it must be scraped from the screen and emitted first.
       const prose = '현재 구조를 다 파악했습니다. 정리하면 두 가지 방식이 있습니다.';
-      h.fakePty._onData?.([
+      h.fakePty._onData?.(drawModal([
         prose,
         ' ☐ Color',
         ' Which color do you want?',
@@ -1209,7 +1223,7 @@ describe('CliChatEngine', () => {
         '   4. Type something.',
         '   5. Chat about this',
         ' Enter to select · ↑/↓ to navigate · Esc to cancel',
-      ].join('\n'));
+      ]));
 
       await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
       // The prose was emitted, and it preceded the card (≥1 chunk already out when canUseTool fired).
@@ -1360,7 +1374,7 @@ describe('CliChatEngine', () => {
       const { turn } = await injectThenReady(engine, canUseTool);
 
       // Footer present, but no "Chat about this" (e.g. a different list UI) → not a question.
-      h.fakePty._onData?.([' ❯ 1. Option A', '   2. Option B', ' Enter to select · ↑/↓ to navigate · Esc to cancel'].join('\n'));
+      h.fakePty._onData?.(drawModal([' ❯ 1. Option A', '   2. Option B', ' Enter to select · ↑/↓ to navigate · Esc to cancel']));
       await wait(80);
 
       expect(canUseTool).not.toHaveBeenCalled();
@@ -1429,7 +1443,7 @@ describe('CliChatEngine', () => {
       const { turn } = await injectThenReady(engine, canUseTool);
 
       h.fakePty._onData?.(
-        [' Do you want to create probe.txt?', ' ❯ 1. Yes', '   2. Yes, allow all edits during this session', ' Esc to cancel · Tab to amend'].join('\n'),
+        drawModal([' Do you want to create probe.txt?', ' ❯ 1. Yes', '   2. Yes, allow all edits during this session', ' Esc to cancel · Tab to amend']),
       );
 
       await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
@@ -1464,8 +1478,8 @@ describe('CliChatEngine', () => {
       const { turn } = await injectThenReady(engine, { onError });
 
       // The exhaustion notice — only ever on screen; the JSONL never gets an end_turn here, so
-      // without detection the turn hangs forever.
-      h.fakePty._onData?.("✻ You've hit your weekly limit · resets 1am (Asia/Seoul)");
+      // without detection the turn hangs forever. Painted into the grid (Story 37.4 reads it there).
+      h.fakePty._onData?.(drawModal(["✻ You've hit your weekly limit · resets 1am (Asia/Seoul)"]));
 
       await expect(turn).rejects.toThrow(/weekly limit/i);
       expect(onError).toHaveBeenCalled();
@@ -1514,7 +1528,7 @@ describe('CliChatEngine', () => {
         const onComplete = vi.fn();
         const { turn } = await injectThenReady(engine, { onError, onComplete });
 
-        h.fakePty._onData?.("✻ You've hit your weekly limit · resets 1am (Asia/Seoul)");
+        h.fakePty._onData?.(drawModal(["✻ You've hit your weekly limit · resets 1am (Asia/Seoul)"]));
         await wait(40);
         expect(onError).not.toHaveBeenCalled();
 
@@ -1534,7 +1548,7 @@ describe('CliChatEngine', () => {
       const { turn } = await injectThenReady(engine, { onError, onComplete });
 
       // At 97% generation continues — this must NOT stop the turn (false-positive guard).
-      h.fakePty._onData?.("✻ Working… You've used 97% of your weekly limit · resets 1am (Asia/Seoul)");
+      h.fakePty._onData?.(drawModal(["✻ Working… You've used 97% of your weekly limit · resets 1am (Asia/Seoul)"]));
       await wait(40);
       expect(onError).not.toHaveBeenCalled();
 
@@ -1552,7 +1566,6 @@ describe('CliChatEngine', () => {
     // line. A plain literal frame (no cursor control) would let consecutive counters run
     // together on one rendered row; an in-place redraw overwrites the cell, so the
     // settled grid carries only the final value (fusion is structurally impossible).
-    const ESC = '\x1b';
     const drawSpinner = (text: string, row = 20): string => `${ESC}[${row};1H${ESC}[2K${text}`;
 
     // Drive the engine to the post-injection state (where progress parsing is live):

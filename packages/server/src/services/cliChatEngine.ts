@@ -86,6 +86,16 @@ import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
 import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS } from './cliScreenModel.js';
 import { readSpinnerProgress } from './cliSpinnerProgress.js';
+import {
+  detectPermissionDialog,
+  detectUsageLimit,
+  extractToolName,
+  extractPromptSentence,
+  detectQuestionModal,
+  parseQuestionModal,
+  parsePrecedingText,
+  type ParsedQuestion,
+} from './cliModalDetect.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
@@ -195,12 +205,6 @@ const CLI_SUBMIT_GAP_MS = 1000; // Enter sent this long after the prompt text
 const CLI_PERMISSION_ALLOW_KEY = '\r'; // Enter → pre-highlighted "1. Yes"
 const CLI_PERMISSION_DENY_KEY = '\x1b'; // Esc → "Esc to cancel"
 
-/** Rolling post-injection ANSI buffer cap for dialog-state detection. */
-const CLI_DIALOG_BUFFER_CAP = 4000;
-
-/** Rolling ANSI buffer cap for the usage-limit notice scan (all phases). */
-const CLI_LIMIT_BUFFER_CAP = 2048;
-
 /**
  * AskUserQuestion selection-modal interception (Story 32.8 — *constrained*; the JSONL/ANSI
  * behavior and EVERY key were verified against claude v2.1.162 by a real-PTY observation,
@@ -245,191 +249,6 @@ const CLI_QUESTION_SETTLE_MS = 400;
  * the post-answer latency (correctness over speed — a dropped arrow would mis-select).
  */
 const CLI_QUESTION_KEY_GAP_MS = 350;
-/** "Chat about this" is auto-appended to every AskUserQuestion modal — a marker unique to
- *  it (absent from the permission dialog and other selection menus), used to disambiguate. */
-const CLI_QUESTION_AFFORDANCE_RE = /Chat about this/i;
-
-// ANSI/control matchers for the dialog *state* strip below. Control chars are
-// intentional (we are literally stripping terminal escapes), so no-control-regex
-// is disabled per-pattern — the same convention as gitController / harness* services.
-// eslint-disable-next-line no-control-regex -- OSC … BEL/ST
-const ANSI_OSC_RE = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
-// eslint-disable-next-line no-control-regex -- 2-byte Fe escapes
-const ANSI_FE_RE = /\x1b[@-Z\\-_]/g;
-// eslint-disable-next-line no-control-regex -- CSI … final byte
-const ANSI_CSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
-// eslint-disable-next-line no-control-regex -- stray C0 control bytes (keep \t \n)
-const CTRL_BYTES_RE = /[\x00-\x08\x0b-\x1f]/g;
-
-/** Crude ANSI/control strip — for dialog *state* detection only, not content. */
-function stripAnsiForDetect(s: string): string {
-  return s.replace(ANSI_OSC_RE, '').replace(ANSI_FE_RE, '').replace(ANSI_CSI_RE, '').replace(CTRL_BYTES_RE, ' ');
-}
-
-/**
- * Generation-progress signal (Story 32.7; token data source moved to the screen grid in
- * Story 37.2). During generation the ONLY real-time PTY signal is the spinner's
- * "↓ N tokens" counter + elapsed seconds (spike §4.7) — an ANSI *state* signal
- * (§7.1-sanctioned, the same channel as the `❯` readiness marker and the permission
- * dialog), version-fragile (a TUI revision could change the wording), and never a
- * content source (token *text* streaming stays impossible — §4.5/§9-2; SDK mode keeps
- * real streaming). Verified against a real PTY (claude v2.1.162 — Story 32.7 Task 1):
- * "Moseying… (9s · ↓ 365 tokens · thinking with high effort)" and the counter-only
- * "↓ 246 tokens" form.
- *
- * The token count is now read from the *settled screen grid* (`readSpinnerProgress`):
- * the headless model overwrites the spinner cell in place, so fusion ("365" + "366" →
- * "365366") is structurally impossible and the old linear-scan fusion guards (digit cap
- * `CLI_PROGRESS_MAX_TOKENS`, malformed-grouping, implausible-jump) and the linear regex
- * `CLI_PROGRESS_RE` were dropped (they lost their only consumer). `progressBuffer` below
- * is now dormant — progress-only, with no consumer after Story 37.2 — kept for a clean
- * single-story revert and bulk removal in Story 37.4.
- */
-/** Rolling stripped-PTY buffer cap (dormant progress skeleton — removed in Story 37.4). */
-const CLI_PROGRESS_BUFFER_CAP = 2048;
-
-/**
- * Conservative permission-dialog matcher. Requires a permission-specific phrase
- * AND the fully-rendered footer ("Esc to cancel" / "Tab to amend") so a half-drawn
- * dialog, a spinner, or the echoed prompt can never match — a false positive would
- * inject a stray Enter/Esc and corrupt the session. The dialog chrome renders in
- * English regardless of the model's reply language (observed), but a future TUI
- * revision could change these strings (documented version-fragility).
- */
-function detectPermissionDialog(text: string): boolean {
-  const hasPermPhrase =
-    /Yes,\s*allow all edits/i.test(text) ||
-    /Do you want to (?:create|make|write|edit|update|apply|run|execute|read|proceed|allow)/i.test(text);
-  const hasFooter = /Esc\b[^\n]{0,16}\bcancel\b/i.test(text) || /Tab\b[^\n]{0,16}\bamend\b/i.test(text);
-  return hasPermPhrase && hasFooter;
-}
-
-/**
- * Detect the subscription **usage-limit exhaustion** notice on the PTY screen and return its
- * scraped sentence (else null). Why this exists: the interactive TUI prints "You've hit your
- * weekly limit · resets 1am (Asia/Seoul)" ONLY on screen — it is NEVER written to the session
- * JSONL — so the JSONL watch (how every other turn-completion is detected) never sees it and the
- * turn would otherwise hang forever waiting for an `end_turn` that never comes. Detecting it lets
- * the engine fail fast with the exact message claude showed (including the reset time).
- *
- * Conservative by construction so it can never stop a healthy turn:
- *   - requires an exhaustion verb (hit/reached/exceeded) OR "<window> limit reached",
- *   - requires an explicit window qualifier (weekly / 5-hour / daily / usage / session),
- *   - requires a nearby "reset" clause (the real notice always has one),
- *   - and explicitly EXCLUDES the still-usable percentage warning ("used 97% of your weekly
- *     limit") — at 97% generation continues, so that must NOT stop the turn.
- * Version-fragile (a TUI revision could reword these) — the same documented constraint as the
- * permission/question detectors, which also read PTY *state*.
- */
-function detectUsageLimit(text: string): string | null {
-  const m = text.match(
-    /(?:hit|reached|exceeded)\s+your\s+(?:weekly|5-hour|daily|usage|session)\s+limit\b[^\n]{0,60}|(?:weekly|usage|5-hour|daily|session)\s+limit\s+(?:reached|exceeded)\b[^\n]{0,60}/i,
-  );
-  if (!m) return null;
-  if (/\bused\s+\d+\s*%/i.test(m[0])) return null; // percentage warning — still usable, don't stop
-  if (!/\breset/i.test(m[0])) return null; // require the reset clause for confidence
-  return m[0].replace(/\s{2,}/g, ' ').trim().slice(0, 160);
-}
-
-/**
- * Best-effort tool name from the dialog's question verb (ANSI scrape — low
- * fidelity; the structured tool name is not in the JSONL until after approval).
- */
-function extractToolName(text: string): string {
-  const verb = (text.match(/Do you want to (\w+)/i)?.[1] ?? '').toLowerCase();
-  if (/^(create|write|make)$/.test(verb)) return 'Write';
-  if (/^(edit|update|apply|modify|change)$/.test(verb)) return 'Edit';
-  if (/^(run|execute)$/.test(verb)) return 'Bash';
-  if (/^(read|view)$/.test(verb)) return 'Read';
-  if (/^(fetch|access)$/.test(verb)) return 'WebFetch';
-  // Secondary hint: the tool header line "● Write(…)".
-  return text.match(/[●·]\s*([A-Z][a-zA-Z]+)\s*\(/)?.[1] ?? 'Tool';
-}
-
-/** Best-effort human-readable prompt sentence (the dialog's own words). */
-function extractPromptSentence(text: string): string {
-  return (text.match(/Do you want to [^?\n]{1,160}\?/i)?.[0] ?? 'Claude is requesting tool permission').trim();
-}
-
-/** A single scraped AskUserQuestion choice (Story 32.8 — single-question scope). */
-interface ParsedQuestion {
-  question: string;
-  header?: string;
-  multiSelect: boolean;
-  options: Array<{ label: string }>;
-}
-
-/**
- * Conservative AskUserQuestion-modal matcher (Story 32.8). Requires the selection footer
- * ("Enter to select" + "↑/↓ to navigate") AND the auto-appended "Chat about this"
- * affordance — together unique to the question modal and absent from a permission dialog
- * ("Do you want to…" / "Yes, allow all edits", which has no list navigation) and from
- * ordinary output, so neither can false-trigger a stray keypress. `detectPermissionDialog`
- * is checked first and is mutually exclusive (it needs a permission phrase this modal lacks;
- * this needs "to navigate" the dialog lacks), so the two never cross-fire. Version-fragile
- * (a TUI revision could reword these) — the documented constrained surface.
- */
-function detectQuestionModal(text: string): boolean {
-  const hasNavFooter = /Enter\b[^\n]{0,12}\bselect\b/i.test(text) && /to\s+navigate/i.test(text);
-  return hasNavFooter && CLI_QUESTION_AFFORDANCE_RE.test(text);
-}
-
-/**
- * Scrape one question + its options from the modal's ANSI *state* (Story 32.8 — low
- * fidelity, the documented constraint). Reads the LAST modal render (from its header tab
- * to the footer) so earlier spinner frames are excluded, and keeps the last label seen per
- * option number (the rolling buffer repeats the modal). Returns null when it cannot build a
- * usable *single*-question structure — no options, or a **multi-question** tabbed modal
- * (more than one header ballot-box tab) which this constrained bridge does not drive (the
- * caller then cancels with Esc). Crucially the scrape order equals the modal row order,
- * which equals the ↓-count used to drive the answer, so the option↔index mapping is
- * self-consistent even when a label's text is imperfectly captured.
- */
-function parseQuestionModal(buf: string): ParsedQuestion | null {
-  // Strip terminal box-drawing / block glyphs (─ │ ┌ ▏ …, U+2500–U+259F) the TUI draws around the
-  // modal. The row scrape catches them but they are chrome, never part of an answer label — they
-  // are exactly the "│"-laden and "──────"-stretched labels seen in the bug report. Collapse each
-  // run to a single space, then trim (a row that was ONLY chrome collapses to '' and is dropped).
-  const stripBoxChrome = (s: string): string =>
-    s.replace(/[─-▟]/g, ' ').replace(/\s{2,}/g, ' ').trim();
-  const navIdx = buf.lastIndexOf('to navigate');
-  if (navIdx < 0) return null;
-  const region = buf.slice(Math.max(0, navIdx - 2500), navIdx);
-  // Multi-question modals show >1 ballot-box tab in the header (☐ Q1 ☐ Q2 ✔ Submit) — not
-  // a single round-trip, so guard rather than half-answer.
-  if ((region.match(/[☐☒]/g) || []).length > 1) return null;
-  const multiSelect = /\[\s*[✔x ]?\s*\]/.test(region); // [ ] / [✔] checkboxes ⇒ multiSelect
-  // Numbered option rows; last label wins per number, then order by number.
-  const byNum = new Map<number, string>();
-  for (const m of region.matchAll(/(\d{1,2})\.\s+(?:\[[✔x ]?\s*\]\s*)?([^\n]*\S)/g)) {
-    byNum.set(parseInt(m[1], 10), stripBoxChrome(m[2]));
-  }
-  const options = [...byNum.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map((e) => e[1])
-    // Drop rows that were ONLY box-drawing chrome (empty after stripBoxChrome) and the
-    // auto-appended affordance rows — none of these are real answer options.
-    .filter((l) => l.length > 0)
-    .filter((l) => !/^Type something\.?$/i.test(l) && !/^Chat about this\.?$/i.test(l))
-    .map((label) => ({ label }));
-  if (options.length === 0) return null;
-  const headerMatch = region.match(/[☐☒]\s*([^✔→\n]+?)(?:\s{2,}|\n|$)/);
-  const header = headerMatch ? headerMatch[1].trim() : undefined;
-  // Question = the last meaningful line between the header tab and the first option
-  // (best-effort; the question may not end in '?' — e.g. "Which pets? Choose any.").
-  // Strip tab/cursor glyphs and drop the header line itself.
-  const question = (
-    region
-      .slice(0, Math.max(0, region.search(/\d{1,2}\.\s/)))
-      .split('\n')
-      .map((l) => stripBoxChrome(l.replace(/[←→✔☐☒❯]/g, '')))
-      .filter((l) => l && l !== header)
-      .pop() ??
-    header ??
-    'Claude is asking a question'
-  ).trim();
-  return { question, header, multiSelect, options };
-}
 
 /** Best-effort dump of the pre-injection PTY screen (raw, ANSI intact) — observe-only material for the
  *  Epic 37.6 grid classifier. NOT used to block injection: linear scrape can't tell the live input box
@@ -450,56 +269,6 @@ function capturePreInjectScreen(sessionId: string | null, raw: string): string |
 /** Normalize text to a whitespace-free lowercase key for the preceding-text dedup fingerprint. */
 function normalizeForFp(s: string): string {
   return s.replace(/\s+/g, '').toLowerCase();
-}
-
-/**
- * Scrape the assistant prose the TUI rendered ABOVE the question modal (the explanation that
- * leads into the choices), else null. Why this exists (ordering fix): that prose and the
- * AskUserQuestion are flushed to the session JSONL only AFTER the user answers (the whole
- * assistant message lands post-selection — verified), while the question CARD is shown the moment
- * the modal is detected on screen. So reading the prose from the file always puts it AFTER the
- * card ("선택지 누른 뒤에 설명이 나온다"). The screen is the ONLY pre-answer source, so we scrape
- * it and emit it first. Best-effort and lossy (collapsed to one line, may catch nothing) — the
- * turn-end reload replaces it with the authoritative JSONL copy; the caller dedups the matching
- * JSONL block's live re-emit.
- *
- * Reads the same modal region as parseQuestionModal: it slices back from the footer, finds where
- * the modal itself begins (the header ballot-box tab ☐/☒, or the line above the first numbered
- * option), and returns the trailing contiguous block of prose lines above it (box chrome stripped,
- * option/footer/affordance lines excluded). Returns null for a trivial fragment so a bare modal
- * with no lead-in prose never emits scrape noise.
- */
-function parsePrecedingText(buf: string): string | null {
-  const navIdx = buf.lastIndexOf('to navigate');
-  if (navIdx < 0) return null;
-  const region = buf.slice(Math.max(0, navIdx - 3000), navIdx);
-  let modalStart = region.search(/[☐☒]/);
-  if (modalStart < 0) {
-    const firstOpt = region.search(/\n\s*1\.\s/);
-    modalStart = firstOpt < 0 ? -1 : region.lastIndexOf('\n', firstOpt - 1);
-  }
-  if (modalStart <= 0) return null;
-  const isNoise = (l: string): boolean =>
-    l.length === 0 ||
-    /^[\s─-▟]*$/.test(l) || // blank or pure box-drawing chrome
-    /^\d{1,2}\.\s/.test(l) || // a numbered option row
-    /❯/.test(l) || // cursor / prompt marker
-    /to\s+navigate|Enter\b[^\n]{0,12}\bselect\b|Esc\b[^\n]{0,16}\bcancel\b/i.test(l) ||
-    /Chat about this|Type something/i.test(l);
-  const lines = region
-    .slice(0, modalStart)
-    .split('\n')
-    .map((l) => l.replace(/[─-▟]/g, ' ').replace(/\s{2,}/g, ' ').trim());
-  const prose: string[] = [];
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (isNoise(lines[i])) {
-      if (prose.length > 0) break; // stop at the first noise line above the prose block
-      continue; // skip trailing noise between the prose and the modal
-    }
-    prose.unshift(lines[i]);
-  }
-  const text = prose.join(' ').trim();
-  return text.length < 16 ? null : text.slice(0, 2000);
 }
 
 /**
@@ -874,8 +643,9 @@ export class CliChatEngine implements ChatEngine {
       let bootSettleTimer: ReturnType<typeof setTimeout> | null = null;
       let bootFallbackTimer: ReturnType<typeof setTimeout> | null = null;
       let submitTimer: ReturnType<typeof setTimeout> | null = null;
-      // Permission-dialog state (Story 32.6 — post-injection only).
-      let dialogBuffer = ''; // rolling stripped PTY output, scanned for the dialog
+      // Permission-dialog state (Story 32.6 — post-injection only). Story 37.4: detection reads
+      // the settled screen grid (no rolling buffer); `permissionPending` is the per-modal re-fire
+      // guard that the old buffer-clear consume used to provide.
       let permissionPending = false; // guards re-entry while awaiting the user's decision
       let permCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-approval)
       // Live tool-card state (Story 32.9 — post-injection only).
@@ -893,9 +663,9 @@ export class CliChatEngine implements ChatEngine {
       // tool_use ids whose tool_result was already emitted (the drain re-parses the whole
       // file as it grows; this dedups so a result is mirrored exactly once).
       const resultEmittedToolIds = new Set<string>();
-      // AskUserQuestion-modal state (Story 32.8 — post-injection only; SEPARATE buffer from
-      // the permission path so the verified 32.6 detection is byte-for-byte untouched).
-      let questionBuffer = ''; // rolling stripped PTY output, scanned for the question modal
+      // AskUserQuestion-modal state (Story 32.8 — post-injection only). Story 37.4: detection
+      // reads the settled grid; `questionPending` is the per-modal re-fire guard (replacing the
+      // old buffer-clear consume), held across the settle timer + the round-trip.
       let questionPending = false; // guards re-entry while awaiting the user's answer
       let questionSettleTimer: ReturnType<typeof setTimeout> | null = null; // modal paint settle
       let questionCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-answer)
@@ -903,15 +673,15 @@ export class CliChatEngine implements ChatEngine {
       // in the JSONL until post-answer), this holds a normalized prefix of it so the matching
       // JSONL text block's live re-emit is suppressed (no transient duplicate; reload is authoritative).
       let scrapedPrecedingFingerprint: string | null = null;
-      // Usage-limit notice scan buffer (POST-INJECTION only — see the onData handler). The limit
-      // shows only on the PTY, never in the JSONL, so without this the turn would hang waiting for
-      // an end_turn that never arrives. Scanning is deferred until after prompt injection so the
+      // Usage-limit notice state (POST-INJECTION only — see the onData handler). The limit shows
+      // only on the PTY, never in the JSONL, so without detection the turn would hang waiting for
+      // an end_turn that never arrives. Detection is deferred until after prompt injection so the
       // resumed-transcript repaint (which may merely *quote* the banner) cannot false-trigger it.
-      let limitBuffer = '';
+      // Story 37.4: read from the settled grid; a refuted scrape is simply ignored every frame
+      // (idempotent) and logged once — no buffer to clear.
       let limitFalsePositiveLogged = false; // log a refuted (usage-contradicted) scrape once per turn
 
-      // Generation-progress state (Story 32.7 — post-injection only).
-      let progressBuffer = ''; // dormant since Story 37.2 (token source = screen grid) — removed in 37.4
+      // Generation-progress state (Story 32.7 — post-injection only; token source = screen grid, 37.2).
       let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
       // Story 36.2: the phase indicator ends once generation actually starts (first
       // progress counter). Idempotent — only the first call emits the null hand-off.
@@ -1209,14 +979,119 @@ export class CliChatEngine implements ChatEngine {
        *     HERE at emit time — no stray emit after finish/abort;
        *   - `clearPhase`: the first counter ends the phase indicator (idempotent).
        */
-      const emitProgressFromGrid = (): void => {
+      const emitProgressFromGrid = (grid: string[]): void => {
         if (settled || !onGenerationProgress) return; // async — re-check at emit time
-        const progress = readSpinnerProgress(screen.readGrid());
+        const progress = readSpinnerProgress(grid);
         if (!progress) return; // no counter row → don't emit a phantom 0
         if (progress.tokens === lastProgressTokens) return; // change-only throttle
         lastProgressTokens = progress.tokens;
         clearPhase(); // spinner counter appeared → generation started; end the phase indicator
         onGenerationProgress({ tokens: progress.tokens, elapsedSeconds: progress.elapsedSeconds });
+      };
+
+      /**
+       * Story 37.4: ALL post-injection screen consumers (generation progress 32.7/37.2/37.3,
+       * usage limit, permission modal 32.6, question modal 32.8) read ONE settled grid per frame.
+       * `screen.write` is unconditional but async/buffered, so the onData handler schedules a single
+       * non-blocking `void screen.flush().then(consumeSettledGrid)`; this reads the settled grid once
+       * and runs every (independent) detector against it. Replaces the deleted linear `stripAnsiForDetect`
+       * + per-detector rolling buffers — the grid is the sole extraction path.
+       *
+       * Async, so `settled` is re-checked HERE (post finish/abort no stray work). The per-modal
+       * re-fire guard is now the `permissionPending` / `questionPending` flag (the old buffer-clear
+       * consume is impossible on a *living* screen — the modal stays visible every frame until the
+       * key is driven, so the flag, not an empty buffer, bounds it to one handling per modal).
+       */
+      const consumeSettledGrid = (): void => {
+        if (settled) return; // async — re-check at read time (no stray emit/detect after finish/abort)
+        const grid = screen.readGrid();
+        const text = grid.join('\n'); // = readScreenText(): line-spanning existence detectors
+
+        // (1) Generation progress (Story 32.7 / 37.2 token source / 37.3 elapsed). Gated on the
+        // callback (queue path omits it). The grid overwrites the spinner cell in place → no fusion.
+        if (onGenerationProgress) emitProgressFromGrid(grid);
+
+        // (2) Usage-limit exhaustion (POST-INJECTION ONLY — this runs only because consumeSettledGrid
+        // is scheduled after injection). The "You've hit your weekly limit · resets …" notice lives
+        // ONLY on screen, never in the JSONL, so without detection the turn hangs waiting for an
+        // end_turn that never comes. Guards: the OAuth-usage corroboration (a real block sits at ~100%
+        // on some window; if every window has headroom the on-screen text is content, not a notice →
+        // ignore, log once), and the percentage-warning exclusion (inside detectUsageLimit). A refuted
+        // scrape stays on the living screen but is simply ignored every frame (idempotent) — no buffer
+        // to clear. Coded RATE_LIMIT_EXCEEDED so parseSDKError forwards the message verbatim and the
+        // resume-retry path skips it (no pointless respawn into the same wall).
+        //
+        // ★ Story 37.4 settled-gate decision (deliberate, not accidental): folding this into the shared
+        // post-flush block puts it behind the `if (settled) return` above — a usage limit is a signal to
+        // END the turn fast, but if the turn is already settled (finish/abort) there is no turn left to
+        // end, so detecting the limit then is meaningless. This implicit gate is adopted as harmless
+        // HARDENING (it prevents a stray post-settle fail), NOT a behavior regression; corroboration,
+        // POST-INJECTION scoping, and the once-log are all preserved.
+        const limitMsg = detectUsageLimit(text);
+        if (limitMsg) {
+          if (rateLimitProbeService.isLimitCorroborated()) {
+            fail(new SDKError(limitMsg, SDKErrorCode.RATE_LIMIT_EXCEEDED));
+            return;
+          }
+          if (!limitFalsePositiveLogged) {
+            limitFalsePositiveLogged = true;
+            log.info(
+              'CLI: ignoring scraped usage-limit notice — real usage shows headroom (false positive): %s',
+              limitMsg,
+            );
+          }
+        }
+
+        // (3) Permission modal (Story 32.6). `permissionPending` is the per-modal re-fire guard: set
+        // true on detection, cleared once handlePermission resolves (key driven). The dialog stays on
+        // the living screen every frame until then, so the flag (not a buffer clear) bounds it to once.
+        if (canUseTool && !permissionPending && detectPermissionDialog(text)) {
+          permissionPending = true;
+          const toolName = extractToolName(text);
+          const sentence = extractPromptSentence(text);
+          handlePermission(toolName, sentence, `cli-perm-${++permCounter}`);
+          // Story 32.9: this tool's tool_use block (written only AFTER the decision — 32.6 Task 1;
+          // allow AND deny both record one block — verified) must NOT be live-emitted, or its real-id
+          // card would split from the standalone permission card above. Mark one block for suppression;
+          // the dialog always precedes the block (claude blocks on the prompt), so the counter is set
+          // before the drain sees it.
+          permissionGatedToolsPending++;
+        }
+
+        // (4) AskUserQuestion modal (Story 32.8). Mutually exclusive with the permission path above
+        // (checked first; the two detectors require disjoint signatures, so they never cross-fire).
+        // `questionPending` is the per-modal re-fire guard, held across the settle timer + round-trip.
+        if (canUseTool && !permissionPending && !questionPending && detectQuestionModal(text)) {
+          questionPending = true;
+          // Let the modal finish painting (the footer first appearing does not mean every option row is
+          // drawn yet). When the timer FIRES, re-flush and re-read the grid: the modal is fully painted
+          // *at fire time*, so parse the freshest settled grid — NOT a half-drawn snapshot captured at
+          // detection. The re-read is async too, so re-check `settled` / `questionPending` once more (the
+          // last line of defense against an abort landing during the settle window).
+          questionSettleTimer = setTimeout(() => {
+            questionSettleTimer = null;
+            void screen.flush().then(() => {
+              if (settled || !questionPending) return;
+              const freshGrid = screen.readGrid();
+              const parsed = parseQuestionModal(freshGrid);
+              // Ordering fix: emit the prose rendered ABOVE the modal BEFORE the question card. The
+              // JSONL copy of this prose is flushed only after the answer (too late), so the screen is
+              // the only pre-answer source. Lossy/best-effort; the matching JSONL block's live re-emit
+              // is deduped in handleAssistantLine, and the turn-end reload is authoritative.
+              const pre = parsePrecedingText(freshGrid);
+              if (pre && !settled) {
+                callbacks.onTextChunk?.({
+                  sessionId: resolvedSessionId ?? '',
+                  messageId: `cli-pre-${questionCounter}`,
+                  content: pre,
+                  done: false,
+                });
+                scrapedPrecedingFingerprint = normalizeForFp(pre).slice(0, 24) || null;
+              }
+              handleQuestion(parsed, `cli-q-${++questionCounter}`);
+            });
+          }, CLI_QUESTION_SETTLE_MS);
+        }
       };
 
       // S-1 heartbeat: during generation the session JSONL is silent until a block
@@ -1259,11 +1134,13 @@ export class CliChatEngine implements ChatEngine {
           }
         }
         // Live mirror passthrough (onPtyRaw) — a pure observer of the UNMODIFIED frame
-        // (raw, ANSI intact). It never alters the state-signal scrapes (progress / dialog
-        // / question) below; gated upstream by the cliPtyMirror preference.
+        // (raw, ANSI intact). It never alters the grid-based state detection (progress /
+        // limit / dialog / question) below; gated upstream by the cliPtyMirror preference.
         onPtyRaw?.(data);
         // Pre-injection (boot/resume): accumulate output until the ❯ readiness marker, then inject.
-        // The usage-limit scan deliberately does NOT run here — see the post-injection block below.
+        // The grid detectors deliberately do NOT run here — consumeSettledGrid is post-injection only,
+        // which is what excludes the resumed-transcript repaint (a merely-quoted limit banner / a
+        // quoted "❯ 1. …" menu) from false-triggering.
         if (!injected) {
           bootBuffer += data;
           if (bootBuffer.includes(CLI_PROMPT_MARKER)) {
@@ -1273,106 +1150,12 @@ export class CliChatEngine implements ChatEngine {
           }
           return;
         }
-        // Strip ANSI once per frame — reused by the usage-limit scan and the other post-injection
-        // state signals (progress / dialog / question) below.
-        const stripped = stripAnsiForDetect(data);
-        // Usage-limit exhaustion (POST-INJECTION ONLY — root-cause fix for a false positive). The
-        // "You've hit your weekly limit · resets …" notice lives ONLY on the PTY screen — never in
-        // the JSONL — so without this scan the turn would hang waiting for an end_turn that never
-        // comes. BUT the SAME words also paint on screen when `claude --resume` repaints prior
-        // conversation that merely *quoted* the banner (e.g. the very session this feature was
-        // built in), and the scrape cannot tell content from a live notice. That repaint happens
-        // BEFORE injection, whereas the genuine notice only appears once THIS turn attempts
-        // generation (after injection) — so scanning solely post-injection excludes the stale
-        // repaint. Second guard: cross-check the authoritative OAuth usage numbers (already polled
-        // every 2min). A real block sits at ~100% on some window, so if every window has headroom
-        // the on-screen text is content, not a limit → ignore it. Coded RATE_LIMIT_EXCEEDED so
-        // parseSDKError forwards the message verbatim AND the resume-retry path skips it (no
-        // pointless respawn into the same wall, which would only burn more quota).
-        limitBuffer = (limitBuffer + stripped).slice(-CLI_LIMIT_BUFFER_CAP);
-        const limitMsg = detectUsageLimit(limitBuffer);
-        if (limitMsg) {
-          if (rateLimitProbeService.isLimitCorroborated()) {
-            fail(new SDKError(limitMsg, SDKErrorCode.RATE_LIMIT_EXCEEDED));
-            return;
-          }
-          // Refuted by real usage data → the on-screen text is content, not a notice. Drop the
-          // buffer so the same screen text cannot re-match every subsequent frame, log once, and
-          // let the normal JSONL end_turn complete the turn.
-          if (!limitFalsePositiveLogged) {
-            limitFalsePositiveLogged = true;
-            log.info(
-              'CLI: ignoring scraped usage-limit notice — real usage shows headroom (false positive): %s',
-              limitMsg,
-            );
-          }
-          limitBuffer = '';
-        }
-        // Post-injection: reuse `stripped` for two *state* signals — generation progress
-        // (32.7) and permission dialog (32.6). They are independent (progress is always
-        // useful; the dialog branch needs canUseTool), and they co-exist per §7.1 (both are
-        // PTY state, never content).
-        // Generation progress (Story 32.7; Story 37.2: token source = screen grid).
-        // `screen.write` above is unconditional but async/buffered, so read a *settled*
-        // grid only after `flush()` resolves; schedule it non-blocking (`void …then`) to
-        // keep the hot path clear — the change-only throttle absorbs any async ordering.
-        // The `progressBuffer` accumulation below is now dormant (progress-only, no
-        // consumer after this story) — kept for a clean single-story revert; its removal
-        // is Story 37.4.
-        if (onGenerationProgress) {
-          progressBuffer = (progressBuffer + stripped).slice(-CLI_PROGRESS_BUFFER_CAP);
-          void screen.flush().then(emitProgressFromGrid);
-        }
-        // Permission modal (Story 32.6): scan a rolling stripped buffer for the dialog.
-        if (canUseTool && !permissionPending) {
-          dialogBuffer = (dialogBuffer + stripped).slice(-CLI_DIALOG_BUFFER_CAP);
-          if (detectPermissionDialog(dialogBuffer)) {
-            permissionPending = true;
-            const toolName = extractToolName(dialogBuffer);
-            const sentence = extractPromptSentence(dialogBuffer);
-            dialogBuffer = ''; // consume — don't re-match the same dialog text
-            handlePermission(toolName, sentence, `cli-perm-${++permCounter}`);
-            // Story 32.9: this tool's tool_use block (written only AFTER the decision —
-            // 32.6 Task 1; allow AND deny both record one block — verified) must NOT be
-            // live-emitted, or its real-id card would split from the standalone permission
-            // card above. Mark one block for suppression; the dialog always precedes the
-            // block (claude blocks on the prompt), so the counter is set before the drain
-            // sees it.
-            permissionGatedToolsPending++;
-          }
-        }
-        // AskUserQuestion modal (Story 32.8): a SEPARATE rolling buffer + guard so the
-        // verified 32.6 permission path above stays byte-for-byte untouched. Rolling is
-        // gated on !questionPending so the buffer freezes at detection (the full modal —
-        // the footer marker implies a finished paint) and the same modal cannot re-fire
-        // after it is answered. The settle delay then lets the on-screen modal stabilize
-        // before keys are driven into it.
-        if (canUseTool && !permissionPending && !questionPending) {
-          questionBuffer = (questionBuffer + stripped).slice(-CLI_DIALOG_BUFFER_CAP);
-          if (detectQuestionModal(questionBuffer)) {
-            questionPending = true;
-            questionSettleTimer = setTimeout(() => {
-              questionSettleTimer = null;
-              const parsed = parseQuestionModal(questionBuffer);
-              // Ordering fix: emit the prose rendered ABOVE the modal BEFORE the question card.
-              // The JSONL copy of this prose is flushed only after the answer (too late), so the
-              // screen is the only pre-answer source. Lossy/best-effort; the matching JSONL block's
-              // live re-emit is deduped in handleAssistantLine, and the turn-end reload is authoritative.
-              const pre = parsePrecedingText(questionBuffer);
-              if (pre && !settled) {
-                callbacks.onTextChunk?.({
-                  sessionId: resolvedSessionId ?? '',
-                  messageId: `cli-pre-${questionCounter}`,
-                  content: pre,
-                  done: false,
-                });
-                scrapedPrecedingFingerprint = normalizeForFp(pre).slice(0, 24) || null;
-              }
-              questionBuffer = ''; // consume — don't re-match the same modal text
-              handleQuestion(parsed, `cli-q-${++questionCounter}`);
-            }, CLI_QUESTION_SETTLE_MS);
-          }
-        }
+        // Story 37.4: one settled grid read per frame feeds EVERY post-injection consumer (progress /
+        // usage limit / permission / question). `screen.write` above is unconditional but async/buffered,
+        // so the grid is only definitive after `flush()` resolves — schedule it non-blocking (`void …then`)
+        // to keep the hot path clear. The deleted linear `stripAnsiForDetect` + rolling buffers are gone;
+        // the grid is the sole extraction path.
+        void screen.flush().then(consumeSettledGrid);
       });
 
       pty.onExit(({ exitCode }) => {
