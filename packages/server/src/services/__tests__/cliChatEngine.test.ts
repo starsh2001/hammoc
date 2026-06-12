@@ -753,6 +753,72 @@ describe('CliChatEngine', () => {
     ]);
     const INPUT_BOX = drawModal([' ❯ ', ' ? for shortcuts']);
 
+    // A resume CONFIRM-style menu (claude's "summary vs full session" prompt shown when resuming a
+    // long-idle session). Unlike SELECTION_MENU it carries an "Enter to confirm" footer, so
+    // parseConfirmChoiceMenu drives it through the card instead of Esc-cancelling (Story 37.6 follow-up).
+    const RESUME_CONFIRM_MENU = drawModal([
+      ' This session is 7h 58m old and 165.1k tokens.',
+      ' Resuming the full session will consume a substantial portion of your usage limits.',
+      ' ❯ 1. Resume from summary (recommended)',
+      '   2. Resume full session as-is',
+      "   3. Don't ask me again",
+      ' Enter to confirm · Esc to cancel',
+    ]);
+
+    it('routes a resume confirm menu to the card and injects the picked option keys (cliResumeChoice=ask)', async () => {
+      const canUseTool = vi.fn().mockResolvedValue({
+        behavior: 'allow',
+        updatedInput: { answers: { q: 'Resume full session as-is' } }, // option 2 → index 1 → one ↓
+      });
+      const engine = new CliChatEngine({ workingDirectory: '/proj' }); // default cliResumeChoice = 'ask'
+      const promise = engine.sendMessageWithCallbacks(
+        'my real prompt',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        canUseTool,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.(RESUME_CONFIRM_MENU);
+
+      // The menu is shown as a CARD (canUseTool), never blind-Esc'd.
+      await vi.waitFor(
+        () => expect(canUseTool).toHaveBeenCalledWith('AskUserQuestion', expect.anything(), expect.anything()),
+        { timeout: 2000 },
+      );
+      // The picked option (index 1) drives at least one ↓ into the menu.
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b[B'), { timeout: 2000 });
+
+      // Menu answered → claude repaints the input box → the prompt injects normally.
+      h.fakePty._onData?.(INPUT_BOX);
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('my real prompt'), { timeout: 2000 });
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('auto-picks the configured option WITHOUT a card (cliResumeChoice=full)', async () => {
+      const canUseTool = vi.fn();
+      const engine = new CliChatEngine({ workingDirectory: '/proj', cliResumeChoice: 'full' });
+      const promise = engine.sendMessageWithCallbacks(
+        'my real prompt',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        canUseTool,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.(RESUME_CONFIRM_MENU);
+
+      // No card — the setting auto-selects "full" (option 2 → index 1): at least one ↓ into the menu.
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b[B'), { timeout: 2000 });
+      expect(canUseTool).not.toHaveBeenCalled();
+
+      h.fakePty._onData?.(INPUT_BOX);
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('my real prompt'), { timeout: 2000 });
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
     it('does NOT inject (Enter 0) on a selection menu — sends exactly one Esc to recover (AC2/AC4)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks(

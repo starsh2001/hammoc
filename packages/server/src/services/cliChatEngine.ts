@@ -94,6 +94,7 @@ import {
   extractPromptSentence,
   detectQuestionModal,
   parseQuestionModal,
+  parseConfirmChoiceMenu,
   parsePrecedingText,
   readPermissionMode,
   permissionModeCycleIndex,
@@ -342,6 +343,16 @@ function buildQuestionKeys(parsed: ParsedQuestion, answer: string | string[] | u
   return keys;
 }
 
+/** Map the cliResumeChoice auto-pick ('summary' | 'full') to the matching resume-menu option label.
+ *  Match by keyword on claude's wording ("Resume from summary …" / "Resume full session as-is"),
+ *  falling back to position (summary first, full second) when the wording shifts across versions. */
+function pickAutoResumeOption(options: { label: string }[], choice: 'summary' | 'full'): string | undefined {
+  const kw = choice === 'summary' ? /summary/i : /full/i;
+  const byKeyword = options.find((o) => kw.test(o.label));
+  if (byKeyword) return byKeyword.label;
+  return options[choice === 'summary' ? 0 : 1]?.label;
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -444,6 +455,8 @@ export class CliChatEngine implements ChatEngine {
    * to surface thinking, so this is expected to work).
    */
   private cliShowThinkingSummaries: boolean;
+  // Epic 37.6 follow-up: auto-pick for the resume confirm menu ('ask' = card, else auto-select).
+  private cliResumeChoice: 'ask' | 'summary' | 'full';
 
   /**
    * CLI mode performs no inline rewind-before-send, so this stays null. (Standalone
@@ -456,6 +469,7 @@ export class CliChatEngine implements ChatEngine {
     this.permissionMode = config.permissionMode ?? 'default';
     this.cliBinaryPath = config.cliBinaryPath;
     this.cliShowThinkingSummaries = config.cliShowThinkingSummaries ?? true;
+    this.cliResumeChoice = config.cliResumeChoice ?? 'ask';
   }
 
   getPermissionMode(): PermissionMode {
@@ -776,6 +790,7 @@ export class CliChatEngine implements ChatEngine {
       let bootFallbackTimer: ReturnType<typeof setTimeout> | null = null;
       let bootRecoverTimer: ReturnType<typeof setTimeout> | null = null; // Story 37.6: post-Esc re-classify timer
       let escRecoveryUsed = false; // Story 37.6: the one-shot Esc selection-menu recovery (no key hammering)
+      let choiceMenuHandled = false; // Story 37.6 follow-up: one-shot handoff of a drivable confirm menu (resume prompt)
       let submitTimer: ReturnType<typeof setTimeout> | null = null;
       // Permission-dialog state (Story 32.6 — post-injection only). Story 37.4: detection reads
       // the settled screen grid (no rolling buffer); `permissionPending` is the per-modal re-fire
@@ -1053,6 +1068,17 @@ export class CliChatEngine implements ChatEngine {
             return;
           }
           if (classification === 'selection') {
+            // Story 37.6 follow-up: a confirm-style choice menu (claude's resume "summary vs full
+            // session" prompt) is DRIVABLE — hand it to the same web card the AskUserQuestion modal
+            // uses, or auto-pick per cliResumeChoice, instead of blind-Esc (which cancelled the
+            // resume and hung the turn — the root cause). One-shot so a mid-round-trip re-render does
+            // not re-fire it; a non-confirm (truly unknown) menu still falls through to Esc recovery.
+            const choiceMenu = parseConfirmChoiceMenu(grid);
+            if (choiceMenu && !choiceMenuHandled) {
+              choiceMenuHandled = true;
+              void driveBootChoiceMenu(choiceMenu);
+              return;
+            }
             // AC2: never inject (an Enter would select the first option). AC4: a recognized menu is
             // safe to cancel with Esc — try ONCE, then re-classify; no key hammering.
             if (!escRecoveryUsed) {
@@ -1089,6 +1115,92 @@ export class CliChatEngine implements ChatEngine {
           if (isFinal)
             failUnready('pre-injection screen is neither an input box nor a recognized selection menu', grid, classification);
         });
+      };
+
+      /**
+       * Story 37.6 follow-up: drive a boot-stage confirm choice menu (claude's resume "summary vs
+       * full session" prompt). cliResumeChoice='ask' (default) shows it via the SAME web card the
+       * AskUserQuestion modal uses and injects the user's pick; 'summary'/'full' auto-selects that
+       * option. Either way `buildQuestionKeys` maps the choice to menu keys (↓×index + Enter). After
+       * the keys land the menu closes and the input box appears, so we re-run the gate to inject the
+       * prompt (the boot ceiling still covers a missed settle). A non-drivable answer (no card
+       * channel, or an unmapped pick) Esc-cancels so the turn stays responsive instead of hanging.
+       */
+      const driveBootChoiceMenu = async (parsed: ParsedQuestion): Promise<void> => {
+        const cancelToStayResponsive = () => {
+          if (!settled) {
+            try {
+              pty.write(CLI_QUESTION_ESC_KEY);
+            } catch {
+              /* PTY may already be gone */
+            }
+          }
+        };
+        let answer: string | string[] | undefined;
+        if (this.cliResumeChoice === 'ask') {
+          // The card is an open-ended user interaction with no boot deadline — clear the boot
+          // fallback/settle timers so the ceiling can't fire mid-card and Esc-cancel the very menu
+          // we're showing (an unanswered card is ended by the user's own abort). Injection is
+          // re-attempted right after the chosen keys land.
+          if (bootFallbackTimer) {
+            clearTimeout(bootFallbackTimer);
+            bootFallbackTimer = null;
+          }
+          if (bootSettleTimer) {
+            clearTimeout(bootSettleTimer);
+            bootSettleTimer = null;
+          }
+          if (bootRecoverTimer) {
+            clearTimeout(bootRecoverTimer);
+            bootRecoverTimer = null;
+          }
+          if (!canUseTool) {
+            cancelToStayResponsive();
+            return;
+          }
+          let result: PermissionResult;
+          try {
+            const signal = options.abortController?.signal ?? new AbortController().signal;
+            result = await canUseTool(
+              'AskUserQuestion',
+              {
+                questions: [
+                  { question: parsed.question, header: parsed.header, multiSelect: parsed.multiSelect, options: parsed.options },
+                ],
+              } as unknown as Record<string, unknown>,
+              { signal, toolUseID: `cli-resume-choice-${resolvedSessionId ?? 'boot'}`, title: parsed.question },
+            );
+          } catch {
+            cancelToStayResponsive();
+            return;
+          }
+          if (settled) return;
+          const answers =
+            result.behavior === 'allow' && result.updatedInput
+              ? ((result.updatedInput as Record<string, unknown>).answers as Record<string, string | string[]> | undefined)
+              : undefined;
+          answer = answers ? (answers[parsed.question] ?? Object.values(answers)[0]) : undefined;
+        } else {
+          // Auto-pick: 'summary' | 'full' → the matching option label (keyword, else position).
+          answer = pickAutoResumeOption(parsed.options, this.cliResumeChoice);
+        }
+        const keys = buildQuestionKeys(parsed, answer);
+        if (!keys) {
+          cancelToStayResponsive();
+          return;
+        }
+        for (const key of keys) {
+          if (settled) return;
+          try {
+            pty.write(key);
+          } catch {
+            return;
+          }
+          await new Promise((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
+        }
+        // Menu answered → claude closes it and paints the input box. Re-run the gate so the prompt
+        // injects on the settled input-box grid (the boot ceiling still covers a missed settle).
+        if (!settled && !injected) attemptInjectFromGrid(false);
       };
 
       /**

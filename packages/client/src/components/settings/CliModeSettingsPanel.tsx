@@ -122,6 +122,31 @@ export function CliModeSettingsPanel() {
           </div>
         )}
 
+        {/* Resume confirm-menu auto-pick (large-session resume) — a 3-way select, not a toggle */}
+        <div>
+          <label htmlFor="cli-resume-choice" className="block text-sm text-gray-900 dark:text-white mb-1">
+            {t('global.cliResumeChoice')}
+          </label>
+          <select
+            id="cli-resume-choice"
+            value={preferences.cliResumeChoice ?? 'ask'}
+            onChange={(e) => {
+              updatePreference('cliResumeChoice', e.target.value as 'ask' | 'summary' | 'full');
+              toast.success(t('toast.settingChanged', { label: t('global.cliResumeChoice') }));
+            }}
+            className="w-full max-w-md px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
+                       bg-white dark:bg-[#263240] text-gray-900 dark:text-white text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ask">{t('global.cliResumeChoiceAsk')}</option>
+            <option value="summary">{t('global.cliResumeChoiceSummary')}</option>
+            <option value="full">{t('global.cliResumeChoiceFull')}</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+            {t('global.cliResumeChoiceDesc')}
+          </p>
+        </div>
+
         {/* Binary path override — debounced text input */}
         <div>
           <label

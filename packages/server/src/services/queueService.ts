@@ -129,7 +129,7 @@ export class QueueService {
     // = auto-detect, graceful).
     this.chatService = createChatEngine(
       await this.projectService.getEffectiveEngineMode(this.workingDirectory),
-      { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath, cliShowThinkingSummaries: prefs?.cliShowThinkingSummaries },
+      { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath, cliShowThinkingSummaries: prefs?.cliShowThinkingSummaries, cliResumeChoice: prefs?.cliResumeChoice },
     );
     this.abortController = new AbortController();
     this.items = items;

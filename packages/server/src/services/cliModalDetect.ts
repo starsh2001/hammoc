@@ -208,6 +208,47 @@ export function parseQuestionModal(rows: string[]): ParsedQuestion | null {
   return { question, header, multiSelect, options };
 }
 
+/** A confirm-style choice menu — e.g. claude's "resume full session vs summary" prompt shown when
+ *  resuming a large/old session. It differs from the AskUserQuestion modal in two ways: the footer
+ *  reads "Enter to confirm · Esc to cancel" (not "↑↓ to navigate · Enter to select") and there is
+ *  no ballot-box header tab. It is still a single-select numbered list, so it returns the SAME
+ *  `ParsedQuestion` shape (multiSelect:false) and the existing web card round-trip + the
+ *  `buildQuestionKeys` driver (↓×index + Enter) handle it verbatim — the boot-stage gate hands a
+ *  detected one to the same card instead of Esc-cancelling it (Story 37.6 follow-up). Kept as a
+ *  SEPARATE parser so the AskUserQuestion path stays byte-for-byte untouched (regression-0). */
+const CLI_CONFIRM_FOOTER_RE = /Enter\b[^\n]{0,16}\bconfirm\b/i;
+
+export function parseConfirmChoiceMenu(rows: string[]): ParsedQuestion | null {
+  // AND-gate: require the live confirm footer alongside the numbered rows (same conservative spirit
+  // as the other detectors — a quoted "Enter to confirm" in scrollback prose, with no numbered
+  // options below it, must not read as a live menu).
+  const footerIdx = lastRowMatching(rows, CLI_CONFIRM_FOOTER_RE);
+  if (footerIdx < 0) return null;
+  const region = rows.slice(0, footerIdx);
+  // Numbered option rows ("❯ 1. …" / "  2. …"), one per row; last label wins per number, ordered by
+  // number. The optional leading "❯" is the highlight cursor on the current row.
+  const byNum = new Map<number, string>();
+  for (const r of region) {
+    const m = r.match(/^\s*[❯>]?\s*(\d{1,2})\.\s+(.*\S)/);
+    if (m) byNum.set(parseInt(m[1], 10), stripBoxChrome(m[2]));
+  }
+  const options = [...byNum.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map((e) => e[1])
+    .filter((l) => l.length > 0)
+    .map((label) => ({ label }));
+  // A real choice needs at least two options (a lone "1." quoted in scrollback is not a live menu).
+  if (options.length < 2) return null;
+  // Question = the trailing prose row above the first numbered option (best-effort, like
+  // parseQuestionModal). The card shows every option regardless, so a weak question is non-fatal.
+  const firstOptIdx = region.findIndex((r) => /^\s*[❯>]?\s*\d{1,2}\.\s/.test(r));
+  const preOption = firstOptIdx > 0 ? region.slice(0, firstOptIdx) : [];
+  const question = (
+    preOption.map((l) => stripBoxChrome(l)).filter((l) => l).pop() ?? 'Claude is asking a question'
+  ).trim();
+  return { question, header: undefined, multiSelect: false, options };
+}
+
 /**
  * Scrape the assistant prose the TUI rendered ABOVE the question modal (the explanation that
  * leads into the choices), else null. Why this exists (ordering fix): that prose and the

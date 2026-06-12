@@ -37,6 +37,11 @@ export interface UserPreferences {
   // engine only when CLI mode is the effective engine (Story 33.3).
   cliShowThinkingSummaries?: boolean;   // surface claude thinking summaries (default ON)
   cliShowGenerationProgress?: boolean;  // show the "↓ N tokens · Ns" indicator (default ON)
+  // Auto-pick for claude's resume confirm menu (shown when resuming a large/old session:
+  // "Resume from summary" vs "Resume full session as-is"). 'ask' (default) routes the menu to
+  // the interactive card so the user chooses; 'summary'/'full' auto-selects that option via the
+  // menu keys so the turn never blocks. CLI mode only. (Story 37.6 follow-up.)
+  cliResumeChoice?: 'ask' | 'summary' | 'full';
   // Master toggle for the CLI-mode "reveal" animation. When ON: assistant text types out
   // char-by-char, then non-text cards (thinking/tool/system) enter one-by-one with a stagger
   // gap, instead of the whole turn appearing at once. CLI mode only; SDK mode and

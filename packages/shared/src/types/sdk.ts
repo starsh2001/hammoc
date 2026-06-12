@@ -26,6 +26,13 @@ export interface ChatServiceConfig {
    * ignores this field (it sets `thinking.display` on the query directly instead).
    */
   cliShowThinkingSummaries?: boolean;
+  /**
+   * Epic 37.6 follow-up (CLI mode): auto-pick for claude's resume confirm menu shown when
+   * resuming a large/old session ("Resume from summary" vs "Resume full session as-is").
+   * 'ask' (default) routes the menu to the web card for the user to choose; 'summary'/'full'
+   * auto-selects that option via the menu keys so the turn never blocks. SDK engine ignores it.
+   */
+  cliResumeChoice?: 'ask' | 'summary' | 'full';
 }
 
 /**

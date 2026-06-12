@@ -24,6 +24,7 @@ import {
   permissionModeCycleIndex,
   isIdleInputGrid,
   classifyPreInjectScreen,
+  parseConfirmChoiceMenu,
   CLI_PERMISSION_MODE_CYCLE,
 } from '../cliModalDetect.js';
 
@@ -338,6 +339,38 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       // ❯ present but an active-generation footer/counter ⇒ isIdleInputGrid is false ⇒ not input-box.
       expect(classifyPreInjectScreen([' ❯ ', '✢ Deliberating…  esc to interrupt'])).toBe('unknown');
       expect(classifyPreInjectScreen([' ❯ ', '✻ Working… (3s · ↓ 42 tokens)'])).toBe('unknown');
+    });
+  });
+
+  describe('parseConfirmChoiceMenu (Story 37.6 follow-up — resume confirm-style menu)', () => {
+    const RESUME_MENU = [
+      '  This session is 7h 58m old and 165.1k tokens.',
+      '  Resuming the full session will consume a substantial portion of your usage limits.',
+      '  ❯ 1. Resume from summary (recommended)',
+      '    2. Resume full session as-is',
+      "    3. Don't ask me again",
+      '  Enter to confirm · Esc to cancel',
+    ];
+
+    it('parses the numbered options as a single-select ParsedQuestion', () => {
+      const parsed = parseConfirmChoiceMenu(RESUME_MENU);
+      expect(parsed).not.toBeNull();
+      expect(parsed!.multiSelect).toBe(false);
+      expect(parsed!.options.map((o) => o.label)).toEqual([
+        'Resume from summary (recommended)',
+        'Resume full session as-is',
+        "Don't ask me again",
+      ]);
+    });
+
+    it('returns null without the confirm footer (quoted scrollback is not a live menu)', () => {
+      expect(
+        parseConfirmChoiceMenu(['  ❯ 1. Resume from summary', '    2. Resume full session as-is']),
+      ).toBeNull();
+    });
+
+    it('returns null for a lone numbered option (a real choice needs ≥2)', () => {
+      expect(parseConfirmChoiceMenu(['  1. Only one', '  Enter to confirm · Esc to cancel'])).toBeNull();
     });
   });
 });
