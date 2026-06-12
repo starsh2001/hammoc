@@ -819,6 +819,28 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
+    it('does NOT card a confirm menu that only flashes by (gone after the re-check) — resumes boot', async () => {
+      const canUseTool = vi.fn();
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'my real prompt',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID },
+        canUseTool,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.(RESUME_CONFIRM_MENU); // menu appears for a flash…
+      h.fakePty._onData?.(INPUT_BOX); // …then the repaint moves on to the input box
+
+      // The persistence re-check re-reads after a delay, sees the input box (not the menu), so NO
+      // card is shown and the prompt injects normally.
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('my real prompt'), { timeout: 3000 });
+      expect(canUseTool).not.toHaveBeenCalled();
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
     it('does NOT inject (Enter 0) on a selection menu — sends exactly one Esc to recover (AC2/AC4)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks(

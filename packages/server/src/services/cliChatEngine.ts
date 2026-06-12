@@ -267,6 +267,14 @@ const CLI_QUESTION_SETTLE_MS = 400;
  */
 const CLI_QUESTION_KEY_GAP_MS = 350;
 
+/** Story 37.6 follow-up: delay before re-reading a detected confirm menu, to tell a LIVE menu
+ *  (stays on screen — claude waits for a key) from one that merely flashed by during a resume
+ *  repaint (gone after a settle, the screen moved on to the input box). The transient frame is
+ *  caught by the server grid but is never seen on the PTY mirror; this re-check stops it from
+ *  popping a spurious card (실측 2026-06-12 — triggers are inconsistent: 19h/248k, 7h58m/165k,
+ *  1h41m/607k all painted the same genuine menu, some only for a flash). */
+const CLI_CONFIRM_RECHECK_MS = 700;
+
 /** Best-effort dump of the pre-injection PTY screen for the Epic 37.6 grid classifier. Story 37.6
  *  extends it from raw-only (observe-only) to ALSO enclosing the settled grid + the classifier's
  *  verdict (`input-box` / `selection` / `unknown`), so an `unknown`/`selection` screen's identity can
@@ -351,6 +359,15 @@ function pickAutoResumeOption(options: { label: string }[], choice: 'summary' | 
   const byKeyword = options.find((o) => kw.test(o.label));
   if (byKeyword) return byKeyword.label;
   return options[choice === 'summary' ? 0 : 1]?.label;
+}
+
+/** Same confirm menu (by its option labels)? Used by the persistence re-check — the question text
+ *  carries dynamic values ("19h 10m old / 248.6k tokens") so only the stable option labels compare. */
+function sameConfirmOptions(a: ParsedQuestion, b: ParsedQuestion): boolean {
+  return (
+    a.options.length === b.options.length &&
+    a.options.every((o, i) => o.label === b.options[i].label)
+  );
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1127,6 +1144,21 @@ export class CliChatEngine implements ChatEngine {
        * channel, or an unmapped pick) Esc-cancels so the turn stays responsive instead of hanging.
        */
       const driveBootChoiceMenu = async (parsed: ParsedQuestion): Promise<void> => {
+        // Persistence re-check (실측 2026-06-12): a LIVE menu stays put (claude waits for a key); a
+        // menu that merely flashed by during a resume repaint is already gone after a short settle
+        // (the screen moved on to the input box). The server grid catches that transient frame but
+        // the user never sees it on the mirror — so re-read after a delay and proceed ONLY if the
+        // same menu (by option labels) is still on screen; otherwise resume normal boot.
+        await new Promise((r) => setTimeout(r, CLI_CONFIRM_RECHECK_MS));
+        if (settled || injected) return;
+        await screen.flush();
+        const recheck = parseConfirmChoiceMenu(screen.readGrid());
+        if (!recheck || !sameConfirmOptions(recheck, parsed)) {
+          if (!settled && !injected) attemptInjectFromGrid(false);
+          return;
+        }
+        parsed = recheck;
+
         const cancelToStayResponsive = () => {
           if (!settled) {
             try {
