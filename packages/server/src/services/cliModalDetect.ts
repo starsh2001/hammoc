@@ -224,6 +224,15 @@ export function parseConfirmChoiceMenu(rows: string[]): ParsedQuestion | null {
   // options below it, must not read as a live menu).
   const footerIdx = lastRowMatching(rows, CLI_CONFIRM_FOOTER_RE);
   if (footerIdx < 0) return null;
+  // Live-menu gate (false-positive guard, 실측 2026-06-12): a REAL confirm menu occupies the input
+  // area at the bottom of the screen, so its footer is the LAST meaningful row — nothing renders
+  // below it. If ANY non-blank row follows the footer, the numbered rows are quoted SCROLLBACK:
+  // transcript prose/lists that merely contain a "1." "2." sequence and the literal "Enter to
+  // confirm" phrase (e.g. THIS feature discussed in the very session, repainted on resume). A
+  // footer-phrase match alone is far too weak — ordinary chat ("press Enter to confirm", numbered
+  // steps) trips it; requiring the footer to be the last painted row is what isolates a live menu.
+  const below = rows.slice(footerIdx + 1);
+  if (below.some((r) => r.trim().length > 0)) return null;
   const region = rows.slice(0, footerIdx);
   // Numbered option rows ("❯ 1. …" / "  2. …"), one per row; last label wins per number, ordered by
   // number. The optional leading "❯" is the highlight cursor on the current row.

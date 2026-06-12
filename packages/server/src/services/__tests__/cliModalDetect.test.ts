@@ -372,5 +372,20 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
     it('returns null for a lone numbered option (a real choice needs ≥2)', () => {
       expect(parseConfirmChoiceMenu(['  1. Only one', '  Enter to confirm · Esc to cancel'])).toBeNull();
     });
+
+    it('returns null when the menu is quoted in scrollback with a live input box below it', () => {
+      // False-positive guard (실측 2026-06-12): this feature was discussed in-session, so the menu
+      // text got repainted from the transcript — but a real input box renders BELOW it, so it is
+      // quoted scrollback, not a live menu.
+      const quoted = [
+        '  ❯ 1. Resume from summary (recommended)',
+        '    2. Resume full session as-is',
+        '  Enter to confirm · Esc to cancel',
+        '  ────────────────',
+        '  ❯ ',
+        '  ⏵⏵ bypass permissions on (shift+tab to cycle)',
+      ];
+      expect(parseConfirmChoiceMenu(quoted)).toBeNull();
+    });
   });
 });
