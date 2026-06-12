@@ -267,14 +267,6 @@ const CLI_QUESTION_SETTLE_MS = 400;
  */
 const CLI_QUESTION_KEY_GAP_MS = 350;
 
-/** Story 37.6 follow-up: delay before re-reading a detected confirm menu, to tell a LIVE menu
- *  (stays on screen — claude waits for a key) from one that merely flashed by during a resume
- *  repaint (gone after a settle, the screen moved on to the input box). The transient frame is
- *  caught by the server grid but is never seen on the PTY mirror; this re-check stops it from
- *  popping a spurious card (실측 2026-06-12 — triggers are inconsistent: 19h/248k, 7h58m/165k,
- *  1h41m/607k all painted the same genuine menu, some only for a flash). */
-const CLI_CONFIRM_RECHECK_MS = 700;
-
 /** Best-effort dump of the pre-injection PTY screen for the Epic 37.6 grid classifier. Story 37.6
  *  extends it from raw-only (observe-only) to ALSO enclosing the settled grid + the classifier's
  *  verdict (`input-box` / `selection` / `unknown`), so an `unknown`/`selection` screen's identity can
@@ -359,15 +351,6 @@ function pickAutoResumeOption(options: { label: string }[], choice: 'summary' | 
   const byKeyword = options.find((o) => kw.test(o.label));
   if (byKeyword) return byKeyword.label;
   return options[choice === 'summary' ? 0 : 1]?.label;
-}
-
-/** Same confirm menu (by its option labels)? Used by the persistence re-check — the question text
- *  carries dynamic values ("19h 10m old / 248.6k tokens") so only the stable option labels compare. */
-function sameConfirmOptions(a: ParsedQuestion, b: ParsedQuestion): boolean {
-  return (
-    a.options.length === b.options.length &&
-    a.options.every((o, i) => o.label === b.options[i].label)
-  );
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -806,7 +789,6 @@ export class CliChatEngine implements ChatEngine {
       let bootSettleTimer: ReturnType<typeof setTimeout> | null = null;
       let bootFallbackTimer: ReturnType<typeof setTimeout> | null = null;
       let bootRecoverTimer: ReturnType<typeof setTimeout> | null = null; // Story 37.6: post-Esc re-classify timer
-      let escRecoveryUsed = false; // Story 37.6: the one-shot Esc selection-menu recovery (no key hammering)
       let choiceMenuHandled = false; // Story 37.6 follow-up: one-shot handoff of a drivable confirm menu (resume prompt)
       let submitTimer: ReturnType<typeof setTimeout> | null = null;
       // Permission-dialog state (Story 32.6 — post-injection only). Story 37.4: detection reads
@@ -1096,35 +1078,14 @@ export class CliChatEngine implements ChatEngine {
               void driveBootChoiceMenu(choiceMenu);
               return;
             }
-            // AC2: never inject (an Enter would select the first option). AC4: a recognized menu is
-            // safe to cancel with Esc — try ONCE, then re-classify; no key hammering.
-            if (!escRecoveryUsed) {
-              escRecoveryUsed = true;
-              log.info('CLI boot: pre-injection screen is a selection menu — sending Esc to recover the input box (37.6 AC4)');
-              try {
-                pty.write(CLI_QUESTION_ESC_KEY);
-              } catch (err) {
-                log.warn(`CLI boot: Esc recovery write failed: ${err instanceof Error ? err.message : String(err)}`);
-              }
-              bootRecoverTimer = setTimeout(() => {
-                bootRecoverTimer = null;
-                if (injected || settled) return;
-                void screen.flush().then(() => {
-                  if (injected || settled) return;
-                  const grid2 = screen.readGrid();
-                  const class2 = classifyPreInjectScreen(grid2);
-                  if (class2 === 'input-box') {
-                    injectPrompt(); // recovered to the input box → AC1
-                    return;
-                  }
-                  // Not recovered. Do NOT hammer more keys; fail now if decisive, else wait for the ceiling.
-                  if (isFinal) failUnready('selection menu did not recover to an input box after Esc', grid2, class2);
-                });
-              }, CLI_QUESTION_SETTLE_MS);
-              return;
-            }
-            // Esc already spent on this turn — no more keys.
-            if (isFinal) failUnready('selection menu persists after the one Esc recovery', grid, classification);
+            // Esc-cancel REMOVED (오너 지시 2026-06-12): the old "selection → Esc to recover" rule
+            // closed claude's resume confirm menu mid-card (the boot stage Esc'd the very menu its own
+            // card was showing — the "flash" the user saw; originally it also hung the turn outright).
+            // Once a confirm menu is handed to the card (choiceMenuHandled), the boot stage must NOT
+            // touch the screen — driveBootChoiceMenu owns it through to injection. A selection that is
+            // NOT a drivable confirm menu is exposed as an explicit error at the ceiling — never a key.
+            if (choiceMenuHandled) return;
+            if (isFinal) failUnready('selection menu is not a drivable confirm menu', grid, classification);
             return;
           }
           // classification === 'unknown' — blind keys forbidden (AC3). Expose only; the ceiling
@@ -1144,21 +1105,6 @@ export class CliChatEngine implements ChatEngine {
        * channel, or an unmapped pick) Esc-cancels so the turn stays responsive instead of hanging.
        */
       const driveBootChoiceMenu = async (parsed: ParsedQuestion): Promise<void> => {
-        // Persistence re-check (실측 2026-06-12): a LIVE menu stays put (claude waits for a key); a
-        // menu that merely flashed by during a resume repaint is already gone after a short settle
-        // (the screen moved on to the input box). The server grid catches that transient frame but
-        // the user never sees it on the mirror — so re-read after a delay and proceed ONLY if the
-        // same menu (by option labels) is still on screen; otherwise resume normal boot.
-        await new Promise((r) => setTimeout(r, CLI_CONFIRM_RECHECK_MS));
-        if (settled || injected) return;
-        await screen.flush();
-        const recheck = parseConfirmChoiceMenu(screen.readGrid());
-        if (!recheck || !sameConfirmOptions(recheck, parsed)) {
-          if (!settled && !injected) attemptInjectFromGrid(false);
-          return;
-        }
-        parsed = recheck;
-
         const cancelToStayResponsive = () => {
           if (!settled) {
             try {
@@ -1230,9 +1176,20 @@ export class CliChatEngine implements ChatEngine {
           }
           await new Promise((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
         }
-        // Menu answered → claude closes it and paints the input box. Re-run the gate so the prompt
-        // injects on the settled input-box grid (the boot ceiling still covers a missed settle).
-        if (!settled && !injected) attemptInjectFromGrid(false);
+        // Menu answered → claude closes it and paints the input box. The boot timers are suppressed
+        // while choiceMenuHandled (nothing else can Esc or re-inject), so drive the injection here:
+        // poll for the input box and inject once it settles; never hang — error out if it never comes.
+        for (let i = 0; i < 30 && !settled && !injected; i++) {
+          await new Promise((r) => setTimeout(r, 100));
+          await screen.flush();
+          if (isIdleInputGrid(screen.readGrid())) {
+            injectPrompt();
+            return;
+          }
+        }
+        if (!settled && !injected) {
+          failUnready('input box did not appear after answering the resume menu', screen.readGrid(), 'unknown');
+        }
       };
 
       /**
@@ -1553,6 +1510,11 @@ export class CliChatEngine implements ChatEngine {
         // `unknown`) is made by attemptInjectFromGrid on the flushed grid. The POST-injection grid
         // detectors (consumeSettledGrid) still run only after injection.
         if (!injected) {
+          // While the card is driving a confirm menu (choiceMenuHandled), suppress the boot settle
+          // timer — re-entering attemptInjectFromGrid would re-classify the still-open menu and
+          // (pre-2026-06-12) Esc it out from under the card. driveBootChoiceMenu owns the screen
+          // until injection.
+          if (choiceMenuHandled) return;
           bootBuffer += data;
           if (bootBuffer.includes(CLI_PROMPT_MARKER)) {
             bootMarkerSeen = true;
@@ -1588,7 +1550,7 @@ export class CliChatEngine implements ChatEngine {
       // but end the turn with an explicit error (AC3) instead.
       const armBootFallback = (delay: number, isFinal: boolean) => {
         bootFallbackTimer = setTimeout(() => {
-          if (injected || settled) return;
+          if (injected || settled || choiceMenuHandled) return;
           if (bootMarkerSeen || isFinal) {
             attemptInjectFromGrid(true); // decisive: grid-verified inject or explicit-error fail
           } else {

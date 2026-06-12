@@ -819,33 +819,16 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
-    it('does NOT card a confirm menu that only flashes by (gone after the re-check) — resumes boot', async () => {
-      const canUseTool = vi.fn();
+    it('does NOT touch a non-confirm selection menu — no Esc, no Enter — and errors at the ceiling', async () => {
+      // Esc-cancel rule REMOVED (오너 지시 2026-06-12). A selection menu that is NOT a drivable
+      // confirm menu (e.g. an "Enter to select" action list) gets NO blind key — not Esc, not Enter —
+      // and is escalated to an explicit error at the decisive ceiling, just like an unknown screen.
+      // (Before: it Esc-cancelled, which closed claude's resume confirm menu out from under its card.)
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onError = vi.fn();
       const promise = engine.sendMessageWithCallbacks(
         'my real prompt',
-        { onComplete: vi.fn(), onError: vi.fn() },
-        { sessionId: SID },
-        canUseTool,
-        vi.fn(),
-      );
-      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
-      h.fakePty._onData?.(RESUME_CONFIRM_MENU); // menu appears for a flash…
-      h.fakePty._onData?.(INPUT_BOX); // …then the repaint moves on to the input box
-
-      // The persistence re-check re-reads after a delay, sees the input box (not the menu), so NO
-      // card is shown and the prompt injects normally.
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('my real prompt'), { timeout: 3000 });
-      expect(canUseTool).not.toHaveBeenCalled();
-      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
-      await promise;
-    });
-
-    it('does NOT inject (Enter 0) on a selection menu — sends exactly one Esc to recover (AC2/AC4)', async () => {
-      const engine = new CliChatEngine({ workingDirectory: '/proj' });
-      const promise = engine.sendMessageWithCallbacks(
-        'my real prompt',
-        { onComplete: vi.fn(), onError: vi.fn() },
+        { onComplete: vi.fn(), onError },
         { sessionId: SID },
         undefined,
         vi.fn(),
@@ -853,43 +836,13 @@ describe('CliChatEngine', () => {
       await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
       h.fakePty._onData?.(SELECTION_MENU);
 
-      // The one-shot Esc recovery key is written (selection menus are safe to cancel)…
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 });
-      // …but the prompt text and a bare Enter are NEVER written into the menu (no first-option select).
-      expect(h.fakePty.write).not.toHaveBeenCalledWith('my real prompt');
+      await expect(promise).rejects.toThrow(/CLI boot aborted/i);
+      expect(onError).toHaveBeenCalledTimes(1);
+      // No key ever pressed into the menu — crucially NO Esc (the removed rule), no Enter, no prompt.
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
       expect(h.fakePty.write).not.toHaveBeenCalledWith('\r');
-      // Esc is capped at ONE — no key hammering even as more identical frames arrive.
-      h.fakePty._onData?.(SELECTION_MENU);
-      await wait(60);
-      const escCount = h.fakePty.write.mock.calls.filter((c) => c[0] === '\x1b').length;
-      expect(escCount).toBe(1);
-
-      // Recover so the turn can finish cleanly: the screen becomes an input box → re-classify → inject.
-      h.fakePty._onData?.(INPUT_BOX);
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('my real prompt'), { timeout: 2000 });
-      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
-      await promise;
-    });
-
-    it('recovers to the input box after Esc and injects normally (AC4 general path)', async () => {
-      const engine = new CliChatEngine({ workingDirectory: '/proj' });
-      const promise = engine.sendMessageWithCallbacks(
-        'hello world',
-        { onComplete: vi.fn(), onError: vi.fn() },
-        { sessionId: SID },
-        undefined,
-        vi.fn(),
-      );
-      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
-      h.fakePty._onData?.(SELECTION_MENU);
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 });
-      // Esc dismissed the menu → claude repaints the input box → the post-Esc re-classify injects.
-      h.fakePty._onData?.(INPUT_BOX);
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('hello world'), { timeout: 2000 });
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\r'), { timeout: 3000 });
-      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
-      await promise;
-    });
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('my real prompt');
+    }, 10000);
 
     it('on an UNKNOWN screen presses no key and ends the turn with an explicit error (AC3)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
