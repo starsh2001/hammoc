@@ -30,6 +30,79 @@ const CLI_CHECKBOXES: {
   { key: 'cliSyntheticTyping', labelKey: 'global.cliSyntheticTyping', descKey: 'global.cliSyntheticTypingDesc', defaultOn: false },
 ];
 
+/**
+ * Number preference field backed by a local draft string.
+ *
+ * Binding a number input straight to the stored value and committing only when the
+ * in-progress keystroke already satisfies [min,max] makes the box un-editable: lowering
+ * 200→80 must pass through "8" (< min) and clearing passes through "" (NaN), both of which
+ * the old guard dropped — so the controlled value snapped straight back and typing looked
+ * frozen. Here the user types freely while focused; we clamp + commit on blur/Enter and
+ * revert a blank/NaN draft to the last stored value.
+ */
+function NumberPrefField({
+  id,
+  label,
+  desc,
+  value,
+  min,
+  max,
+  step,
+  onCommit,
+}: {
+  id: string;
+  label: string;
+  desc: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onCommit: (n: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  // Re-sync when the stored value changes elsewhere (server reconcile / external reset).
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const n = Number(draft);
+    if (draft.trim() === '' || !Number.isFinite(n)) {
+      setDraft(String(value)); // revert blank / NaN
+      return;
+    }
+    const clamped = Math.min(max, Math.max(min, Math.round(n)));
+    setDraft(String(clamped));
+    if (clamped !== value) onCommit(clamped);
+  };
+
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm text-gray-900 dark:text-white mb-1">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        className="w-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
+                   bg-white dark:bg-[#263240] text-gray-900 dark:text-white text-sm
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">{desc}</p>
+    </div>
+  );
+}
+
 export function CliModeSettingsPanel() {
   const { t } = useTranslation('settings');
   const { preferences, updatePreference } = usePreferencesStore();
@@ -93,63 +166,32 @@ export function CliModeSettingsPanel() {
             toggle reads as nesting (the bare indent looked orphaned). Only shown while it is on. */}
         {(preferences.cliSyntheticTyping ?? false) && (
           <div className="ml-7 border-l-2 border-gray-200 dark:border-[#455568] pl-3">
-            <label
-              htmlFor="cli-card-stagger"
-              className="block text-sm text-gray-900 dark:text-white mb-1"
-            >
-              {t('global.cliCardStaggerMs')}
-            </label>
-            <input
+            <NumberPrefField
               id="cli-card-stagger"
-              type="number"
+              label={t('global.cliCardStaggerMs')}
+              desc={t('global.cliCardStaggerMsDesc')}
+              value={preferences.cliCardStaggerMs ?? 500}
               min={0}
               max={5000}
               step={50}
-              value={preferences.cliCardStaggerMs ?? 500}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                if (Number.isFinite(n) && n >= 0) {
-                  updatePreference('cliCardStaggerMs', n);
-                }
-              }}
-              className="w-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
-                         bg-white dark:bg-[#263240] text-gray-900 dark:text-white text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onCommit={(n) => updatePreference('cliCardStaggerMs', n)}
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
-              {t('global.cliCardStaggerMsDesc')}
-            </p>
           </div>
         )}
 
         {/* Mirror refresh interval — shown only while the mirror is ON (cliPtyMirror default ON).
             Lower = smoother, higher = calmer / less bandwidth. Same widget shape as cliCardStaggerMs. */}
         {(preferences.cliPtyMirror ?? true) && (
-          <div>
-            <label htmlFor="cli-mirror-throttle" className="block text-sm text-gray-900 dark:text-white mb-1">
-              {t('global.cliMirrorThrottleMs')}
-            </label>
-            <input
-              id="cli-mirror-throttle"
-              type="number"
-              min={50}
-              max={2000}
-              step={50}
-              value={preferences.cliMirrorThrottleMs ?? 200}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                if (Number.isFinite(n) && n >= 50) {
-                  updatePreference('cliMirrorThrottleMs', n);
-                }
-              }}
-              className="w-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
-                         bg-white dark:bg-[#263240] text-gray-900 dark:text-white text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
-              {t('global.cliMirrorThrottleMsDesc')}
-            </p>
-          </div>
+          <NumberPrefField
+            id="cli-mirror-throttle"
+            label={t('global.cliMirrorThrottleMs')}
+            desc={t('global.cliMirrorThrottleMsDesc')}
+            value={preferences.cliMirrorThrottleMs ?? 200}
+            min={50}
+            max={2000}
+            step={50}
+            onCommit={(n) => updatePreference('cliMirrorThrottleMs', n)}
+          />
         )}
 
         {/* Resume confirm-menu auto-pick (large-session resume) — a 3-way select, not a toggle */}

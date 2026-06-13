@@ -106,7 +106,38 @@ describe('CliModeSettingsPanel', () => {
     const input = screen.getByLabelText('카드 등장 간격 (ms)');
     expect(input).toHaveValue(500);
 
+    // Committed on blur (not per keystroke), so the box stays editable mid-typing.
     fireEvent.change(input, { target: { value: '800' } });
+    fireEvent.blur(input);
     expect(updateSpy).toHaveBeenCalledWith('cliCardStaggerMs', 800);
+  });
+
+  it('TC-9: mirror throttle is visible by default and accepts a transient sub-min edit, clamping on blur', () => {
+    const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
+    render(<CliModeSettingsPanel />);
+    // Mirror defaults ON → the interval field shows with the documented default (200).
+    const input = screen.getByLabelText('화면 미러 갱신 주기 (ms)');
+    expect(input).toHaveValue(200);
+
+    // Regression: typing a value that transiently dips below the 50 floor used to snap
+    // straight back to 200 (un-editable). Now the draft sticks and nothing commits mid-edit.
+    fireEvent.change(input, { target: { value: '8' } });
+    expect(input).toHaveValue(8);
+    expect(updateSpy).not.toHaveBeenCalled();
+
+    // Leaving the field clamps to the floor and commits exactly once.
+    fireEvent.blur(input);
+    expect(updateSpy).toHaveBeenCalledWith('cliMirrorThrottleMs', 50);
+    expect(input).toHaveValue(50);
+  });
+
+  it('TC-10: mirror throttle commits a valid in-range edit on blur', () => {
+    const updateSpy = vi.spyOn(usePreferencesStore.getState(), 'updatePreference');
+    render(<CliModeSettingsPanel />);
+    const input = screen.getByLabelText('화면 미러 갱신 주기 (ms)');
+    fireEvent.change(input, { target: { value: '500' } });
+    fireEvent.blur(input);
+    expect(updateSpy).toHaveBeenCalledWith('cliMirrorThrottleMs', 500);
+    expect(input).toHaveValue(500);
   });
 });
