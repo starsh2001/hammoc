@@ -37,6 +37,7 @@
  */
 
 import type { PermissionMode } from '@hammoc/shared';
+import { liveFooterRows, liveFooterText } from './cliGridRegion.js';
 
 /** A single scraped AskUserQuestion choice (Story 32.8 — single-question scope). */
 export interface ParsedQuestion {
@@ -352,8 +353,12 @@ const CLI_MODE_CYCLE_FOOTER_RE = /shift\s*\+?\s*tab\s+to\s+cycle/i;
  * frame whose label has not painted yet would otherwise read transiently as `default`.
  */
 export function readPermissionMode(grid: string[]): PermissionMode {
-  for (let y = grid.length - 1; y >= 0; y--) {
-    const row = grid[y];
+  // Live region only: the mode status row renders in the bottom UI cluster, so a full mode row
+  // ("⏸ plan mode on (shift+tab to cycle) …") QUOTED far up in resume-repaint scrollback cannot be
+  // read as the live mode when the live screen is `default` (no row). Bottom-most (freshest) wins.
+  const region = liveFooterRows(grid);
+  for (let y = region.length - 1; y >= 0; y--) {
+    const row = region[y];
     if (!CLI_MODE_CYCLE_FOOTER_RE.test(row)) continue; // AND-gate: only a real mode status row
     for (const { re, mode } of CLI_MODE_LABELS) {
       if (re.test(row)) return mode;
@@ -369,7 +374,9 @@ export function readPermissionMode(grid: string[]): PermissionMode {
  * idle input box accepts a mode-cycle keypress with *verified* behavior; a spinner frame's CSI Z
  * behavior is unverified, so a non-idle grid falls back to the next-spawn flag path.)
  *
- * Heuristic on a settled grid (half-drawn frames are excluded upstream by `flush()`):
+ * Heuristic on a settled grid (half-drawn frames are excluded upstream by `flush()`), scanned over
+ * the LIVE FOOTER REGION only (`liveFooterText` — so scrollback prose that quotes these phrases
+ * can't poison the verdict):
  *   - an active-generation footer ("esc to interrupt") OR a spinner counter ("↓ N tokens") ⇒ NOT idle;
  *   - else the input-box prompt glyph (❯) present ⇒ idle.
  *
@@ -378,10 +385,10 @@ export function readPermissionMode(grid: string[]): PermissionMode {
  * rather than re-deriving it. This story is self-sufficient and does NOT depend on 37.6.
  */
 export function isIdleInputGrid(grid: string[]): boolean {
-  const text = grid.join('\n');
-  if (/esc to interrupt/i.test(text)) return false; // active generation footer ⇒ generating
-  if (/↓\s*[\d.,]+k?\s*tokens/i.test(text)) return false; // spinner counter ⇒ generating
-  return /❯/.test(text); // idle input-box marker
+  const footer = liveFooterText(grid);
+  if (/esc to interrupt/i.test(footer)) return false; // active generation footer ⇒ generating
+  if (/↓\s*[\d.,]+k?\s*tokens/i.test(footer)) return false; // spinner counter ⇒ generating
+  return /❯/.test(footer); // idle input-box marker (live region only — not quoted scrollback)
 }
 
 /**
@@ -433,9 +440,12 @@ const CLI_NUMBERED_OPTION_RE = /^\s*\d{1,2}\.\s/;
  */
 export function classifyPreInjectScreen(grid: string[]): PreInjectScreen {
   const text = grid.join('\n');
-  // (1) Recognized selection menus/modals, OR a numbered list WITH a live footer (AND-gate).
+  // (1) Recognized selection menus/modals, OR a numbered list WITH a live footer (AND-gate). The
+  // footer is matched over the LIVE region only (`liveFooterText`) so a resume-repaint that quotes a
+  // nav/cancel footer ("↑/↓ to navigate") in the scrollback body can't pair with quoted numbered
+  // rows and read as a live menu — the symmetric scrollback-poisoning guard to isIdleInputGrid's.
   const hasNumberedOption = grid.some((row) => CLI_NUMBERED_OPTION_RE.test(row));
-  const hasSelectionFooter = CLI_SELECTION_FOOTER_RE.test(text);
+  const hasSelectionFooter = CLI_SELECTION_FOOTER_RE.test(liveFooterText(grid));
   if (detectPermissionDialog(text) || detectQuestionModal(text) || (hasNumberedOption && hasSelectionFooter)) {
     return 'selection';
   }

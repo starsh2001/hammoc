@@ -137,4 +137,27 @@ describe('readSpinnerProgress (Story 37.2 — grid token reader)', () => {
     ]);
     expect(p).toEqual({ tokens: 365, elapsedSeconds: 9 });
   });
+
+  // Resume-repaint poisoning class (실측 2026-06-13): a quoted "↓ N tokens" in the scrollback body must
+  // not be read as a live counter. These drive the pure reader with hand-built grids (the live counter
+  // renders at the bottom; a quote sits far up, outside the live footer region).
+  it('ignores a "↓ N tokens" counter QUOTED in far-up scrollback when no live counter is at the bottom', () => {
+    const grid = [
+      '   설명: 스피너는 "↓ 365 tokens" 처럼 토큰 수를 보여줍니다.',
+      '   줄 2', '   줄 3', '   줄 4', '   줄 5', '   줄 6', '   줄 7', '   줄 8', '   줄 9',
+      ' ✻ Thinking…',
+      ' ❯ ',
+    ];
+    expect(readSpinnerProgress(grid)).toBeNull();
+  });
+
+  it('still reads a LIVE counter at the bottom even with a quoted one far up in scrollback', () => {
+    const grid = [
+      '   설명: "↓ 999 tokens" 같은 인용은 무시',
+      '   줄 2', '   줄 3', '   줄 4', '   줄 5', '   줄 6', '   줄 7', '   줄 8', '   줄 9',
+      ' ✻ Working… (3s · ↓ 42 tokens · esc to interrupt)',
+      ' ❯ ',
+    ];
+    expect(readSpinnerProgress(grid)).toEqual({ tokens: 42, elapsedSeconds: 3 });
+  });
 });

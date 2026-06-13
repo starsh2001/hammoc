@@ -241,6 +241,27 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
         readPermissionMode([modeRow('⏸ plan mode on'), ' ❯ ', modeRow('⏵⏵ auto mode on')]),
       ).toBe('bypassPermissions');
     });
+
+    it('ignores a full mode-status row QUOTED in far-up scrollback when the live mode is default (resume-repaint poisoning class)', () => {
+      // A resumed answer that quoted "⏸ plan mode on (shift+tab to cycle) …" must not be read as the
+      // live mode; the live screen is default (no mode row at the bottom). Scrollback is out of region.
+      const grid = [
+        modeRow('⏸ plan mode on'),
+        '   줄 2', '   줄 3', '   줄 4', '   줄 5', '   줄 6', '   줄 7', '   줄 8', '   줄 9',
+        ' ❯ ',
+      ];
+      expect(readPermissionMode(grid)).toBe('default');
+    });
+
+    it('still reads the LIVE mode row at the bottom, ignoring a different mode quoted far up', () => {
+      const grid = [
+        modeRow('⏸ plan mode on'),
+        '   줄 2', '   줄 3', '   줄 4', '   줄 5', '   줄 6', '   줄 7', '   줄 8', '   줄 9',
+        ' ❯ ',
+        modeRow('⏵⏵ auto mode on'),
+      ];
+      expect(readPermissionMode(grid)).toBe('bypassPermissions');
+    });
   });
 
   describe('CLI_PERMISSION_MODE_CYCLE / permissionModeCycleIndex (Story 37.5)', () => {
@@ -270,6 +291,39 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
 
     it('is NOT idle when no input-box marker is on the grid', () => {
       expect(isIdleInputGrid([' just some output', ' no prompt here'])).toBe(false);
+    });
+
+    it('ignores scrollback prose that QUOTES the spinner phrases — an idle box at the bottom survives (실측 2026-06-13)', () => {
+      // A resumed turn whose prior answer DISCUSSED the CLI spinner ("esc to interrupt" / "↓N tokens")
+      // gets repainted into the scrollback. The live state is the idle input box at the BOTTOM; the
+      // quoted phrases higher up must not flip the verdict to "generating" (the whole-screen scan did,
+      // so injection was withheld and the next turn was lost).
+      const grid = [
+        '   대화중(생성 중)에는 claude 화면이 "생성 중 / esc to interrupt / ↓N tokens"',
+        '   상태라 유휴가 아닙니다.',
+        '   1. 미검증   2. turn-per-process   3. 모달 보호',
+        '   - 안 되는 게 아니라, 설계대로입니다.',
+        '   - 미러에 라이브로 모드가 바뀌는 모습은 유휴 입력창일 때만.',
+        '   혹시 유휴에 바꿨는데도 안 보이면 다른 얘기입니다.',
+        '   추가 설명 줄 A',
+        '   추가 설명 줄 B',
+        ' ✻ Baked for 4m 4s',
+        ' ──────────────────────────────────────────────',
+        ' ❯ ',
+        ' ──────────────────────────────────────────────',
+        ' ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents',
+      ];
+      expect(isIdleInputGrid(grid)).toBe(true);
+    });
+
+    it('still detects a LIVE spinner near the bottom even with a tall scrollback above it', () => {
+      const grid = [
+        '   line 1', '   line 2', '   line 3', '   line 4', '   line 5',
+        '   line 6', '   line 7', '   line 8', '   line 9', '   line 10',
+        ' ✻ Baking… (12s · ↓ 3.4k tokens · esc to interrupt)',
+        ' ❯ ',
+      ];
+      expect(isIdleInputGrid(grid)).toBe(false);
     });
   });
 
@@ -339,6 +393,29 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       // ❯ present but an active-generation footer/counter ⇒ isIdleInputGrid is false ⇒ not input-box.
       expect(classifyPreInjectScreen([' ❯ ', '✢ Deliberating…  esc to interrupt'])).toBe('unknown');
       expect(classifyPreInjectScreen([' ❯ ', '✻ Working… (3s · ↓ 42 tokens)'])).toBe('unknown');
+    });
+
+    it('does NOT mistake resume-repaint scrollback that quotes "esc to interrupt" / "↓ N tokens" for a live spinner — classifies as input-box (실측 2026-06-13, the turn that was lost)', () => {
+      // The old whole-screen scan matched the quoted spinner phrases in the repainted prior answer and
+      // returned `unknown` → injection withheld → the next turn aborted ("작업이 취소되었습니다"). The
+      // box at the bottom is the LIVE state, so this must classify as input-box and inject.
+      const grid = [
+        ' ● 확인 완료했습니다.',
+        '   대화중(생성 중)에는 claude 화면이 "생성 중 / esc to interrupt / ↓N tokens"',
+        '   상태라 유휴가 아닙니다.',
+        '   1. 미검증 — 생성 중 스피너 프레임 ...',
+        '   2. turn-per-process — 턴마다 별도 프로세스 ...',
+        '   3. 모달 보호 — 권한/질문 모달 ...',
+        '   - 정리: 다음 턴부터 정확히 적용됩니다.',
+        '   추가 설명 줄 A',
+        '   추가 설명 줄 B',
+        ' ✻ Baked for 4m 4s',
+        ' ──────────────────────────────────────────────',
+        ' ❯ ',
+        ' ──────────────────────────────────────────────',
+        ' ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents',
+      ];
+      expect(classifyPreInjectScreen(grid)).toBe('input-box');
     });
   });
 

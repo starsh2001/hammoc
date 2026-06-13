@@ -17,6 +17,8 @@
  * [Source: docs/prd/epic-37-cli-terminal-emulation.md#story-372]
  */
 
+import { liveFooterRows } from './cliGridRegion.js';
+
 /**
  * The spinner counter as RENDERED in the grid. Captures both the raw ("↓ 108 tokens")
  * and abbreviated ("↓ 1.4k tokens") shapes claude paints — matching the Story 37.1
@@ -71,8 +73,12 @@ export interface SpinnerProgress {
  * merged or concatenated — a single row already holds the whole current value.
  */
 export function readSpinnerProgress(grid: string[]): SpinnerProgress | null {
-  for (let y = grid.length - 1; y >= 0; y--) {
-    const counter = GRID_COUNTER_RE.exec(grid[y]);
+  // Live region only: the spinner counter renders at the bottom of the screen, so a "↓ N tokens"
+  // value QUOTED in resume-repaint scrollback can't flash a phantom counter during the pre-generation
+  // thinking phase (no live counter row yet). Bottom-most (freshest) within the region wins.
+  const region = liveFooterRows(grid);
+  for (let y = region.length - 1; y >= 0; y--) {
+    const counter = GRID_COUNTER_RE.exec(region[y]);
     if (!counter) continue;
     const raw = counter[1];
     // Normalize to an integer token count: strip thousands separators, then expand a
@@ -81,7 +87,7 @@ export function readSpinnerProgress(grid: string[]): SpinnerProgress | null {
       ? Math.round(parseFloat(raw.slice(0, -1).replace(/,/g, '')) * 1000)
       : parseInt(raw.replace(/,/g, ''), 10);
     if (!Number.isFinite(tokens)) return null;
-    return { tokens, elapsedSeconds: sumElapsedSeconds(grid[y]) };
+    return { tokens, elapsedSeconds: sumElapsedSeconds(region[y]) };
   }
   return null;
 }
