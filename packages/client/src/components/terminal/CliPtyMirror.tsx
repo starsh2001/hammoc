@@ -1,14 +1,16 @@
 /**
  * CliPtyMirror — read-only mirror of the raw claude TUI screen (CLI mode).
  *
- * When the `cliPtyMirror` preference is ON *and* the effective engine is the CLI engine,
- * the server forwards every raw PTY frame (ANSI intact) over `cli:pty-raw`. This panel
- * renders those frames in a read-only xterm so the otherwise-windowless CLI engine's
- * actual screen is visible. Story 37.7 promoted it from a diagnostic opt-in to a default
- * feature (default ON, opt-out): besides watching a stalled turn, the everyday use is
- * simply seeing claude's screen. On `session:join` the server also pushes a one-time
- * `cli:screen-snapshot` (the current screen grid) so a newly-connected or refreshed
- * browser initializes to the current screen instead of a blank one. It is a pure observer:
+ * When the `cliPtyMirror` preference is ON *and* the effective engine is the CLI engine, the
+ * server serializes the headless emulator's CURRENT screen (ANSI/color intact) and sends it
+ * as a self-contained `cli:screen-frame` on a ~100ms throttle. This panel renders each frame
+ * into a read-only xterm so the otherwise-windowless CLI engine's actual screen is visible
+ * (default ON, opt-out — Story 37.7/37.8): besides watching a stalled turn, the everyday use
+ * is simply seeing claude's screen, in color. Because every frame is a WHOLE screen (not an
+ * in-place delta), one frame fully restores the view — so late-join, refresh, and collapse/
+ * expand all converge by reset()+write(frame). On (re)mount the panel emits
+ * `cli:request-screen-frame` to pull the current screen from the server cache immediately (a
+ * collapse→expand does not re-fire session:join). It is a pure observer:
  *   - input is disabled (the engine drives the PTY by injecting keystrokes itself; a key
  *     typed here must never reach claude), and
  *   - it subscribes to the socket directly and never touches chat / message state.
@@ -39,19 +41,20 @@ function MirrorPanel() {
   const [collapsed, setCollapsed] = useState(false);
 
   // xterm init + live socket subscription. Re-runs on collapse/expand (the terminal is
-  // disposed while collapsed) and on theme change. The subscription is a pure observer
-  // of cli:pty-raw — write the unmodified frame straight to xterm.
+  // disposed while collapsed) and on theme change. The subscription is a pure observer of
+  // cli:screen-frame — overwrite the screen in place (home + per-row erase, no full clear) so
+  // it does not flicker.
   useEffect(() => {
     if (collapsed || !containerRef.current) return;
 
-    // Pin xterm to the PTY's fixed geometry (cliSessionPool spawns 120×40). claude draws
-    // its screen — including in-place redraws (cursor-addressed overwrites like the spinner's
-    // "1m 36s"→"37s") — against THESE coordinates. The old FitAddon sized xterm to the panel
-    // (a different column count), so every cursor move landed at the wrong spot and redraws
-    // spilled into new lines instead of overwriting. We pin cols/rows and scale the FONT to
-    // fit the panel instead.
+    // Pin xterm to the PTY's fixed geometry (cliSessionPool spawns 120×80 — Story 37.8 raised
+    // rows 40→80 so more of claude's screen shows at once). claude draws its screen — including
+    // in-place redraws (cursor-addressed overwrites like the spinner's "1m 36s"→"37s") — against
+    // THESE coordinates. The old FitAddon sized xterm to the panel (a different column count), so
+    // every cursor move landed at the wrong spot and redraws spilled into new lines instead of
+    // overwriting. We pin cols/rows and scale the FONT to fit the panel instead.
     const COLS = 120;
-    const ROWS = 40;
+    const ROWS = 80;
     const terminal = new Terminal({
       cols: COLS,
       rows: ROWS,
@@ -60,7 +63,17 @@ function MirrorPanel() {
       scrollback: 5000,
       cursorBlink: false,
       disableStdin: true, // read-only — keystrokes here must never reach the engine's PTY
-      theme: getXtermTheme(resolvedTheme),
+      theme: {
+        ...getXtermTheme(resolvedTheme),
+        // Story 37.8: claude leaves the input prompt and plain text UNCOLORED, so they render in
+        // the theme's base foreground. The shared web-terminal palette (Tokyo Night) uses a
+        // lavender foreground (#c0caf5) that reads as a green/blue-ish tint — unlike a real
+        // terminal's neutral white/grey. Override just the mirror's base fg/cursor to a neutral
+        // grey so uncolored text matches claude's actual terminal look (claude's own ANSI colors
+        // for styled text still come through the 16-color palette unchanged).
+        foreground: resolvedTheme === 'dark' ? '#d4d4d4' : '#2e2e2e',
+        cursor: resolvedTheme === 'dark' ? '#d4d4d4' : '#2e2e2e',
+      },
     });
     terminal.open(containerRef.current);
     terminalRef.current = terminal;
@@ -80,28 +93,25 @@ function MirrorPanel() {
     };
 
     const socket = getSocket();
-    const onRaw = (data: { chunk: string }) => terminal.write(data.chunk);
-    socket.on('cli:pty-raw', onRaw);
-
-    // Story 37.7: late-join / refresh sync. The server pushes the current screen GRID
-    // (accumulated state) on session:join — raw cli:pty-raw frames are in-place deltas, so
-    // a single last frame can't restore the screen, but the grid can. Clear xterm and write
-    // the grid as the current screen; the live raw stream that follows converges it back to
-    // a fully-styled frame (the grid is plain text — authoritative *content*, not ANSI).
-    const onSnapshot = (data: { grid: string[] }) => {
-      terminal.clear();
-      const rows = data.grid;
-      for (let i = 0; i < rows.length; i++) {
-        terminal.write(rows[i]);
-        // Server rows arrive right-trimmed (readGrid uses translateToString(true)), so most
-        // rows are < COLS and a trailing \r\n is safe. Skip the newline only for a row that
-        // genuinely fills all COLS: writing COLS chars auto-wraps the cursor, and an extra
-        // \r\n would then insert a blank line and shift the screen. The last row never needs
-        // a trailing newline.
-        if (i < rows.length - 1 && rows[i].length < COLS) terminal.write('\r\n');
-      }
+    // Story 37.8: the server sends the whole CURRENT screen as a self-contained serialized
+    // frame (ANSI/color intact) on a ~100ms throttle. Each frame is authoritative, so reset()
+    // the terminal (clears buffer + cursor + modes, absorbing the alt-buffer prefix that the
+    // serialized frame repeats) and write the frame as the current screen. This single path
+    // covers live updates, late-join, refresh, and collapse/expand — no delta accumulation.
+    const onFrame = (data: { frame: string }) => {
+      // Overwrite in place instead of reset()+write (which clears the whole screen → flicker).
+      // serialize() emits raw row text separated by \r\n with NO cursor-home and NO line-erase,
+      // so a bare re-write would append from wherever the cursor was. Drive it ourselves: home
+      // (\x1b[H), write each row clearing its tail (\x1b[K — a now-shorter row leaves no right-
+      // side residue), then clear everything below the last row (\x1b[0J — a previously taller
+      // frame leaves nothing behind). No screen clear → cells are overwritten, so no flicker.
+      const rows = data.frame.split('\r\n');
+      terminal.write('\x1b[H' + rows.map((r) => r + '\x1b[K').join('\r\n') + '\x1b[0J');
     };
-    socket.on('cli:screen-snapshot', onSnapshot);
+    socket.on('cli:screen-frame', onFrame);
+    // Pull the current screen immediately — on first mount, and crucially after a collapse→
+    // expand remount (which does not re-fire session:join). Cache miss → the server no-ops.
+    socket.emit('cli:request-screen-frame');
 
     let rafId: number | null = null;
     const resizeObserver = new ResizeObserver(() => {
@@ -112,8 +122,7 @@ function MirrorPanel() {
     const initRaf = requestAnimationFrame(fitFont);
 
     return () => {
-      socket.off('cli:pty-raw', onRaw);
-      socket.off('cli:screen-snapshot', onSnapshot);
+      socket.off('cli:screen-frame', onFrame);
       resizeObserver.disconnect();
       if (rafId) cancelAnimationFrame(rafId);
       cancelAnimationFrame(initRaf);

@@ -30,9 +30,9 @@ const drawLine = (row: number, text: string, col = 1) =>
   `${ESC}[${row};${col}H${ESC}[2K${text}`;
 
 describe('cliScreenModel', () => {
-  it('exposes the 120×40 default geometry constants', () => {
+  it('exposes the 120×80 default geometry constants', () => {
     expect(CLI_SCREEN_COLS).toBe(120);
-    expect(CLI_SCREEN_ROWS).toBe(40);
+    expect(CLI_SCREEN_ROWS).toBe(80);
   });
 
   it('reconstructs a screen with exactly `rows` grid lines', async () => {
@@ -230,5 +230,44 @@ describe('cliScreenModel', () => {
     expect(b.readGrid()[0]).toBe('model B');
     a.dispose();
     b.dispose();
+  });
+});
+
+/**
+ * Story 37.8 — serialize() feeds the full-screen mirror. Proves the serialize addon works on
+ * the headless emulator (GO/NO-GO) and is COLOR-preserving, while readGrid() stays plain text
+ * so the detector path (progress / modal / usage-limit) is unaffected.
+ */
+describe('cliScreenModel.serialize (Story 37.8)', () => {
+  it('serializes the current screen content to a string', async () => {
+    const screen = createCliScreenModel(CLI_SCREEN_COLS, CLI_SCREEN_ROWS);
+    screen.write('hello world');
+    await screen.flush();
+    const out = screen.serialize();
+    expect(typeof out).toBe('string');
+    expect(out).toContain('hello world');
+    screen.dispose();
+  });
+
+  it('preserves ANSI color (an SGR escape survives) in the serialized frame', async () => {
+    const screen = createCliScreenModel(CLI_SCREEN_COLS, CLI_SCREEN_ROWS);
+    // Red "ERR", then reset, then plain " ok".
+    screen.write('\x1b[31mERR\x1b[0m ok');
+    await screen.flush();
+    const out = screen.serialize();
+    expect(out).toContain('ERR');
+    // The serialized frame re-emits styling as ANSI escapes — color is NOT stripped.
+    expect(out).toContain('\x1b[');
+    screen.dispose();
+  });
+
+  it('readGrid stays plain text (no ANSI) — the detector path is unchanged', async () => {
+    const screen = createCliScreenModel(CLI_SCREEN_COLS, CLI_SCREEN_ROWS);
+    screen.write('\x1b[31mRED\x1b[0m');
+    await screen.flush();
+    const joined = screen.readGrid().join('');
+    expect(joined).toContain('RED');
+    expect(joined).not.toContain('\x1b'); // plain text — escapes stripped by translateToString
+    screen.dispose();
   });
 });

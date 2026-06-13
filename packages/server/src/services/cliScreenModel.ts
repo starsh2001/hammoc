@@ -12,7 +12,7 @@
  *
  * This model feeds the raw PTY frames (ANSI intact) into a real `@xterm/headless`
  * `Terminal` — the **same terminal core** (`@xterm/xterm` 5.5.x) the client mirror
- * (`CliPtyMirror.tsx`) already renders the identical `cli:pty-raw` stream with. The
+ * (`CliPtyMirror.tsx`) also renders into, now via the serialized `cli:screen-frame`. The
  * emulator *applies* the cursor moves claude intended, leaving only the final grid,
  * where same-cell updates are overwrites — so fusion is **structurally impossible**.
  *
@@ -22,12 +22,13 @@
  * fed *unconditionally* on every turn ("reconstruct always / display-only toggle",
  * AC3) — unlike the mirror passthrough which is gated by the `cliPtyMirror` pref.
  *
- * Geometry is **120×40 fixed** — identical to `cliSessionPool.spawnClaude`
- * (`cols ?? 120` / `rows ?? 40`) and `CliPtyMirror` (COLS=120 / ROWS=40) — so the
- * coordinates claude addresses line up with what we read.
+ * Geometry is **120×80** — the engine passes `cols`/`rows` to `cliSessionPool.spawnClaude`
+ * explicitly, matching this model and `CliPtyMirror` (COLS=120 / ROWS=80) — so the
+ * coordinates claude addresses line up with what we read. (Story 37.8 raised rows 40→80 so
+ * the mirror shows more of claude's screen at once.)
  *
  * API surface (intentionally thin):
- *   createCliScreenModel(cols=120, rows=40) → { write, flush, readGrid, readScreenText, dispose }
+ *   createCliScreenModel(cols=120, rows=40) → { write, flush, readGrid, readScreenText, serialize, dispose }
  *
  * @see docs/stories/37.1.story.md
  * [Source: docs/prd/epic-37-cli-terminal-emulation.md#story-371]
@@ -41,13 +42,21 @@
 import headless from '@xterm/headless';
 const { Terminal } = headless;
 
+// @xterm/addon-serialize ships CJS as well, so it hits the same named-import caveat as
+// headless above — default-import and destructure. SerializeAddon reads the buffer model
+// directly (no DOM/renderer), which is exactly the `@xterm/headless` + serialize-addon
+// combo xterm.js documents for server-side state capture and reconnection restore.
+import serializeMod from '@xterm/addon-serialize';
+const { SerializeAddon } = serializeMod;
+
 /**
- * Default CLI terminal geometry — MUST match `cliSessionPool.spawnClaude`
- * (`cols ?? 120` / `rows ?? 40`) and `CliPtyMirror` (COLS=120 / ROWS=40). claude
- * draws its in-place redraws at *these* coordinates; a mismatch desyncs the grid.
+ * Default CLI terminal geometry — MUST match `cliSessionPool.spawnClaude` (the engine passes
+ * these explicitly) and `CliPtyMirror` (COLS=120 / ROWS=80). claude draws its in-place redraws
+ * at *these* coordinates; a mismatch desyncs the grid. (Story 37.8 raised ROWS 40→80 so the
+ * mirror shows more of claude's screen at once.)
  */
 export const CLI_SCREEN_COLS = 120;
-export const CLI_SCREEN_ROWS = 40;
+export const CLI_SCREEN_ROWS = 80;
 
 /** The screen model's read/write surface consumed by later stories (37.2~37.4). */
 export interface CliScreenModel {
@@ -74,6 +83,16 @@ export interface CliScreenModel {
   readGrid(): string[];
   /** `readGrid().join('\n')` — convenience surface for line-spanning detectors. */
   readScreenText(): string;
+  /**
+   * Serialize the CURRENT screen to a string WITH ANSI/color escapes (via the serialize
+   * addon) — suitable for the client mirror to `reset()` + `write()` into an identical
+   * screen. Call AFTER `flush()` so the serialized state is settled. Covers normal +
+   * alternate buffers (claude TUI is a full-screen / alt-buffer app); an alt screen is
+   * prefixed with the alt-buffer-enter + cursor-home sequence, which the client absorbs
+   * via `reset()` before each write. Unlike `readGrid` (plain text for detectors), this
+   * preserves color — it is the mirror's content source, not a detection source.
+   */
+  serialize(): string;
   /** Dispose the underlying emulator. Idempotent-safe at the call sites (single teardown path). */
   dispose(): void;
 }
@@ -99,6 +118,12 @@ export function createCliScreenModel(
     scrollback: 0,
     allowProposedApi: true,
   });
+  // Load the serialize addon onto the headless terminal. headless has no renderer, but
+  // serialize only reads the buffer model, so `open()` is unnecessary (same as readGrid).
+  // headless and addon-serialize ship separate (structurally identical) ITerminalAddon
+  // types, so the load is cast through `unknown` to bridge the two module declarations.
+  const serializeAddon = new SerializeAddon();
+  terminal.loadAddon(serializeAddon as unknown as Parameters<typeof terminal.loadAddon>[0]);
 
   return {
     write(data: string): void {
@@ -122,6 +147,9 @@ export function createCliScreenModel(
     },
     readScreenText(): string {
       return this.readGrid().join('\n');
+    },
+    serialize(): string {
+      return serializeAddon.serialize();
     },
     dispose(): void {
       terminal.dispose();

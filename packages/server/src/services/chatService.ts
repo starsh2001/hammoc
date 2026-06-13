@@ -264,7 +264,7 @@ export class ChatService implements ChatEngine {
               async (input) => {
                 if (
                   input.hook_event_name === 'PreToolUse' &&
-                  isBlockedBackgroundCall(input.tool_name, input.tool_input)
+                  isBlockedBackgroundCall(input.tool_input)
                 ) {
                   return {
                     hookSpecificOutput: {

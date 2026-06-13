@@ -122,6 +122,36 @@ export function CliModeSettingsPanel() {
           </div>
         )}
 
+        {/* Mirror refresh interval — shown only while the mirror is ON (cliPtyMirror default ON).
+            Lower = smoother, higher = calmer / less bandwidth. Same widget shape as cliCardStaggerMs. */}
+        {(preferences.cliPtyMirror ?? true) && (
+          <div>
+            <label htmlFor="cli-mirror-throttle" className="block text-sm text-gray-900 dark:text-white mb-1">
+              {t('global.cliMirrorThrottleMs')}
+            </label>
+            <input
+              id="cli-mirror-throttle"
+              type="number"
+              min={50}
+              max={2000}
+              step={50}
+              value={preferences.cliMirrorThrottleMs ?? 200}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n) && n >= 50) {
+                  updatePreference('cliMirrorThrottleMs', n);
+                }
+              }}
+              className="w-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
+                         bg-white dark:bg-[#263240] text-gray-900 dark:text-white text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+              {t('global.cliMirrorThrottleMsDesc')}
+            </p>
+          </div>
+        )}
+
         {/* Resume confirm-menu auto-pick (large-session resume) — a 3-way select, not a toggle */}
         <div>
           <label htmlFor="cli-resume-choice" className="block text-sm text-gray-900 dark:text-white mb-1">

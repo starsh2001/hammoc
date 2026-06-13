@@ -17,10 +17,18 @@
 export const BACKGROUND_BLOCK_REASON =
   'Background execution is disabled in Hammoc: it runs one process per turn, so a backgrounded task is killed when the turn ends. Re-run without run_in_background (foreground).';
 
-/** True when a tool call is a background Bash execution that must be blocked. */
-export function isBlockedBackgroundCall(toolName: string, toolInput: unknown): boolean {
+/**
+ * True when a tool call requests background execution (`run_in_background: true`) — which
+ * must be blocked regardless of WHICH tool it is. Hammoc is turn-per-process, so ANY
+ * backgrounded call is orphaned at turn end. We key off the INPUT FLAG, not the tool name:
+ * a tool-name allow-list silently misses tools (that was the earlier Windows PowerShell gap),
+ * whereas the flag is the actual thing that makes the call doomed.
+ *
+ * Crucially this does NOT touch foreground execution: several foreground tools launched in
+ * parallel within one turn and awaited carry no `run_in_background` flag, so they pass through.
+ */
+export function isBlockedBackgroundCall(toolInput: unknown): boolean {
   return (
-    toolName === 'Bash' &&
     typeof toolInput === 'object' &&
     toolInput !== null &&
     (toolInput as { run_in_background?: unknown }).run_in_background === true

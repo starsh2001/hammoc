@@ -36,8 +36,8 @@ export function shouldForwardCliProgress(
  *      37.7 promoted the mirror from a diagnostic opt-in to a default feature; the
  *      `false` opt-out is still honored so a user can turn it off).
  *
- * When this returns false the call site passes `undefined`, so the engine's onData
- * never invokes onPtyRaw and no `cli:pty-raw` event is emitted.
+ * When this returns false the call site passes `undefined`, so the engine's onData never
+ * invokes onScreenFrame and no `cli:screen-frame` event is emitted.
  */
 export function shouldForwardCliPtyMirror(
   engineMode: EngineMode,

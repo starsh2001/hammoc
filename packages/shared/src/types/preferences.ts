@@ -55,6 +55,11 @@ export interface UserPreferences {
   // frames only when this is ON. Storing `false` opts out. (Type/key unchanged — only the
   // unset interpretation flipped OFF→ON, so no stored-value migration is needed.)
   cliPtyMirror?: boolean;
+  // Story 37.8: how often (ms) the CLI mirror is refreshed with the current screen. The server
+  // serializes claude's screen and pushes it on a trailing throttle of this interval — lower =
+  // smoother / more bandwidth, higher = calmer. Only consumed when the mirror (cliPtyMirror) is
+  // ON; the engine clamps via its default. Default 200 when unset. CLI mode only.
+  cliMirrorThrottleMs?: number;
   // Delay in ms between non-text card entrances during the CLI reveal animation (above).
   // Each thinking/tool/system card waits this long after the previous segment finishes
   // before bubbling in. Text typing is continuous (not gated by this). Default 500.

@@ -86,6 +86,7 @@ import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
 import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS } from './cliScreenModel.js';
 import { setCliScreen } from './cliScreenCache.js';
+import { createTrailingThrottle } from '../utils/trailingThrottle.js';
 import { readSpinnerProgress } from './cliSpinnerProgress.js';
 import {
   detectPermissionDialog,
@@ -259,6 +260,11 @@ const CLI_QUESTION_ENTER_KEY = '\r'; // select+submit (single) / activate Submit
 const CLI_QUESTION_ESC_KEY = '\x1b'; // cancel the modal (deadlock guard — AC4)
 /** Let the modal finish painting after the footer first appears, before scrape + drive. */
 const CLI_QUESTION_SETTLE_MS = 400;
+// Story 37.8: default pace for full-screen mirror frames. The actual interval is the user's
+// `cliMirrorThrottleMs` preference (passed in per-turn); this is the fallback when unset. The
+// spinner repaints many times a second, so coalescing keeps the mirror calm while bounding
+// bandwidth (the whole screen is re-sent each frame). Trailing edge keeps the latest frame.
+const CLI_SCREEN_FRAME_THROTTLE_DEFAULT_MS = 200;
 /**
  * Gap between injected menu keys. Arrow/Space/Enter are *discrete* key events — not the
  * typed-text-then-Enter pair that bracketed-paste coalesces (§32.4) — and Task 1 drove
@@ -607,7 +613,8 @@ export class CliChatEngine implements ChatEngine {
     onRawMessage?: (messageType: string) => void,
     onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
     onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
-    onPtyRaw?: (chunk: string) => void,
+    onScreenFrame?: (frame: string) => void,
+    screenFrameThrottleMs?: number,
   ): Promise<ChatResponse> {
     const cwd = this.workingDirectory;
     if (!cwd) {
@@ -652,10 +659,13 @@ export class CliChatEngine implements ChatEngine {
     }
     // Session-scoped `--settings` JSON (the global ~/.claude/settings.json is never
     // modified). Two things ride on it:
-    //  - Story 36.1: a PreToolUse command hook that denies background Bash
-    //    (run_in_background) — ALWAYS injected, since turn-per-process makes a
-    //    backgrounded task doomed. The deny bypasses canUseTool, so it also blocks
-    //    auto-approved calls (mirrors the SDK engine's inline hook in chatService).
+    //  - Story 36.1: a PreToolUse command hook that denies ANY background tool call
+    //    (run_in_background) — ALWAYS injected, since turn-per-process makes a backgrounded
+    //    task doomed. The deny bypasses canUseTool, so it also blocks auto-approved calls
+    //    (mirrors the SDK engine's inline hook in chatService). matcher '.*' so the hook
+    //    fires for EVERY tool — it keys off the input flag, not a tool-name list (which
+    //    silently misses tools, e.g. the earlier Windows PowerShell gap). The script passes
+    //    through (no-op) for foreground calls, so parallel-foreground-and-await still works.
     //  - thinking summaries (default ON): Opus 4.7+ omit summaries unless asked; this
     //    requests them. Effect under subscription auth must be confirmed in a real
     //    CLI-mode chat (see field doc).
@@ -663,7 +673,7 @@ export class CliChatEngine implements ChatEngine {
       hooks: {
         PreToolUse: [
           {
-            matcher: 'Bash',
+            matcher: '.*',
             hooks: [{ type: 'command', command: `node "${BACKGROUND_HOOK_SCRIPT}"` }],
           },
         ],
@@ -738,7 +748,7 @@ export class CliChatEngine implements ChatEngine {
       // first write); lastSize stays 0 so the whole file drains once it appears.
     }
 
-    const { handle, pty } = cliSessionPool.spawnClaude({ cwd, args, binaryPathOverride: this.cliBinaryPath });
+    const { handle, pty } = cliSessionPool.spawnClaude({ cwd, args, binaryPathOverride: this.cliBinaryPath, cols: CLI_SCREEN_COLS, rows: CLI_SCREEN_ROWS });
     // Story 37.1: a headless screen model, one per turn (same lifecycle as the PTY),
     // fed every PTY frame UNCONDITIONALLY (unlike the gated mirror) so the final screen
     // grid is always reconstructed — "reconstruct always / display-only toggle" (AC3).
@@ -774,6 +784,28 @@ export class CliChatEngine implements ChatEngine {
 
     return new Promise<ChatResponse>((resolve, reject) => {
       let settled = false;
+
+      // Story 37.8: full-screen mirror frame pacing. The headless screen model already holds
+      // the current screen (fed every frame for detection); serialize() turns it into a color-
+      // preserving frame the client renders as-is. The spinner repaints many times a second, so
+      // coalesce to ~100ms (trailing edge keeps the latest). `onScreenFrame` is undefined when
+      // the mirror pref is OFF or on the queue path → schedule is skipped upstream, so this
+      // callback runs only for ON sessions. The cache is refreshed in lockstep so a mid-turn
+      // late-join / refresh / collapse-expand restores the CURRENT screen. The settled-guard
+      // drops a stray trailing timer that fires after finish/abort (teardown sends the final
+      // frame directly, bypassing this guard).
+      let lastSentFrame: string | null = null;
+      const frameThrottle = createTrailingThrottle<string>(screenFrameThrottleMs ?? CLI_SCREEN_FRAME_THROTTLE_DEFAULT_MS, (frame) => {
+        if (settled) return;
+        onScreenFrame?.(frame);
+        if (resolvedSessionId) {
+          try {
+            setCliScreen(resolvedSessionId, frame);
+          } catch {
+            /* ignore — cache refresh best-effort */
+          }
+        }
+      });
       let pollTimer: ReturnType<typeof setInterval> | null = null;
       let dirWatcher: FSWatcher | null = null;
       let fileWatcher: FSWatcher | null = null;
@@ -897,18 +929,22 @@ export class CliChatEngine implements ChatEngine {
         // store-only (next spawn `--permission-mode`). Set before screen.dispose so no closed loop
         // can read a disposed grid.
         this.activeCliControl = null;
-        // Story 37.7: hand off the per-turn emulator's FINAL grid to the session-lifetime
-        // screen cache BEFORE dispose — turn-per-process means there is no emulator between
-        // turns, so this cached grid is the only "current screen" a late-join can receive.
-        // Read BEFORE screen.dispose() (a disposed emulator can't be read — the same
-        // ordering discipline as the activeCliControl release above). Best-effort: a read
-        // failure must never break teardown.
-        if (resolvedSessionId) {
-          try {
-            setCliScreen(resolvedSessionId, screen.readGrid());
-          } catch {
-            /* ignore — snapshot succession best-effort */
-          }
+        // Story 37.8: end-of-turn screen succession. Stop the throttle timer (no stray trailing
+        // send after settle), then send the FINAL screen directly — serialize WITH color, push to
+        // live clients (bypassing the throttle's settled-guard, since this is the legitimate end-
+        // of-turn frame), and hand off to the session-lifetime cache so the next late-join /
+        // refresh / collapse-expand restores the final screen. turn-per-process means there is no
+        // emulator between turns, so this cached frame is the only "current screen" a late-join
+        // can receive. BEFORE screen.dispose() below (a disposed emulator can't be serialized —
+        // same ordering discipline as the activeCliControl release above). Best-effort: never
+        // break teardown.
+        frameThrottle.cancel();
+        try {
+          const finalFrame = screen.serialize();
+          onScreenFrame?.(finalFrame);
+          if (resolvedSessionId) setCliScreen(resolvedSessionId, finalFrame);
+        } catch {
+          /* ignore — final-frame succession best-effort */
         }
         // Story 37.1: release the per-turn headless emulator on the SAME single teardown
         // path (no new dispose route) — registerDisposer routes finish/fail/onAbort/onExit
@@ -1458,6 +1494,22 @@ export class CliChatEngine implements ChatEngine {
             });
           }, CLI_QUESTION_SETTLE_MS);
         }
+
+        // (5) Story 37.8: full-screen mirror frame. We are inside the post-flush settled
+        // consumer, so the screen is current — serialize it WITH color and pace it to the
+        // client (trailing throttle). Skip an unchanged screen (spinner idle) to spare
+        // bandwidth. No extra flush: reuse this settled read so detection timing is unchanged.
+        if (onScreenFrame) {
+          try {
+            const frame = screen.serialize();
+            if (frame !== lastSentFrame) {
+              lastSentFrame = frame;
+              frameThrottle.schedule(frame);
+            }
+          } catch {
+            /* serialize best-effort — never break a turn */
+          }
+        }
       };
 
       // S-1 heartbeat: during generation the session JSONL is silent until a block
@@ -1499,10 +1551,9 @@ export class CliChatEngine implements ChatEngine {
             /* ignore — dump best-effort */
           }
         }
-        // Live mirror passthrough (onPtyRaw) — a pure observer of the UNMODIFIED frame
-        // (raw, ANSI intact). It never alters the grid-based state detection (progress /
-        // limit / dialog / question) below; gated upstream by the cliPtyMirror preference.
-        onPtyRaw?.(data);
+        // Story 37.8: the live raw-delta mirror passthrough was removed here — the mirror is
+        // now driven by full self-contained screen frames serialized in consumeSettledGrid
+        // (post-flush), so a per-frame delta passthrough is no longer needed.
         // Pre-injection (boot/resume): accumulate output until the ❯ readiness marker, then classify
         // the SETTLED grid before injecting (Story 37.6). The `❯` marker is a cheap, NECESSARY-but-
         // insufficient trigger (it is shared by the input box, selection menus, and the permission

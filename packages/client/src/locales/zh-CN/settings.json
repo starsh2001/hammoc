@@ -93,6 +93,8 @@
         "cliSyntheticTypingDesc": "文本逐字打出，随后工具/思考卡片依次浮现（仅 CLI 模式，默认关闭）。",
         "cliCardStaggerMs": "卡片出现间隔 (ms)",
         "cliCardStaggerMsDesc": "打字完成后，工具/思考卡片逐个出现的间隔（默认 500 毫秒）。",
+        "cliMirrorThrottleMs": "屏幕镜像刷新间隔 (ms)",
+        "cliMirrorThrottleMsDesc": "镜像刷新到 claude 当前画面的间隔。越低越流畅、占用带宽越多，越高越平缓（默认 200 毫秒）。",
         "cliBinaryPath": "claude 可执行文件路径",
         "cliBinaryPathDesc": "手动指定 claude 可执行文件的路径。留空则自动检测。",
         "cliBinaryPathPlaceholder": "自动检测（留空）",

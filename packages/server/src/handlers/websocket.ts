@@ -1383,18 +1383,17 @@ export async function initializeWebSocket(
         return;
       }
 
-      // Story 37.7: CLI mirror late-join / refresh sync. If this session has a cached
-      // screen grid (handed off from the last turn's emulator), push a one-time snapshot
-      // to THIS socket so a newly-connected or refreshed browser initializes to the
-      // current claude screen, then follows live cli:pty-raw deltas. Room-wide broadcast
+      // Story 37.8: CLI mirror late-join / refresh sync. If this session has a cached screen
+      // frame (refreshed each ~100ms during a turn and at teardown), push it once to THIS
+      // socket so a newly-connected or refreshed browser initializes to the CURRENT claude
+      // screen (color intact), then follows live cli:screen-frame updates. Room-wide broadcast
       // is unnecessary (sockets already in the room are live-current). A browser refresh
-      // reconnects with a NEW socket id, so it is past the alreadyJoinedSame dedup above
-      // and receives the snapshot — only a same-socket re-join is deduped. Cache miss
-      // (e.g. SDK mode, or before the first turn ends) → no emit, blank-screen fallback,
-      // unchanged from before.
+      // reconnects with a NEW socket id, so it is past the alreadyJoinedSame dedup above and
+      // receives the frame — only a same-socket re-join is deduped. Cache miss (e.g. SDK mode,
+      // or before the first turn ends) → no emit, blank-screen fallback, unchanged from before.
       const cachedScreen = getCliScreen(sessionId);
       if (cachedScreen) {
-        socket.emit('cli:screen-snapshot', { sessionId, grid: cachedScreen });
+        socket.emit('cli:screen-frame', { sessionId, frame: cachedScreen });
       }
 
       if (!stream || stream.status !== 'running') {
@@ -1516,6 +1515,20 @@ export async function initializeWebSocket(
 
       // NOW add to broadcast set — live events flow from here
       stream.sockets.add(socket);
+    });
+
+    // Story 37.8: CLI mirror collapse/expand + remount restore. The mirror panel emits this
+    // (no payload) whenever it (re)mounts; resolve the socket's current session and push a
+    // one-time cli:screen-frame from the screen cache. A collapse/expand or panel remount does
+    // NOT re-fire session:join, so this control channel is how the panel pulls the current
+    // screen. Cache miss (SDK mode / before first turn / no session) → no-op.
+    socket.on('cli:request-screen-frame', () => {
+      const sid = socketToSession.get(socket.id) ?? socketSessionRoom.get(socket.id);
+      if (!sid) return;
+      const cachedFrame = getCliScreen(sid);
+      if (cachedFrame) {
+        socket.emit('cli:screen-frame', { sessionId: sid, frame: cachedFrame });
+      }
     });
 
     // Handle session:leave event — detach socket from current stream and session room
@@ -2855,11 +2868,13 @@ async function handleChatSend(
     const onPhase = (phase: 'launching' | 'submitting' | 'waiting' | null) => {
       emit('cli:phase', { phase });
     };
-    // PTY mirror: forward each raw claude TUI frame (ANSI intact) so the read-only mirror
-    // panel replays exactly what the windowless PTY shows. Live-only (the current-screen
-    // snapshot for late-join is a separate cli:screen-snapshot push on session:join).
-    const onPtyRaw = (chunk: string) => {
-      emit('cli:pty-raw', { chunk });
+    // Story 37.8: full-screen mirror frame. The CLI engine serializes the headless emulator's
+    // CURRENT screen (color intact) and paces it to ~100ms; forward each frame to the room so
+    // the read-only mirror renders the actual claude screen. Self-contained (a whole screen,
+    // not a delta), so the same frame restores a late-join / refresh / collapse-expand. The
+    // session:join + cli:request-screen-frame paths reuse this same event from the cache.
+    const onScreenFrame = (frame: string) => {
+      emit('cli:screen-frame', { sessionId, frame });
     };
     // Story 33.3: gate the progress counter on CLI mode + the user's preference (default
     // ON, Story 33.2). In SDK mode the engine ignores the callback anyway; passing
@@ -2867,9 +2882,12 @@ async function handleChatSend(
     const cliProgress = shouldForwardCliProgress(engineMode, effectivePrefs.cliShowGenerationProgress);
     const generationProgressCb = cliProgress ? onGenerationProgress : undefined;
     const cliPhaseCb = cliProgress ? onPhase : undefined;
-    // Mirror gate — a SEPARATE preference (default ON, opt-out — Story 37.7), independent
-    // of the progress gate. Forwarded unless the user explicitly turned the mirror off.
-    const ptyRawCb = shouldForwardCliPtyMirror(engineMode, effectivePrefs.cliPtyMirror) ? onPtyRaw : undefined;
+    // Mirror gate — a SEPARATE preference (default ON, opt-out), independent of the progress
+    // gate. Forwarded unless the user explicitly turned the mirror off.
+    const screenFrameCb = shouldForwardCliPtyMirror(engineMode, effectivePrefs.cliPtyMirror) ? onScreenFrame : undefined;
+    // Story 37.8: mirror refresh interval (ms) — the user's preference, applied as the engine's
+    // trailing-throttle interval. undefined → engine default (200ms). Harmless when the mirror is off.
+    const mirrorThrottleMs = effectivePrefs.cliMirrorThrottleMs;
 
     // Build shared callbacks (common logic for browser & queue paths)
     const { callbacks, sessionIdRef } = buildStreamCallbacks(
@@ -3013,7 +3031,7 @@ async function handleChatSend(
     try {
       const sendResult = await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
-      }, generationProgressCb, cliPhaseCb, ptyRawCb);
+      }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
       // SDK may return "No conversation found" as an error result (not a thrown exception).
       // Convert to a thrown error so the retry logic below can handle it.
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
@@ -3050,13 +3068,13 @@ async function handleChatSend(
         // Run /compact to shrink context (preserves session file)
         await chatService.sendMessageWithCallbacks('/compact', callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`compact:${messageType}`);
-        }, generationProgressCb, cliPhaseCb, ptyRawCb);
+        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
         // Retry the original message after compaction
         log.info(`[AUTO-COMPACT] compaction done, retrying original message: sessionId=${sessionId}`);
         resetTimeout('auto-compact-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`retry:${messageType}`);
-        }, generationProgressCb, cliPhaseCb, ptyRawCb);
+        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
       // Resume failed for other unknown reasons — retry without resume (fresh session).
       // Guards:
       //  1. Only when resuming (not a fresh session send)
@@ -3094,7 +3112,7 @@ async function handleChatSend(
         resetTimeout('resume-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, retryOptions, canUseTool, (messageType: string) => {
           resetTimeout(`raw:${messageType}`);
-        }, generationProgressCb, cliPhaseCb, ptyRawCb);
+        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
       } else {
         // Not retrying — flush gated error events before re-throwing
         ungateCallbacks();

@@ -94,6 +94,8 @@
         "cliSyntheticTypingDesc": "텍스트는 글자 단위로 타이핑되고, 그 뒤 도구·사고 카드가 차례로 등장합니다 (CLI 모드 전용, 기본 꺼짐).",
         "cliCardStaggerMs": "카드 등장 간격 (ms)",
         "cliCardStaggerMsDesc": "타이핑이 끝난 뒤 도구·사고 카드가 하나씩 등장하는 간격입니다 (기본 500ms).",
+        "cliMirrorThrottleMs": "화면 미러 갱신 주기 (ms)",
+        "cliMirrorThrottleMsDesc": "미러가 현재 claude 화면으로 갱신되는 간격입니다. 낮을수록 부드럽고 대역폭을 더 쓰며, 높을수록 차분합니다 (기본 200ms).",
         "cliBinaryPath": "claude 바이너리 경로",
         "cliBinaryPathDesc": "claude 실행 파일 경로를 수동으로 지정합니다. 비워 두면 자동 탐지합니다.",
         "cliBinaryPathPlaceholder": "자동 탐지 (비워 두기)",

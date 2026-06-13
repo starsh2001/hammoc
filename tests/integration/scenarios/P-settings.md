@@ -220,16 +220,17 @@ await new Promise(r => setTimeout(r, 1500));
 
 ### P-06-01: 엔진 토글 + CLI 설정 렌더/선택/영속 `[EDGE]`
 **절차**: (기본 런처에서 바로 검증 — 게이트 보조 런처 불필요)
-1. 기본 `<TARGET>/settings` 진입 → 전역 설정에서 **"Conversation Engine"** 라디오그룹(`input[type="radio"][name="engineMode"]`, value `sdk`/`cli`)과 **"CLI Mode Settings"** 패널(`#cli-binary-path` 텍스트 입력 + 진행률·미러 체크박스)이 렌더되는지 확인
+1. 기본 `<TARGET>/settings` 진입 → 전역 설정에서 **"Conversation Engine"** 라디오그룹(`input[type="radio"][name="engineMode"]`, value `sdk`/`cli`)과 **"CLI Mode Settings"** 패널(`#cli-binary-path` 텍스트 입력 + 진행률·미러 체크박스 + 미러 ON 시 `#cli-mirror-throttle` 갱신 주기 숫자 입력)이 렌더되는지 확인
 2. CLI 선택: `input[type="radio"][name="engineMode"][value="cli"]` 클릭 → ~0.5초 후 `/api/preferences.engineMode === 'cli'` 확인
 3. 바이너리 경로 주입: `#cli-binary-path` 에 임의 경로(예: `/usr/local/bin/claude`)를 native setter + `input`/`change`/`blur` 3종 이벤트로 입력 → ~1.5초(PATCH debounce) 후 `/api/preferences.cliBinaryPath` 일치 확인
 4. 진행률·미러 토글: `global.cliShowGenerationProgress` 와 `global.cliPtyMirror` 라벨의 체크박스를 각각 클릭 → `/api/preferences` 에 각각 토글 반영 (cliPtyMirror 는 Story 37.7 에서 **기본 ON·opt-out** 으로 승격 — 기본 체크 상태이며, 클릭하면 OFF(`false`)로 저장)
+4-1. 미러 갱신 주기 (Story 37.8): 미러가 ON 인 동안 `#cli-mirror-throttle` 숫자 입력이 노출(기본 200)됨을 확인 → 값을 예: `500` 으로 바꾸면 `/api/preferences.cliMirrorThrottleMs === 500` 영속 → 미러 체크박스를 OFF 로 끄면 `#cli-mirror-throttle` 입력이 DOM 에서 사라지는지(미러 OFF 시 숨김) 확인
 5. 복구: 엔진을 SDK 로 되돌리고(`value="sdk"` 클릭) `#cli-binary-path` 를 빈 문자열로 비움 → `/api/preferences.engineMode === 'sdk'` + `cliBinaryPath` 미설정 확인
 
 **기대 결과**:
 - 엔진 라디오그룹(SDK/CLI) + "CLI Mode Settings" 패널이 DOM 에 존재
 - CLI 선택이 `/api/preferences.engineMode === 'cli'` 로 영속
-- `cliBinaryPath`·`cliShowGenerationProgress`·`cliPtyMirror` 가 `/api/preferences` 에 영속
+- `cliBinaryPath`·`cliShowGenerationProgress`·`cliPtyMirror`·`cliMirrorThrottleMs` 가 `/api/preferences` 에 영속
 - 종료 시 SDK + 빈 경로로 복구 (런타임에 'cli' 선택을 남기지 않음)
 
 **엣지케이스**:

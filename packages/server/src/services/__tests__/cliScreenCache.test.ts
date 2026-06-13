@@ -1,14 +1,15 @@
 /**
- * CLI screen cache tests (Story 37.7) — pure set/get/delete of the session-lifetime
- * screen grid used to sync late-joining browsers. The engine's teardown succession
- * (read final grid BEFORE dispose) and the session:join push are covered separately
- * (cliChatEngine teardown / websocket handler tests); here we pin the cache contract.
+ * CLI screen cache tests (Story 37.7, reworked 37.8) — pure set/get/delete of the session-
+ * lifetime serialized screen frame used to restore late-joining / refreshed / collapse-
+ * expanded browsers. The engine's throttled refresh + teardown succession and the
+ * session:join / cli:request-screen-frame push are covered separately (engine / websocket
+ * handler tests); here we pin the cache contract (now a single frame string, not a grid).
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { setCliScreen, getCliScreen, deleteCliScreen } from '../cliScreenCache.js';
 
-describe('cliScreenCache (Story 37.7)', () => {
+describe('cliScreenCache (Story 37.8)', () => {
   afterEach(() => {
     // Keep tests independent — drop any keys this file set.
     deleteCliScreen('sess-a');
@@ -19,27 +20,27 @@ describe('cliScreenCache (Story 37.7)', () => {
     expect(getCliScreen('sess-a')).toBeUndefined();
   });
 
-  it('stores a grid and returns the same grid on get', () => {
-    const grid = ['line one', 'line two', ''];
-    setCliScreen('sess-a', grid);
-    expect(getCliScreen('sess-a')).toEqual(grid);
+  it('stores a frame and returns the same frame on get', () => {
+    const frame = '\x1b[31mclaude\x1b[0m > prompt';
+    setCliScreen('sess-a', frame);
+    expect(getCliScreen('sess-a')).toBe(frame);
   });
 
-  it('replaces the grid on a later set (newest screen wins)', () => {
-    setCliScreen('sess-a', ['old']);
-    setCliScreen('sess-a', ['new', 'screen']);
-    expect(getCliScreen('sess-a')).toEqual(['new', 'screen']);
+  it('replaces the frame on a later set (newest screen wins)', () => {
+    setCliScreen('sess-a', 'old screen');
+    setCliScreen('sess-a', 'new screen');
+    expect(getCliScreen('sess-a')).toBe('new screen');
   });
 
   it('keys are independent per session', () => {
-    setCliScreen('sess-a', ['a']);
-    setCliScreen('sess-b', ['b']);
-    expect(getCliScreen('sess-a')).toEqual(['a']);
-    expect(getCliScreen('sess-b')).toEqual(['b']);
+    setCliScreen('sess-a', 'a');
+    setCliScreen('sess-b', 'b');
+    expect(getCliScreen('sess-a')).toBe('a');
+    expect(getCliScreen('sess-b')).toBe('b');
   });
 
   it('delete removes the entry (back to a miss)', () => {
-    setCliScreen('sess-a', ['x']);
+    setCliScreen('sess-a', 'x');
     deleteCliScreen('sess-a');
     expect(getCliScreen('sess-a')).toBeUndefined();
   });

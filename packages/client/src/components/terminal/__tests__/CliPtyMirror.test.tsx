@@ -1,11 +1,12 @@
 /**
- * CliPtyMirror tests (Story 37.7) — late-join screen snapshot + live raw convergence.
+ * CliPtyMirror tests (Story 37.8) — single self-contained screen frame: reset + write.
  *
  * xterm.js is mocked (jsdom has no Canvas). The socket is mocked so a test can drive the
- * captured event handlers and assert how the mirror initializes/clears. Covers:
- *   - cli:screen-snapshot → terminal.clear() then writes the grid as the current screen
- *   - a following cli:pty-raw frame is still written (live convergence after the snapshot)
- *   - effect cleanup removes BOTH socket listeners (no leak)
+ * captured event handlers and assert how the mirror renders. Covers:
+ *   - on mount: subscribes to cli:screen-frame AND emits cli:request-screen-frame (pull current screen)
+ *   - cli:screen-frame → terminal.reset() then write(frame) (whole-screen render, color intact)
+ *   - each frame re-resets (no delta accumulation)
+ *   - effect cleanup removes the socket listener (no leak)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -17,6 +18,7 @@ const mockTerminal = {
   open: vi.fn(),
   write: vi.fn(),
   clear: vi.fn(),
+  reset: vi.fn(),
   dispose: vi.fn(),
   selectAll: vi.fn(),
   getSelection: vi.fn(() => ''),
@@ -66,7 +68,7 @@ vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation(() => ({
 vi.stubGlobal('requestAnimationFrame', (cb: () => void) => { cb(); return 0; });
 vi.stubGlobal('cancelAnimationFrame', vi.fn());
 
-describe('CliPtyMirror — late-join snapshot (Story 37.7)', () => {
+describe('CliPtyMirror — full-screen frame (Story 37.8)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     for (const k of Object.keys(handlers)) handlers[k] = undefined;
@@ -74,35 +76,32 @@ describe('CliPtyMirror — late-join snapshot (Story 37.7)', () => {
 
   afterEach(() => cleanup());
 
-  it('subscribes to both cli:pty-raw and cli:screen-snapshot on mount', () => {
+  it('subscribes to cli:screen-frame and requests the current screen on mount', () => {
     render(<CliPtyMirror />);
-    expect(socketMock.on).toHaveBeenCalledWith('cli:pty-raw', expect.any(Function));
-    expect(socketMock.on).toHaveBeenCalledWith('cli:screen-snapshot', expect.any(Function));
+    expect(socketMock.on).toHaveBeenCalledWith('cli:screen-frame', expect.any(Function));
+    expect(socketMock.emit).toHaveBeenCalledWith('cli:request-screen-frame');
   });
 
-  it('clears xterm then writes the grid as the current screen on snapshot', () => {
+  it('overwrites in place (home + per-row erase, no full reset → no flicker)', () => {
     render(<CliPtyMirror />);
-    handlers['cli:screen-snapshot']?.({ grid: ['line one', 'line two', ''] });
+    handlers['cli:screen-frame']?.({ sessionId: 's', frame: '\x1b[31mERR\x1b[0m output' });
 
-    expect(mockTerminal.clear).toHaveBeenCalledTimes(1);
-    // Grid rows written (clear precedes the writes). Short rows are written then a newline.
-    expect(mockTerminal.write).toHaveBeenCalledWith('line one');
-    expect(mockTerminal.write).toHaveBeenCalledWith('line two');
+    expect(mockTerminal.reset).not.toHaveBeenCalled();
+    expect(mockTerminal.write).toHaveBeenCalledWith('\x1b[H\x1b[31mERR\x1b[0m output\x1b[K\x1b[0J');
   });
 
-  it('keeps writing live raw frames after a snapshot (convergence)', () => {
+  it('overwrites the whole screen on each frame (no delta accumulation)', () => {
     render(<CliPtyMirror />);
-    handlers['cli:screen-snapshot']?.({ grid: ['init'] });
-    mockTerminal.write.mockClear();
+    handlers['cli:screen-frame']?.({ sessionId: 's', frame: 'frame one' });
+    handlers['cli:screen-frame']?.({ sessionId: 's', frame: 'frame two' });
 
-    handlers['cli:pty-raw']?.({ chunk: '\x1b[2Jlive frame' });
-    expect(mockTerminal.write).toHaveBeenCalledWith('\x1b[2Jlive frame');
+    expect(mockTerminal.reset).not.toHaveBeenCalled();
+    expect(mockTerminal.write).toHaveBeenLastCalledWith('\x1b[Hframe two\x1b[K\x1b[0J');
   });
 
-  it('removes BOTH socket listeners on unmount (no leak)', () => {
+  it('removes the cli:screen-frame listener on unmount (no leak)', () => {
     const { unmount } = render(<CliPtyMirror />);
     unmount();
-    expect(socketMock.off).toHaveBeenCalledWith('cli:pty-raw', expect.any(Function));
-    expect(socketMock.off).toHaveBeenCalledWith('cli:screen-snapshot', expect.any(Function));
+    expect(socketMock.off).toHaveBeenCalledWith('cli:screen-frame', expect.any(Function));
   });
 });

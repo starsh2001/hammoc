@@ -1,4 +1,4 @@
-// CLI-mode PreToolUse command hook (Story 36.1): deny background Bash calls.
+// CLI-mode PreToolUse command hook (Story 36.1): deny background shell calls (Bash / PowerShell).
 //
 // claude (interactive CLI) runs this as an external process per PreToolUse event,
 // piping the hook input JSON on stdin. We deny `run_in_background: true` Bash so
@@ -24,7 +24,10 @@ process.stdin.on('end', () => {
     // Malformed input: do nothing (allow), never block the conversation on a parse error.
   }
   const toolInput = (input && input.tool_input) || {};
-  if (input && input.tool_name === 'Bash' && toolInput.run_in_background === true) {
+  // Tool-name agnostic: ANY tool requesting background (run_in_background) is doomed under
+  // turn-per-process, so key off the input flag, not the tool name (an allow-list silently
+  // misses tools). Foreground / parallel-foreground calls carry no such flag → pass through.
+  if (toolInput.run_in_background === true) {
     process.stdout.write(
       JSON.stringify({
         hookSpecificOutput: {

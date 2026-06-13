@@ -51,12 +51,15 @@ export interface ChatEngine {
      */
     onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
     /**
-     * CLI raw-screen passthrough for the read-only mirror. Each unmodified PTY frame (ANSI
-     * intact). Server-side, `@hammoc/shared`-independent (mirrors onPhase). CLI-only;
-     * the SDK engine ignores it (no PTY). The CLI engine calls it only when provided —
-     * upstream gates it on the `cliPtyMirror` preference (default ON, opt-out — Story 37.7).
+     * Story 37.8: CLI full-screen mirror frame. The server-side headless emulator's CURRENT
+     * screen, serialized WITH ANSI/color, paced to ~100ms. Server-side, `@hammoc/shared`-
+     * independent (mirrors onPhase). CLI-only; the SDK engine ignores it (no PTY). The CLI
+     * engine calls it only when provided — upstream gates it on the `cliPtyMirror` preference
+     * (default ON, opt-out).
      */
-    onPtyRaw?: (chunk: string) => void
+    onScreenFrame?: (frame: string) => void,
+    /** Story 37.8: CLI mirror refresh interval (ms) for the trailing throttle. CLI-only; default 200. */
+    screenFrameThrottleMs?: number
   ): Promise<ChatResponse>;
 
   /** Update the permission mode mid-conversation (propagates to the live query). */

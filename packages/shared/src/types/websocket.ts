@@ -64,6 +64,12 @@ export interface ClientToServerEvents {
   'permission:mode-change': (data: { mode: PermissionMode; projectSlug?: string }) => void;
   'session:join': (sessionId: string, projectSlug?: string) => void;
   'session:leave': (sessionId: string) => void;
+  // Story 37.8: CLI mirror collapse/expand + remount restore. The mirror panel emits this
+  // (no payload) whenever it (re)mounts; the server resolves the socket's current session
+  // and pushes a one-time cli:screen-frame from the screen cache (cache miss / SDK → no-op).
+  // A control channel separate from the cli:screen-frame display event, so collapse/expand —
+  // which does NOT re-fire session:join — can still pull the current screen.
+  'cli:request-screen-frame': () => void;
   // Story 15.2: Queue runner events
   'queue:start': (data: { items: QueueItem[]; sessionId?: string; projectSlug: string; permissionMode?: PermissionMode }) => void;
   'queue:pause': (data: { projectSlug: string }) => void;
@@ -145,16 +151,16 @@ export interface ServerToClientEvents {
   // Story 36.2: CLI-engine pre-generation phase (boot/inject window). Transient,
   // live-only (skipped on buffer replay); a null phase hands off to generation:progress.
   'cli:phase': (data: { phase: 'launching' | 'submitting' | 'waiting' | null }) => void;
-  // CLI-engine raw screen passthrough for the read-only mirror. Each unmodified PTY frame
-  // (ANSI intact). Transient, live-only (skipped on buffer replay). Gated on CLI mode +
-  // the cliPtyMirror preference (default ON, opt-out — Story 37.7).
-  'cli:pty-raw': (data: { chunk: string }) => void;
-  // Story 37.7: CLI mirror late-join/refresh sync. The FULL current screen grid (the
-  // Story 37.1 headless emulator's accumulated viewport), pushed once to a joining socket
-  // on session:join when a cached screen exists. Unlike cli:pty-raw (live in-place
-  // deltas), this carries the whole screen state for a one-time initialize — the client
-  // clears xterm, writes the grid, then resumes live deltas. CLI mode only.
-  'cli:screen-snapshot': (data: { sessionId: string; grid: string[] }) => void;
+  // CLI-engine full-screen mirror frame (Story 37.8). The server-side @xterm/headless
+  // emulator's CURRENT screen, serialized to a string WITH ANSI/color via the serialize
+  // addon, pushed on a ~100ms trailing throttle. Each frame is SELF-CONTAINED (a complete
+  // screen, not an in-place delta), so the read-only mirror restores fully on collapse/
+  // expand, late-join, and refresh by simply reset()+write(frame). Transient, live-only
+  // (skipped on buffer replay). Gated on CLI mode + the cliPtyMirror preference (default
+  // ON, opt-out). Also pushed once to a joining socket on session:join (cache hit) and in
+  // response to cli:request-screen-frame. Replaces the old cli:pty-raw delta + cli:screen-
+  // snapshot grid pair (unified — one self-contained frame covers live + restore).
+  'cli:screen-frame': (data: { sessionId: string; frame: string }) => void;
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;

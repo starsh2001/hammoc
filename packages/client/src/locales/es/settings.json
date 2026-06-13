@@ -93,6 +93,8 @@
         "cliSyntheticTypingDesc": "El texto se escribe carácter por carácter y luego las tarjetas de herramienta/razonamiento aparecen una tras otra (solo modo CLI; desactivado por defecto).",
         "cliCardStaggerMs": "Intervalo de aparición de tarjetas (ms)",
         "cliCardStaggerMsDesc": "Tiempo entre la aparición de cada tarjeta de herramienta/razonamiento tras finalizar la escritura (500 ms por defecto).",
+        "cliMirrorThrottleMs": "Intervalo de actualización del espejo (ms)",
+        "cliMirrorThrottleMsDesc": "Con qué frecuencia el espejo se actualiza a la pantalla actual de claude. Menor = más fluido / más ancho de banda, mayor = más tranquilo (200 ms por defecto).",
         "cliBinaryPath": "Ruta del binario de claude",
         "cliBinaryPathDesc": "Sobrescritura manual de la ruta del ejecutable claude. Déjalo vacío para la detección automática.",
         "cliBinaryPathPlaceholder": "Detección automática (dejar vacío)",

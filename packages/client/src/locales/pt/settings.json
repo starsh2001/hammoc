@@ -93,6 +93,8 @@
         "cliSyntheticTypingDesc": "O texto é digitado caractere por caractere e, em seguida, os cartões de ferramenta/raciocínio surgem um após o outro (apenas modo CLI; desativado por padrão).",
         "cliCardStaggerMs": "Intervalo de entrada dos cartões (ms)",
         "cliCardStaggerMsDesc": "Intervalo entre o surgimento de cada cartão de ferramenta/raciocínio após o término da digitação (500 ms por padrão).",
+        "cliMirrorThrottleMs": "Intervalo de atualização do espelho (ms)",
+        "cliMirrorThrottleMsDesc": "Com que frequência o espelho atualiza para a tela atual do claude. Menor = mais suave / mais largura de banda, maior = mais calmo (200 ms por padrão).",
         "cliBinaryPath": "Caminho do binário do claude",
         "cliBinaryPathDesc": "Substituição manual do caminho do executável claude. Deixe vazio para a detecção automática.",
         "cliBinaryPathPlaceholder": "Detecção automática (deixar vazio)",
