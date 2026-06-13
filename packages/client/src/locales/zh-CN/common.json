@@ -568,7 +568,8 @@
     "moveToOtherSide": "将面板移到另一侧"
   },
   "cliPtyMirror": {
-    "title": "claude 屏幕镜像",
+    "title": "Claude Code CLI Mirror (Read-only)",
+    "resize": "调整高度（拖动）",
     "clear": "清除",
     "copy": "全部复制",
     "copied": "已将镜像内容复制到剪贴板",

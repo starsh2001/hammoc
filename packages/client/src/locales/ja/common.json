@@ -568,7 +568,8 @@
     "moveToOtherSide": "パネルを反対側に移動"
   },
   "cliPtyMirror": {
-    "title": "claude 画面ミラー",
+    "title": "Claude Code CLI Mirror (Read-only)",
+    "resize": "高さ調整（ドラッグ）",
     "clear": "クリア",
     "copy": "全体をコピー",
     "copied": "ミラーの内容をクリップボードにコピーしました",

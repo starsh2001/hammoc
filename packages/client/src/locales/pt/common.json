@@ -568,7 +568,8 @@
     "moveToOtherSide": "Mover painel para o outro lado"
   },
   "cliPtyMirror": {
-    "title": "Espelho de tela do claude",
+    "title": "Claude Code CLI Mirror (Read-only)",
+    "resize": "Ajustar altura (arrastar)",
     "clear": "Limpar",
     "copy": "Copiar tudo",
     "copied": "Conteúdo do espelho copiado para a área de transferência",

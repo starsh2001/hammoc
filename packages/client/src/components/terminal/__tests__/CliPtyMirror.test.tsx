@@ -10,7 +10,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { toast } from 'sonner';
 import { CliPtyMirror } from '../CliPtyMirror';
 
 // Stable xterm Terminal mock — the spread copy in the component shares these vi.fn refs.
@@ -19,6 +20,7 @@ const mockTerminal = {
   write: vi.fn(),
   clear: vi.fn(),
   reset: vi.fn(),
+  scrollToBottom: vi.fn(),
   dispose: vi.fn(),
   selectAll: vi.fn(),
   getSelection: vi.fn(() => ''),
@@ -51,6 +53,14 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 
+// sonner — assert on copy success/failure toasts without rendering them
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+/** Define a (configurable) navigator.clipboard for the test — undefined simulates http/LAN. */
+function setClipboard(value: unknown) {
+  Object.defineProperty(navigator, 'clipboard', { value, configurable: true, writable: true });
+}
+
 // Stores — force CLI mode + mirror ON (default) so the panel renders.
 vi.mock('../../../stores/preferencesStore', () => ({
   usePreferencesStore: (selector: (s: unknown) => unknown) =>
@@ -71,10 +81,15 @@ vi.stubGlobal('cancelAnimationFrame', vi.fn());
 describe('CliPtyMirror — full-screen frame (Story 37.8)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTerminal.getSelection.mockReturnValue('');
     for (const k of Object.keys(handlers)) handlers[k] = undefined;
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    setClipboard(undefined);
+    delete (document as { execCommand?: unknown }).execCommand;
+  });
 
   it('subscribes to cli:screen-frame and requests the current screen on mount', () => {
     render(<CliPtyMirror />);
@@ -82,26 +97,63 @@ describe('CliPtyMirror — full-screen frame (Story 37.8)', () => {
     expect(socketMock.emit).toHaveBeenCalledWith('cli:request-screen-frame');
   });
 
-  it('overwrites in place (home + per-row erase, no full reset → no flicker)', () => {
+  it('repaints the whole frame inside a synchronized update (full clear + redraw)', () => {
     render(<CliPtyMirror />);
     handlers['cli:screen-frame']?.({ sessionId: 's', frame: '\x1b[31mERR\x1b[0m output' });
 
     expect(mockTerminal.reset).not.toHaveBeenCalled();
-    expect(mockTerminal.write).toHaveBeenCalledWith('\x1b[H\x1b[31mERR\x1b[0m output\x1b[K\x1b[0J');
+    expect(mockTerminal.write).toHaveBeenCalledWith('\x1b[?2026h\x1b[2J\x1b[H\x1b[31mERR\x1b[0m output\x1b[?2026l');
   });
 
-  it('overwrites the whole screen on each frame (no delta accumulation)', () => {
+  it('repaints the whole screen on each frame (no delta accumulation)', () => {
     render(<CliPtyMirror />);
     handlers['cli:screen-frame']?.({ sessionId: 's', frame: 'frame one' });
     handlers['cli:screen-frame']?.({ sessionId: 's', frame: 'frame two' });
 
     expect(mockTerminal.reset).not.toHaveBeenCalled();
-    expect(mockTerminal.write).toHaveBeenLastCalledWith('\x1b[Hframe two\x1b[K\x1b[0J');
+    expect(mockTerminal.write).toHaveBeenLastCalledWith('\x1b[?2026h\x1b[2J\x1b[Hframe two\x1b[?2026l');
   });
 
   it('removes the cli:screen-frame listener on unmount (no leak)', () => {
     const { unmount } = render(<CliPtyMirror />);
     unmount();
     expect(socketMock.off).toHaveBeenCalledWith('cli:screen-frame', expect.any(Function));
+  });
+
+  it('copy button writes the selected screen text via the Clipboard API (secure context)', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    setClipboard({ writeText });
+    mockTerminal.getSelection.mockReturnValue('claude screen text');
+
+    render(<CliPtyMirror />);
+    fireEvent.click(screen.getByLabelText('cliPtyMirror.copy'));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('claude screen text'));
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('copy button falls back to execCommand when the Clipboard API is absent (http/LAN)', async () => {
+    setClipboard(undefined); // non-secure context → navigator.clipboard is undefined
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true, writable: true });
+    mockTerminal.getSelection.mockReturnValue('fallback text');
+
+    render(<CliPtyMirror />);
+    fireEvent.click(screen.getByLabelText('cliPtyMirror.copy'));
+
+    await waitFor(() => expect(execCommand).toHaveBeenCalledWith('copy'));
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('copy button reports an error on a blank screen (nothing to copy)', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    setClipboard({ writeText });
+    mockTerminal.getSelection.mockReturnValue('   ');
+
+    render(<CliPtyMirror />);
+    fireEvent.click(screen.getByLabelText('cliPtyMirror.copy'));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(writeText).not.toHaveBeenCalled();
   });
 });

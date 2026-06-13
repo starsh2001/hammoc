@@ -603,7 +603,8 @@
     "moveToOtherSide": "Move panel to other side"
   },
   "cliPtyMirror": {
-    "title": "claude screen mirror",
+    "title": "Claude Code CLI Mirror (Read-only)",
+    "resize": "Resize (drag)",
     "clear": "Clear",
     "copy": "Copy all",
     "copied": "Mirror contents copied to clipboard",
