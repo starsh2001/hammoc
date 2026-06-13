@@ -177,6 +177,12 @@ interface ChatState {
    * alongside generationProgress; null when no phase is active (SDK mode never sets it).
    */
   cliPhase: 'launching' | 'submitting' | 'waiting' | null;
+  /**
+   * Soft CLI screen-stall flag — true while the server reports the reconstructed CLI screen has
+   * shown no change for the configured window (looks frozen). Advisory only; the UI offers a Stop.
+   * Cleared alongside cliPhase. (CLI mode only; SDK never sets it.)
+   */
+  cliScreenStalled: boolean;
   /** Current permission mode for Agent SDK */
   permissionMode: PermissionMode;
   /** Current context usage data from last SDK response */
@@ -340,6 +346,8 @@ interface ChatActions {
   setGenerationProgress: (progress: { tokens: number; elapsedSeconds: number } | null) => void;
   /** Story 36.2: set/clear the CLI pre-generation phase (null = phase done / hand off to progress) */
   setCliPhase: (phase: 'launching' | 'submitting' | 'waiting' | null) => void;
+  /** Set/clear the soft CLI screen-stall flag (from the cli:screen-stall signal). */
+  setCliScreenStalled: (stalled: boolean) => void;
   /** Set last dryRun result for confirmation dialog */
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => void;
   /** Clear last dryRun result (dialog close/cancel) */
@@ -375,6 +383,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingStartedAt: null,
   generationProgress: null,
   cliPhase: null,
+  cliScreenStalled: false,
   lastResultError: null,
   selectedModel: '',
   // Seed from cached preferences so a fresh chatStore (page reload, first mount) immediately
@@ -540,6 +549,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingStartedAt: new Date(),
       generationProgress: null,
       cliPhase: null,
+      cliScreenStalled: false,
       lastResultError: null,
     });
   },
@@ -695,6 +705,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingStartedAt: null,
       generationProgress: null,
       cliPhase: null,
+      cliScreenStalled: false,
       streamCompleteCount: get().streamCompleteCount + 1,
     });
   },
@@ -721,6 +732,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingStartedAt: null,
       generationProgress: null,
       cliPhase: null,
+      cliScreenStalled: false,
     });
   },
 
@@ -1056,6 +1068,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setGenerationProgress: (progress) => set({ generationProgress: progress }),
 
   setCliPhase: (phase) => set({ cliPhase: phase }),
+
+  setCliScreenStalled: (stalled) => set({ cliScreenStalled: stalled }),
 
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => set({ lastDryRunResult: result }),
 

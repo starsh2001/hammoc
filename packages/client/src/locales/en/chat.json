@@ -300,6 +300,8 @@
     "generating": "Generating...",
     "restoring": "Restoring conversation...",
     "compactionHint": "context compaction may be in progress",
+    "screenStalled": "Claude's screen has been still for a while",
+    "screenStallStop": "Stop",
     "generationProgress": "↓ {{tokens}} tokens · {{time}}",
     "cliPhase": {
       "launching": "Launching Claude Code…",

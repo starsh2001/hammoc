@@ -161,6 +161,11 @@ export interface ServerToClientEvents {
   // response to cli:request-screen-frame. Replaces the old cli:pty-raw delta + cli:screen-
   // snapshot grid pair (unified — one self-contained frame covers live + restore).
   'cli:screen-frame': (data: { sessionId: string; frame: string }) => void;
+  // Soft CLI screen-stall signal (cliScreenStallMs watchdog). `stalled:true` when the reconstructed
+  // screen showed no content change for the configured window during an active CLI turn (and no modal
+  // awaited input); `stalled:false` when it moves again or the turn ends. Advisory only — the client
+  // surfaces a "looks stuck — Stop?" affordance; the server never auto-aborts. Transient, live-only.
+  'cli:screen-stall': (data: { sessionId: string; stalled: boolean }) => void;
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;

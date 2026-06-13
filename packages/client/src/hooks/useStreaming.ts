@@ -670,6 +670,14 @@ export function useStreaming() {
       useChatStore.getState().setCliPhase(data.phase);
     };
 
+    // Soft CLI screen-stall signal — the server's screen-frame watchdog says the reconstructed CLI
+    // screen has shown no change for the configured window (looks frozen). Advisory: the UI surfaces
+    // a "looks stuck — Stop?" affordance; no auto-abort. Cleared when the screen moves / turn ends,
+    // and reset locally on completeStreaming/abortStreaming alongside cliPhase.
+    const handleScreenStall = (data: { sessionId: string; stalled: boolean }) => {
+      useChatStore.getState().setCliScreenStalled(data.stalled);
+    };
+
     // Handle system:task-notification — add task notification segment
     const handleTaskNotification = (data: TaskNotificationData) => {
       revealSegment(() => addTaskNotification(data));
@@ -1563,6 +1571,7 @@ export function useStreaming() {
     socket.on('tool:progress', handleToolProgress);
     socket.on('generation:progress', handleGenerationProgress);
     socket.on('cli:phase', handleCliPhase);
+    socket.on('cli:screen-stall', handleScreenStall);
     socket.on('system:task-notification', handleTaskNotification);
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
@@ -1788,6 +1797,7 @@ export function useStreaming() {
       socket.off('tool:progress', handleToolProgress);
       socket.off('generation:progress', handleGenerationProgress);
       socket.off('cli:phase', handleCliPhase);
+      socket.off('cli:screen-stall', handleScreenStall);
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);

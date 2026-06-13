@@ -11,6 +11,7 @@ import { MessageBubble } from './MessageBubble';
 import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { MessageListSkeleton } from './MessageListSkeleton';
 import { StreamingIndicator, SPARKLE_FRAMES } from './StreamingIndicator';
+import { CliScreenStallNotice } from './CliScreenStallNotice';
 import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ThinkingBlock } from './ThinkingBlock';
@@ -888,6 +889,9 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
             </div>
           </div>
         )}
+
+        {/* Soft "CLI screen looks frozen" affordance — self-gates on stalled + streaming. */}
+        <CliScreenStallNotice />
 
         <div ref={bottomRef} aria-hidden="true" />
       </div>

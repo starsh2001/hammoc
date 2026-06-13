@@ -96,6 +96,8 @@
         "cliCardStaggerMsDesc": "타이핑이 끝난 뒤 도구·사고 카드가 하나씩 등장하는 간격입니다 (기본 500ms).",
         "cliMirrorThrottleMs": "화면 미러 갱신 주기 (ms)",
         "cliMirrorThrottleMsDesc": "미러가 현재 claude 화면으로 갱신되는 간격입니다. 낮을수록 부드럽고 대역폭을 더 쓰며, 높을수록 차분합니다 (기본 200ms).",
+        "cliScreenStallMs": "화면 멈춤 감지 (ms)",
+        "cliScreenStallMsDesc": "응답 중 claude 화면이 이 시간 동안 전혀 바뀌지 않으면 '멈춘 것 같음' 알림과 중단 버튼을 띄웁니다 (자동 중단은 하지 않음 — 직접 선택). 0이면 끔, 기본 20000ms. 미러가 켜져 있을 때만 동작합니다.",
         "cliBinaryPath": "claude 바이너리 경로",
         "cliBinaryPathDesc": "claude 실행 파일 경로를 수동으로 지정합니다. 비워 두면 자동 탐지합니다.",
         "cliBinaryPathPlaceholder": "자동 탐지 (비워 두기)",

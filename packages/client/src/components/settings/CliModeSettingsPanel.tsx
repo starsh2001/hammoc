@@ -194,6 +194,22 @@ export function CliModeSettingsPanel() {
           />
         )}
 
+        {/* Soft screen-stall watchdog threshold. The reconstructed screen ticks ~1×/s while healthy,
+            so a long flat-line means claude likely froze — surface a "looks stuck — Stop?" affordance
+            (advisory; never auto-aborts). 0 disables. Needs the mirror (the screen-frame source). */}
+        {(preferences.cliPtyMirror ?? true) && (
+          <NumberPrefField
+            id="cli-screen-stall"
+            label={t('global.cliScreenStallMs')}
+            desc={t('global.cliScreenStallMsDesc')}
+            value={preferences.cliScreenStallMs ?? 20000}
+            min={0}
+            max={600000}
+            step={5000}
+            onCommit={(n) => updatePreference('cliScreenStallMs', n)}
+          />
+        )}
+
         {/* Resume confirm-menu auto-pick (large-session resume) — a 3-way select, not a toggle */}
         <div>
           <label htmlFor="cli-resume-choice" className="block text-sm text-gray-900 dark:text-white mb-1">

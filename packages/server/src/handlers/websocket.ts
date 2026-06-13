@@ -40,6 +40,7 @@ import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
 import { shouldForwardCliProgress, shouldForwardCliPtyMirror } from '../utils/cliEngineUtils.js';
 import { getCliScreen, deleteCliScreen } from '../services/cliScreenCache.js';
+import { createScreenStallWatchdog, type ScreenStallWatchdog } from '../services/cliScreenStallWatchdog.js';
 import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
 import { createMcpCallRecorder } from '../services/observabilityService.js';
@@ -2645,6 +2646,9 @@ async function handleChatSend(
   }
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  // CLI screen-stall watchdog — assigned once prefs/engineMode are known (below). Declared at the
+  // function scope so the finally can dispose() it (a try-block `const` wouldn't be in scope there).
+  let stallWatchdog: ScreenStallWatchdog | null = null;
   // Story 35.1: when true the inactivity timer is paused because we're awaiting
   // user input (permission approval / AskUserQuestion selection). resetTimeout()
   // short-circuits while this is set so no activity can re-arm the timer, and
@@ -2854,6 +2858,23 @@ async function handleChatSend(
     };
     resetTimeout('initial');
 
+    // CLI screen-stall watchdog (soft, advisory — see cliScreenStallWatchdog). The reconstructed
+    // screen changes ~1×/second while claude is healthy (spinner glyph + ticking clock), so a long
+    // flat-line of NO change is a reliable "claude froze" signal — unlike the removed inactivity
+    // timeout, which watched JSONL activity that legitimately pauses during thinking. We do NOT
+    // auto-abort: emit a soft `cli:screen-stall` so the UI can offer a Stop. CLI mode only, driven by
+    // the mirror frames (so it follows the mirror gate), clamped to 5s–10min (0 = off). Fires only on
+    // a still-running, non-modal turn; disposed at turn end so a stale timer can't leak into the next.
+    const rawStallMs = effectivePrefs.cliScreenStallMs ?? 20000;
+    const screenStallMs = (engineMode !== 'cli' || rawStallMs <= 0)
+      ? 0
+      : Math.min(Math.max(rawStallMs, 5000), 600000);
+    stallWatchdog = createScreenStallWatchdog({
+      stallMs: screenStallMs,
+      isActive: () => stream.status === 'running' && !permissionWaiting,
+      onStallChange: (stalled) => emit('cli:screen-stall', { sessionId, stalled }),
+    });
+
     // Story 32.7: forward the CLI engine's transient generation-progress counter
     // ("↓ N tokens · Ns" parsed from the spinner) to the browser. Live-only — the
     // client skips it on buffer replay (mirrors tool:progress). The SDK engine never
@@ -2874,6 +2895,7 @@ async function handleChatSend(
     // not a delta), so the same frame restores a late-join / refresh / collapse-expand. The
     // session:join + cli:request-screen-frame paths reuse this same event from the cache.
     const onScreenFrame = (frame: string) => {
+      stallWatchdog?.noteFrame(frame); // soft screen-stall watchdog (CLI mode; no-op when disabled)
       emit('cli:screen-frame', { sessionId, frame });
     };
     // Story 33.3: gate the progress counter on CLI mode + the user's preference (default
@@ -3146,6 +3168,10 @@ async function handleChatSend(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
+    // Screen-stall watchdog teardown: clear the pending timer so a stale fire can't leak into the
+    // NEXT turn (the stream object is reused and its status flips back to 'running'), and drop any
+    // active stall so every viewer's "looks stuck?" affordance clears when the turn ends.
+    stallWatchdog?.dispose();
 
     // Delete phantom checkpoint files created by SDK file checkpointing.
     // These are separate JSONL files (new UUIDs) containing only

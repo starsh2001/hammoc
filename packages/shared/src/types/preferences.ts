@@ -60,6 +60,15 @@ export interface UserPreferences {
   // smoother / more bandwidth, higher = calmer. Only consumed when the mirror (cliPtyMirror) is
   // ON; the engine clamps via its default. Default 200 when unset. CLI mode only.
   cliMirrorThrottleMs?: number;
+  // Soft CLI "screen-stall" watchdog (ms). During an active CLI turn the reconstructed screen
+  // (spinner glyph + ticking elapsed clock) changes ~1×/second while claude is healthy, so a long
+  // flat-line of NO screen change is a reliable "claude froze" signal — unlike the removed inactivity
+  // timeout, which watched JSONL activity that legitimately pauses during thinking. When the screen
+  // shows no content change for this long (and a modal isn't awaiting input), the server emits a
+  // SOFT `cli:screen-stall` signal so the UI can surface a "looks stuck — Stop?" affordance. It does
+  // NOT auto-abort (the user decides). 0 disables it; unset = 20000. Clamped to 5s–10min. CLI mode
+  // only, and only while the mirror is on (the screen-frame source). (Screen-stall watchdog.)
+  cliScreenStallMs?: number;
   // Delay in ms between non-text card entrances during the CLI reveal animation (above).
   // Each thinking/tool/system card waits this long after the previous segment finishes
   // before bubbling in. Text typing is continuous (not gated by this). Default 500.

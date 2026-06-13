@@ -300,6 +300,8 @@
     "generating": "응답 생성 중...",
     "restoring": "대화 복원 중...",
     "compactionHint": "컨텍스트 압축 중일 수 있음",
+    "screenStalled": "claude 화면이 한동안 멈춰 있어요",
+    "screenStallStop": "중단",
     "generationProgress": "↓ {{tokens}} 토큰 · {{time}}",
     "cliPhase": {
       "launching": "Claude Code 실행 중",
