@@ -33,9 +33,21 @@ function getAutoLayout(): DiffLayout {
     : 'inline';
 }
 
+// Device-local: diff layout lives in this browser's localStorage (the original
+// pre-server-migration key), NOT the server — each device keeps its own; never broadcasts.
+const DIFF_LAYOUT_KEY = 'hammoc-diff-layout';
+
 function getSavedLayout(): DiffLayout | null {
+  if (typeof window !== 'undefined') {
+    const local = window.localStorage.getItem(DIFF_LAYOUT_KEY);
+    if (local === 'side-by-side' || local === 'inline') return local;
+  }
+  // One-time migration: adopt the value still on the server, persist it locally.
   const saved = usePreferencesStore.getState().preferences.diffLayout;
-  if (saved === 'side-by-side' || saved === 'inline') return saved;
+  if (saved === 'side-by-side' || saved === 'inline') {
+    try { window.localStorage.setItem(DIFF_LAYOUT_KEY, saved); } catch { /* quota */ }
+    return saved;
+  }
   return null;
 }
 
@@ -45,20 +57,8 @@ export function useDiffLayout(): UseDiffLayoutReturn {
   const [isManualOverride, setIsManualOverride] = useState<boolean>(saved !== null);
   const isManualRef = useRef(saved !== null);
 
-  // Sync with preferencesStore when server data arrives
-  const storeDiffLayout = usePreferencesStore((s) => s.preferences.diffLayout);
-  useEffect(() => {
-    if (storeDiffLayout && storeDiffLayout !== layout) {
-      setLayoutState(storeDiffLayout);
-      setIsManualOverride(true);
-      isManualRef.current = true;
-    } else if (storeDiffLayout === undefined && isManualOverride) {
-      // Server has no preference — reset to auto
-      setIsManualOverride(false);
-      isManualRef.current = false;
-      setLayoutState(getAutoLayout());
-    }
-  }, [storeDiffLayout]);
+  // No server sync: diff layout is device-local now (localStorage), so it does NOT follow
+  // preferencesStore changes from other devices.
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -69,14 +69,14 @@ export function useDiffLayout(): UseDiffLayoutReturn {
     setLayoutState(newLayout);
     setIsManualOverride(true);
     isManualRef.current = true;
-    usePreferencesStore.getState().updatePreference('diffLayout', newLayout);
+    try { window.localStorage.setItem(DIFF_LAYOUT_KEY, newLayout); } catch { /* quota */ }
   }, []);
 
   const resetToAuto = useCallback(() => {
     setIsManualOverride(false);
     isManualRef.current = false;
     setLayoutState(getAutoLayout());
-    usePreferencesStore.getState().updatePreference('diffLayout', undefined);
+    try { window.localStorage.removeItem(DIFF_LAYOUT_KEY); } catch { /* quota */ }
   }, []);
 
   // Listen for matchMedia changes

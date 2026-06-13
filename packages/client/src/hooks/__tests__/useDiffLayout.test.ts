@@ -95,7 +95,7 @@ describe('useDiffLayout', () => {
   });
 
   describe('Manual Override', () => {
-    it('setLayout saves to preferencesStore and sets manual override', () => {
+    it('setLayout saves to localStorage (device-local) and sets manual override', () => {
       const { result } = renderHook(() => useDiffLayout());
 
       act(() => {
@@ -104,7 +104,7 @@ describe('useDiffLayout', () => {
 
       expect(result.current.layout).toBe('inline');
       expect(result.current.isManualOverride).toBe(true);
-      expect(usePreferencesStore.getState().preferences.diffLayout).toBe('inline');
+      expect(localStorage.getItem('hammoc-diff-layout')).toBe('inline');
     });
 
     it('manual override ignores matchMedia changes', () => {
@@ -138,7 +138,7 @@ describe('useDiffLayout', () => {
         result.current.setLayout('inline');
       });
       expect(result.current.isManualOverride).toBe(true);
-      expect(usePreferencesStore.getState().preferences.diffLayout).toBe('inline');
+      expect(localStorage.getItem('hammoc-diff-layout')).toBe('inline');
 
       // Reset to auto
       act(() => {
@@ -146,7 +146,7 @@ describe('useDiffLayout', () => {
       });
 
       expect(result.current.isManualOverride).toBe(false);
-      expect(usePreferencesStore.getState().preferences.diffLayout).toBeUndefined();
+      expect(localStorage.getItem('hammoc-diff-layout')).toBeNull();
       // Should reflect current matchMedia (desktop = side-by-side)
       expect(result.current.layout).toBe('side-by-side');
     });

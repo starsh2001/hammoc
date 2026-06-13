@@ -21,9 +21,22 @@ export interface UseThemeReturn {
   setTheme: (theme: Theme) => void;
 }
 
+// Device-local: theme lives in this browser's localStorage (the original pre-server-migration
+// key), NOT the server — so each device keeps its own theme and a change never broadcasts.
+const THEME_KEY = 'hammoc-theme';
+
 function getInitialTheme(): Theme {
+  if (typeof window !== 'undefined') {
+    const local = window.localStorage.getItem(THEME_KEY);
+    if (local === 'light' || local === 'dark' || local === 'system') return local;
+  }
+  // One-time migration: adopt the value still on the server (for users coming off server
+  // storage), persist it locally, then localStorage is authoritative from here on.
   const stored = usePreferencesStore.getState().preferences.theme;
-  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+  if (stored === 'light' || stored === 'dark' || stored === 'system') {
+    try { window.localStorage.setItem(THEME_KEY, stored); } catch { /* quota */ }
+    return stored;
+  }
   return 'dark';
 }
 
@@ -66,14 +79,8 @@ export function useTheme(): UseThemeReturn {
   const resolvedTheme: 'dark' | 'light' =
     theme === 'system' ? (osPrefersDark ? 'dark' : 'light') : theme;
 
-  // Sync with preferencesStore when server data arrives
-  const storeTheme = usePreferencesStore((s) => s.preferences.theme);
-  useEffect(() => {
-    if (storeTheme && storeTheme !== theme) {
-      setThemeState(storeTheme);
-      applyTheme(storeTheme);
-    }
-  }, [storeTheme]);
+  // No server sync: theme is device-local now (localStorage), so it does NOT follow
+  // preferencesStore changes from other devices.
 
   const applyTheme = useCallback((newTheme: Theme) => {
     const effective = resolveTheme(newTheme);
@@ -88,7 +95,7 @@ export function useTheme(): UseThemeReturn {
     (newTheme: Theme) => {
       setThemeState(newTheme);
       applyTheme(newTheme);
-      usePreferencesStore.getState().updatePreference('theme', newTheme);
+      try { window.localStorage.setItem(THEME_KEY, newTheme); } catch { /* quota */ }
     },
     [applyTheme]
   );

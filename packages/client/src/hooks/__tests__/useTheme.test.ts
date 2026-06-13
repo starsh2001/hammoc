@@ -123,7 +123,7 @@ describe('useTheme', () => {
       expect(result.current.theme).toBe('dark');
     });
 
-    it('should save theme to preferencesStore', () => {
+    it('should save theme to localStorage (device-local)', () => {
       usePreferencesStore.setState({ preferences: { theme: 'light' }, loaded: true });
       const { result } = renderHook(() => useTheme());
 
@@ -131,7 +131,7 @@ describe('useTheme', () => {
         result.current.toggleTheme();
       });
 
-      expect(usePreferencesStore.getState().preferences.theme).toBe('dark');
+      expect(localStorage.getItem('hammoc-theme')).toBe('dark');
     });
   });
 
@@ -169,14 +169,14 @@ describe('useTheme', () => {
       expect(result.current.theme).toBe('system');
     });
 
-    it('should save theme to preferencesStore', () => {
+    it('should save theme to localStorage (device-local)', () => {
       const { result } = renderHook(() => useTheme());
 
       act(() => {
         result.current.setTheme('dark');
       });
 
-      expect(usePreferencesStore.getState().preferences.theme).toBe('dark');
+      expect(localStorage.getItem('hammoc-theme')).toBe('dark');
     });
   });
 

@@ -2461,6 +2461,10 @@ export function broadcastPreferencesChange(
     const safe: UserPreferences = { ...preferences };
     delete safe.telegram;
     delete safe.webPush;
+    // theme & diffLayout are device-local (each browser's localStorage, not the server) —
+    // broadcasting them would yank another device's theme / diff layout. Never sync them.
+    delete safe.theme;
+    delete safe.diffLayout;
     const target = originSocketId ? io.except(originSocketId) : io;
     target.emit('preferences:changed', { preferences: safe });
   } catch (err) {
