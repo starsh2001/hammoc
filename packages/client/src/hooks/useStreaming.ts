@@ -29,6 +29,69 @@ import { useChainStore } from '../stores/chainStore';
 import type { StreamChunk, Message, ChatUsage, PermissionRequest, ToolResult, CompactMetadata, TaskNotificationData, SubscriptionRateLimit, ApiHealthStatus, PromptChainItem, PermissionMode, HistoryMessage, ImageRef } from '@hammoc/shared';
 import type { InteractiveStatus, StreamingSegment, StreamingToolCall, ResultErrorData } from '../stores/chatStore';
 
+/**
+ * Convert in-flight streaming segments into history messages so a give-up teardown does not
+ * discard an un-persisted turn. Used by the reconnect give-up timeout: when the socket dropped
+ * before the turn was confirmed (mobile sleep/wake) no stream:complete-messages / stream:history
+ * ever landed, so the answer lives ONLY as live segments — completeStreaming would otherwise wipe
+ * it and the whole turn vanishes. Mirrors the buffer-replay conversion's id/shape conventions; a
+ * later authoritative reload replaces these via setMessages, so any minor divergence self-corrects.
+ * Transient UI cards (system / tool_summary / task_notification / result_error) are not part of the
+ * persisted transcript and are intentionally skipped.
+ */
+function salvageSegmentsToMessages(
+  segments: StreamingSegment[],
+  messageId: string | null,
+  baseTs: number,
+): HistoryMessage[] {
+  const out: HistoryMessage[] = [];
+  const mid = messageId ?? `salvage-${baseTs}`;
+  let pendingThinking: string | undefined;
+  for (const seg of segments) {
+    const ts = new Date(baseTs + out.length).toISOString();
+    if (seg.type === 'thinking') {
+      pendingThinking = seg.content;
+    } else if (seg.type === 'text') {
+      out.push({ id: `${mid}-text-${out.length}`, type: 'assistant', content: seg.content, timestamp: ts, thinking: pendingThinking });
+      pendingThinking = undefined;
+    } else if (seg.type === 'tool') {
+      out.push({
+        id: `${mid}-tool-${seg.toolCall.id}`,
+        type: 'tool_use',
+        content: `Calling ${seg.toolCall.name}`,
+        timestamp: ts,
+        toolName: seg.toolCall.name,
+        toolInput: seg.toolCall.input,
+        thinking: pendingThinking,
+        ...(seg.status !== 'pending' && seg.toolCall.output !== undefined && {
+          toolResult: {
+            success: seg.status === 'completed',
+            output: seg.status === 'completed' ? seg.toolCall.output : undefined,
+            error: seg.status === 'error' ? seg.toolCall.output : undefined,
+          },
+        }),
+      });
+      pendingThinking = undefined;
+    } else if (seg.type === 'interactive') {
+      const tcId = seg.toolCall?.id || seg.id;
+      out.push({
+        id: `${mid}-tool-${tcId}`,
+        type: 'tool_use',
+        content: `Calling ${seg.toolCall?.name || 'AskUserQuestion'}`,
+        timestamp: ts,
+        toolName: seg.toolCall?.name || 'AskUserQuestion',
+        toolInput: seg.toolCall?.input,
+        thinking: pendingThinking,
+      });
+      pendingThinking = undefined;
+    }
+  }
+  if (pendingThinking) {
+    out.push({ id: `${mid}-thinking`, type: 'assistant', content: '', timestamp: new Date(baseTs + out.length).toISOString(), thinking: pendingThinking });
+  }
+  return out;
+}
+
 export function useStreaming() {
   const {
     startStreaming,
@@ -887,6 +950,21 @@ export function useStreaming() {
             sessionId,
           });
           if (useChatStore.getState().isStreaming) {
+            // Give-up path: 10s elapsed with no stream:status. The server emits stream:history and
+            // stream:status back-to-back, so "no status received" means "no authoritative copy
+            // arrived" either — the in-flight turn exists ONLY as live streamingSegments. Salvage it
+            // into the message store BEFORE handleStreamStatus → completeStreaming tears it down,
+            // otherwise the whole turn vanishes (the mobile sleep/wake disappearance). addMessages
+            // dedups by id and a later authoritative reload (stream:history → setMessages) replaces
+            // these, so re-salvage or a late server response can't leave a duplicate.
+            const st = useChatStore.getState();
+            if (st.streamingSegments.length > 0) {
+              const salvaged = salvageSegmentsToMessages(st.streamingSegments, st.streamingMessageId, Date.now());
+              if (salvaged.length > 0) {
+                debugLog.reconnect('timeout salvage: preserving un-persisted turn before teardown', { count: salvaged.length });
+                useMessageStore.getState().addMessages(salvaged);
+              }
+            }
             // Treat as inactive stream (stream completed or server unreachable)
             handleStreamStatus({ active: false, sessionId });
           }
@@ -1666,6 +1744,19 @@ export function useStreaming() {
     // Register keyboard event listener
     document.addEventListener('keydown', handleKeyDown);
 
+    // CLI synthetic-typing reveal vs. mobile sleep/wake (CLI card ordering, symptom 3).
+    // While the tab is hidden the browser pauses requestAnimationFrame (the typewriter) and
+    // throttles/pauses setTimeout (the card stagger). If a turn completes during that freeze,
+    // the completion path's `await preso.drain()` blocks indefinitely on those frozen timers —
+    // leaving half-revealed live segments on screen and letting the backed-up timers fire out of
+    // order on wake (the intermittent ordering glitch). Collapsing the animation the instant we go
+    // hidden lets drain() resolve immediately so the authoritative messages swap in right away;
+    // there's no point animating an invisible screen. The next turn's clear() re-enables it.
+    const handleVisibilityChange = () => {
+      if (document.hidden) preso.flush();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Cleanup
     return () => {
       // Clear chunk smoothing timer
@@ -1716,6 +1807,7 @@ export function useStreaming() {
       socket.off('session:summary-result', handleSummaryResult);
       socket.io.off('reconnect_failed', handleReconnectFailed);
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [
     startStreaming,

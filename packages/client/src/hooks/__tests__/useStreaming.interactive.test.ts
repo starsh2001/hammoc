@@ -403,6 +403,8 @@ describe('useStreaming synthetic typing (CLI mode)', () => {
     usePreferencesStore.setState({ preferences: prefsSnapshot });
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    // Reset the document visibility override so it can't leak into other tests.
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
   });
 
   it('CLI + toggle ON: a completed block is typed out across frames, not in one shot', async () => {
@@ -449,6 +451,32 @@ describe('useStreaming synthetic typing (CLI mode)', () => {
     });
 
     act(() => runFrame());
+    expect(lastText()).toBe('Hello world');
+  });
+
+  it('CLI + toggle ON: tab hidden mid-typing flushes the queued text at once (mobile sleep/wake)', async () => {
+    // Symptom 3 of CLI card ordering: on mobile, locking the screen freezes rAF (typewriter)
+    // and setTimeout (card stagger). A turn completing during that freeze would block on
+    // `await preso.drain()`, leaving half-revealed live segments that reorder on wake. The
+    // visibilitychange handler flushes the animation the moment we go hidden so drain() can't
+    // hang. We observe the flush directly: the queued block commits WITHOUT any runFrame().
+    setEngine('cli', true);
+    renderHook(() => useStreaming());
+
+    // A completed block is queued into the typer; nothing painted yet (no frame has run).
+    await act(async () => {
+      emitSocketEvent('message:chunk', { sessionId: 'test-session', messageId: 'm1', content: 'Hello world' });
+      await Promise.resolve();
+    });
+    expect(lastText()).toBe('');
+
+    // Tab goes hidden (mobile screen lock) → handler collapses the animation immediately.
+    act(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    // Committed to completion with zero animation frames — the frozen-timer path was bypassed.
     expect(lastText()).toBe('Hello world');
   });
 });

@@ -149,6 +149,36 @@ describe('presentationQueue', () => {
     expect(events).toEqual([]); // the cancelled card never reveals
   });
 
+  it('flush() unblocks a pending drain() even when the typer and timers never fire (mobile sleep/wake)', async () => {
+    // Mobile screen lock freezes BOTH schedulers: requestAnimationFrame (typing) stops and
+    // setTimeout (card stagger) pauses. Here that's modeled by never calling finishTyping() and
+    // never calling sched.fireAll(). The completion path awaits drain() — it must not hang.
+    const fake = makeFakeTyper();
+    const sched = makeScheduler();
+    const events: string[] = [];
+    const q = createPresentationQueue({ append: () => {}, typer: fake.typer, schedule: sched.schedule });
+
+    q.enqueueText('hello');
+    q.enqueueReveal(() => events.push('card'), 500);
+
+    let drained = false;
+    const p = q.drain().then(() => { drained = true; });
+
+    await tick();
+    // Frozen: typing never settles and the stagger timer never fires → drain stays pending.
+    expect(drained).toBe(false);
+    expect(fake.isTyping()).toBe(true);
+
+    // Tab goes hidden → flush() collapses the animation so drain() can resolve immediately,
+    // WITHOUT the test ever firing the typer or the scheduler.
+    q.flush();
+    await tick();
+    await p;
+
+    expect(drained).toBe(true);
+    expect(events).toEqual(['card']); // the card still revealed, in order
+  });
+
   it('drain() resolves once the queue has fully played out', async () => {
     const fake = makeFakeTyper();
     const sched = makeScheduler();

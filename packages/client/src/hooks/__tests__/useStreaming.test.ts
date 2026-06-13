@@ -711,6 +711,44 @@ describe('useStreaming', () => {
       // Should still be streaming (restored by active: true, not timed out)
       expect(useChatStore.getState().isStreaming).toBe(true);
     });
+
+    it('salvages a live, not-yet-persisted turn into the message store when the 10s reconnect timeout fires (mobile sleep/wake disappearance guard)', () => {
+      // The assistant's in-flight answer lives ONLY in streamingSegments (the live preview).
+      // It has NOT been persisted to the message store — no stream:complete-messages and no
+      // stream:history have landed yet. This is the state across a mobile sleep: the socket
+      // dropped before the turn was confirmed.
+      useChatStore.setState({
+        isStreaming: true,
+        streamingSessionId: 'session-1',
+        streamingMessageId: 'msg-1',
+        streamingSegments: [{ type: 'text', content: 'SURVIVE-ME' }],
+        streamingStartedAt: new Date(),
+      });
+      useMessageStore.setState({
+        messages: [],
+        currentProjectSlug: 'test-project',
+        currentSessionId: 'session-1',
+      });
+
+      renderHook(() => useStreaming());
+
+      // Wake → socket reconnects → session:join emitted and the 10s give-up timeout is armed.
+      mockSocket.trigger('connect');
+      expect(mockSocket.emit).toHaveBeenCalledWith('session:join', 'session-1', 'test-project');
+
+      // The server's stream:history / stream:status never arrives in time (slow response,
+      // reconnect flap, or empty history). The give-up timeout fires its synthesized active:false.
+      vi.advanceTimersByTime(10000);
+
+      // Teardown ran: streaming ended and the live preview was wiped.
+      expect(useChatStore.getState().isStreaming).toBe(false);
+      expect(useChatStore.getState().streamingSegments).toEqual([]);
+
+      // The give-up path salvages the live segments into the message store BEFORE teardown, so the
+      // turn survives instead of vanishing. (Before the fix this was empty — the turn was lost.)
+      const persisted = useMessageStore.getState().messages.map((m) => m.content).join('\n');
+      expect(persisted).toContain('SURVIVE-ME');
+    });
   });
 
   // Story 25.11: session:forked event handler
