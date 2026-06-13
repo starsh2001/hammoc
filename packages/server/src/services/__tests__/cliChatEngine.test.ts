@@ -327,8 +327,9 @@ describe('CliChatEngine', () => {
       const i = (spawnArg.args as string[]).indexOf('--settings');
       expect(i).toBeGreaterThanOrEqual(0);
       const settings = JSON.parse((spawnArg.args as string[])[i + 1]);
-      // Story 36.1: the background-block command hook is ALWAYS injected
-      expect(settings.hooks.PreToolUse[0].matcher).toBe('Bash');
+      // Story 36.1: the background-block command hook is ALWAYS injected, matching ALL tools
+      // ('.*') — the block keys off run_in_background, not the tool name (Bash/PowerShell/etc.).
+      expect(settings.hooks.PreToolUse[0].matcher).toBe('.*');
       expect(settings.hooks.PreToolUse[0].hooks[0].type).toBe('command');
       expect(settings.hooks.PreToolUse[0].hooks[0].command).toContain('block-background.cjs');
       // thinking summaries ON by default
@@ -1535,7 +1536,7 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
-    it('emits the prose rendered ABOVE the modal BEFORE the question card, and dedups the late JSONL copy (ordering fix)', async () => {
+    it('catches the JSONL drain up so the preceding text lands BEFORE the question card (ordering fix)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onTextChunk = vi.fn();
       let chunksBeforeCard = -1;
@@ -1554,9 +1555,16 @@ describe('CliChatEngine', () => {
       h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
       await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('ask me something'), { timeout: 2000 });
 
-      // The lead-in explanation the model rendered ABOVE the modal — flushed to the JSONL only
-      // post-answer, so it must be scraped from the screen and emitted first.
+      // Measured ordering: the lead-in explanation is written to the JSONL as its OWN assistant
+      // line BEFORE the modal paints (stop_reason 'tool_use' — the turn continues into the
+      // AskUserQuestion). The old code assumed this prose only reached the JSONL post-answer and
+      // scraped it off the screen; it actually lands first, so catch-up emits it straight from the
+      // file (which carries text AND tool cards, unlike the lossy scrape) right before the card.
       const prose = '현재 구조를 다 파악했습니다. 정리하면 두 가지 방식이 있습니다.';
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: prose, stopReason: 'tool_use' })]);
+
+      // The modal paints → detection → settle → catch-up drains the JSONL (emitting the prose)
+      // BEFORE raising the question card.
       h.fakePty._onData?.(drawModal([
         prose,
         ' ☐ Color',
@@ -1569,13 +1577,17 @@ describe('CliChatEngine', () => {
       ]));
 
       await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
-      // The prose was emitted, and it preceded the card (≥1 chunk already out when canUseTool fired).
+      // The prose was emitted from the JSONL, and it preceded the card.
       expect(onTextChunk).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('정리하면') }));
       expect(chunksBeforeCard).toBeGreaterThanOrEqual(1);
 
-      // The same prose arrives in the JSONL after the answer — its live re-emit is deduped, so the
-      // explanation is shown exactly once live (the turn-end reload is authoritative regardless).
-      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: prose })]);
+      // Turn ends (file rewritten with a closing end_turn line). The prose is emitted exactly once —
+      // a single JSONL path (the separate screen scrape that needed dedup is gone).
+      await writeSession(SID, [
+        userLine('u1'),
+        assistantLine('a1', { text: prose, stopReason: 'tool_use' }),
+        assistantLine('a2', { text: 'done', stopReason: 'end_turn' }),
+      ]);
       await turn;
       const proseEmits = onTextChunk.mock.calls.filter((c) => String((c[0] as { content: string }).content).includes('정리하면'));
       expect(proseEmits).toHaveLength(1);

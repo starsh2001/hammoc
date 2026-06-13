@@ -96,7 +96,6 @@ import {
   detectQuestionModal,
   parseQuestionModal,
   parseConfirmChoiceMenu,
-  parsePrecedingText,
   readPermissionMode,
   permissionModeCycleIndex,
   isIdleInputGrid,
@@ -297,11 +296,6 @@ function capturePreInjectScreen(
   } catch {
     return null;
   }
-}
-
-/** Normalize text to a whitespace-free lowercase key for the preceding-text dedup fingerprint. */
-function normalizeForFp(s: string): string {
-  return s.replace(/\s+/g, '').toLowerCase();
 }
 
 /**
@@ -849,10 +843,6 @@ export class CliChatEngine implements ChatEngine {
       let questionPending = false; // guards re-entry while awaiting the user's answer
       let questionSettleTimer: ReturnType<typeof setTimeout> | null = null; // modal paint settle
       let questionCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-answer)
-      // Ordering fix: when the prose above a question modal is scraped + emitted live (it is not
-      // in the JSONL until post-answer), this holds a normalized prefix of it so the matching
-      // JSONL text block's live re-emit is suppressed (no transient duplicate; reload is authoritative).
-      let scrapedPrecedingFingerprint: string | null = null;
       // Usage-limit notice state (POST-INJECTION only — see the onData handler). The limit shows
       // only on the PTY, never in the JSONL, so without detection the turn would hang waiting for
       // an end_turn that never arrives. Detection is deferred until after prompt injection so the
@@ -1472,24 +1462,18 @@ export class CliChatEngine implements ChatEngine {
           // last line of defense against an abort landing during the settle window).
           questionSettleTimer = setTimeout(() => {
             questionSettleTimer = null;
-            void screen.flush().then(() => {
+            void screen.flush().then(async () => {
+              if (settled || !questionPending) return;
+              // Ordering fix: catch the JSONL drain up to NOW so the preceding text/tool cards
+              // land BEFORE the question card. The screen detector (fast) otherwise beats the
+              // poll-based drain (slow), so the card jumped ahead of its own preceding work and
+              // those cards only appeared AFTER the answer. The file holds the full, correctly-
+              // ordered blocks (text AND tool_use) — unlike the old prose scrape, which recovered
+              // only leading text and never the tool cards.
+              await catchUpJSONL();
               if (settled || !questionPending) return;
               const freshGrid = screen.readGrid();
               const parsed = parseQuestionModal(freshGrid);
-              // Ordering fix: emit the prose rendered ABOVE the modal BEFORE the question card. The
-              // JSONL copy of this prose is flushed only after the answer (too late), so the screen is
-              // the only pre-answer source. Lossy/best-effort; the matching JSONL block's live re-emit
-              // is deduped in handleAssistantLine, and the turn-end reload is authoritative.
-              const pre = parsePrecedingText(freshGrid);
-              if (pre && !settled) {
-                callbacks.onTextChunk?.({
-                  sessionId: resolvedSessionId ?? '',
-                  messageId: `cli-pre-${questionCounter}`,
-                  content: pre,
-                  done: false,
-                });
-                scrapedPrecedingFingerprint = normalizeForFp(pre).slice(0, 24) || null;
-              }
               handleQuestion(parsed, `cli-q-${++questionCounter}`);
             });
           }, CLI_QUESTION_SETTLE_MS);
@@ -1661,22 +1645,12 @@ export class CliChatEngine implements ChatEngine {
               const text = (block as TextContentBlock).text;
               if (text && text.trim() && text.trim() !== '(no content)') {
                 accumulatedText += text;
-                // Ordering-fix dedup: if this block was already shown live via the pre-question
-                // PTY scrape, suppress the (now redundant) live re-emit — the reload is
-                // authoritative either way. Match on a normalized prefix (the scrape is spacing-
-                // lossy but its START is intact); consume the fingerprint so only the first
-                // matching block is suppressed. accumulatedText still includes it once.
-                const fp = scrapedPrecedingFingerprint;
-                if (fp && normalizeForFp(text).startsWith(fp)) {
-                  scrapedPrecedingFingerprint = null;
-                } else {
-                  callbacks.onTextChunk?.({
-                    sessionId: resolvedSessionId ?? '',
-                    messageId: `${raw.uuid}-t${textIdx++}`,
-                    content: text,
-                    done: false,
-                  });
-                }
+                callbacks.onTextChunk?.({
+                  sessionId: resolvedSessionId ?? '',
+                  messageId: `${raw.uuid}-t${textIdx++}`,
+                  content: text,
+                  done: false,
+                });
               }
             } else if (block.type === 'tool_use') {
               // Story 32.9: live tool-card emission. The envelope is identical to SDK mode
@@ -1857,6 +1831,19 @@ export class CliChatEngine implements ChatEngine {
 
       const scheduleTick = () => {
         void tick();
+      };
+
+      // Catch the JSONL drain up to NOW. Used right before an on-screen modal card
+      // (question) is emitted: the screen detector is faster than the poll-based drain, so
+      // without this the card lands AHEAD of the text/tool lines that precede it in the file,
+      // and those cards only surface on the next poll (after the user answers). Forcing one
+      // drain pass here emits the preceding blocks first, so the card sits in its correct
+      // place. Waits out any in-flight drain (bounded ~1s), then runs one pass; `tick`
+      // self-guards on `settled` and on the file not having grown.
+      const catchUpJSONL = async (): Promise<void> => {
+        let guard = 0;
+        while (draining && guard++ < 200) await new Promise<void>((r) => { setTimeout(r, 5); });
+        await tick();
       };
 
       function attachFileWatcher() {
