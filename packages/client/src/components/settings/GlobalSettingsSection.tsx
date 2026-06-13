@@ -14,6 +14,7 @@ import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
 import { CliModeSettingsPanel } from './CliModeSettingsPanel';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
+import { DeviceLocalBadge } from '../DeviceLocalBadge';
 import type { EngineMode, PermissionMode, PermissionSyncPolicy, SupportedLanguage, ThinkingEffort } from '@hammoc/shared';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
@@ -88,6 +89,7 @@ export function GlobalSettingsSection() {
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
           {t('global.theme')}
+          <DeviceLocalBadge className="ml-2" />
         </legend>
         <div className="flex flex-wrap gap-3">
           {([

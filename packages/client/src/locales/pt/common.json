@@ -1,4 +1,8 @@
 {
+  "deviceLocal": {
+    "label": "Apenas este dispositivo",
+    "tooltip": "Salvo apenas neste navegador; não sincroniza com outros dispositivos."
+  },
   "button": {
     "save": "Salvar",
     "cancel": "Cancelar",

@@ -1,4 +1,8 @@
 {
+  "deviceLocal": {
+    "label": "이 기기 전용",
+    "tooltip": "이 설정은 이 브라우저에만 저장되며 다른 기기와 동기화되지 않습니다."
+  },
   "button": {
     "save": "저장",
     "cancel": "취소",

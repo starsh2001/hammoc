@@ -1,4 +1,8 @@
 {
+  "deviceLocal": {
+    "label": "仅此设备",
+    "tooltip": "仅保存在此浏览器中，不会同步到其他设备。"
+  },
   "button": {
     "save": "保存",
     "cancel": "取消",
