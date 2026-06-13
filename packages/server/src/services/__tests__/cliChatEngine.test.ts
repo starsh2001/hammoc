@@ -1181,10 +1181,32 @@ describe('CliChatEngine', () => {
       expect(countKey(CSI_Z) - before).toBe(0);
     });
 
-    it('store-only fallback while generating (spinner frame is not idle) — CSI Z unverified mid-gen', async () => {
+    it('drives the closed loop while GENERATING — mode row at the bottom, Shift+Tab cycles live', async () => {
+      // Owner-confirmed 2026-06-13: the reconstructed grid carries the mode status row at the very
+      // bottom in BOTH idle and generating states (spinner above, input box + mode row below), so the
+      // read-verify loop drives mid-generation too — the promotion Story 37.5 deferred behind a gate.
+      const genGrid = (modeLabel: string) =>
+        drawModal([' ✻ Working… (3s · ↓ 42 tokens · esc to interrupt)', ' ❯ ', modeRow(modeLabel)]);
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const { turn } = await injectThenReady(engine);
-      h.fakePty._onData?.(drawModal([' ❯ ', '✻ Working… (3s · ↓ 42 tokens)'])); // generating, not idle
+      h.fakePty._onData?.(genGrid('⏵⏵ accept edits on')); // current: acceptEdits (idx 1), generating
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      const p = engine.setPermissionMode('bypassPermissions'); // (3 - 1 + 4) % 4 = 2 steps
+      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
+      h.fakePty._onData?.(genGrid('⏵⏵ auto mode on')); // converged (auto = bypassPermissions), still generating
+      await p;
+
+      expect(countKey(CSI_Z) - before).toBe(2);
+      expect(engine.getPermissionMode()).toBe('bypassPermissions'); // verified mid-generation
+      await endTurn(turn);
+    });
+
+    it('store-only fallback on an UNKNOWN screen (neither idle nor generating) — no blind key', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(drawModal([' Connecting MCP servers…', ' Loading plugins…'])); // unknown screen
       await wait(20);
 
       const before = countKey(CSI_Z);

@@ -369,15 +369,31 @@ export function readPermissionMode(grid: string[]): PermissionMode {
 }
 
 /**
- * Is the settled grid showing claude's idle INPUT BOX (ready to accept a keypress), as opposed
- * to a mid-generation spinner frame? (Story 37.5 — gates the live Shift+Tab closed loop: only an
- * idle input box accepts a mode-cycle keypress with *verified* behavior; a spinner frame's CSI Z
- * behavior is unverified, so a non-idle grid falls back to the next-spawn flag path.)
+ * Is the settled grid mid-GENERATION? The live footer carries claude's active-generation footer
+ * ("esc to interrupt") or a spinner token counter ("↓ N tokens"). Scanned over the LIVE FOOTER
+ * REGION only (`liveFooterText`) so scrollback prose that quotes these phrases can't poison the
+ * verdict (same discipline as `isIdleInputGrid`).
+ *
+ * Story 37.5 follow-up (owner-confirmed 2026-06-13): the mode status row renders at the very bottom
+ * of the reconstructed grid in BOTH idle and generating states (spinner above, input box + mode row
+ * below), and Shift+Tab cycles the permission mode live in either. So the permission-mode closed
+ * loop drives on this POSITIVE generation signal too — it distinguishes a real generating frame
+ * (safe to read the mode + cycle) from an UNKNOWN boot/loading screen (where blind keys stay
+ * forbidden). Version-fragile like the rest of this module.
+ */
+export function isGeneratingGrid(grid: string[]): boolean {
+  const footer = liveFooterText(grid);
+  return /esc to interrupt/i.test(footer) || /↓\s*[\d.,]+k?\s*tokens/i.test(footer);
+}
+
+/**
+ * Is the settled grid showing claude's idle INPUT BOX (ready to accept a keypress), as opposed to a
+ * mid-generation spinner frame? (Story 37.5 — distinguishes idle from generating; both render the
+ * mode status row, but the live Shift+Tab gate treats them separately where it needs to.)
  *
  * Heuristic on a settled grid (half-drawn frames are excluded upstream by `flush()`), scanned over
- * the LIVE FOOTER REGION only (`liveFooterText` — so scrollback prose that quotes these phrases
- * can't poison the verdict):
- *   - an active-generation footer ("esc to interrupt") OR a spinner counter ("↓ N tokens") ⇒ NOT idle;
+ * the LIVE FOOTER REGION only (so scrollback prose that quotes these phrases can't poison it):
+ *   - a generation footer/counter (`isGeneratingGrid`) ⇒ NOT idle;
  *   - else the input-box prompt glyph (❯) present ⇒ idle.
  *
  * Left as a shared named helper so Story 37.6's "pre-injection screen classification" (which draws
@@ -385,10 +401,8 @@ export function readPermissionMode(grid: string[]): PermissionMode {
  * rather than re-deriving it. This story is self-sufficient and does NOT depend on 37.6.
  */
 export function isIdleInputGrid(grid: string[]): boolean {
-  const footer = liveFooterText(grid);
-  if (/esc to interrupt/i.test(footer)) return false; // active generation footer ⇒ generating
-  if (/↓\s*[\d.,]+k?\s*tokens/i.test(footer)) return false; // spinner counter ⇒ generating
-  return /❯/.test(footer); // idle input-box marker (live region only — not quoted scrollback)
+  if (isGeneratingGrid(grid)) return false; // active generation footer / spinner counter ⇒ generating
+  return /❯/.test(liveFooterText(grid)); // idle input-box marker (live region only — not scrollback)
 }
 
 /**

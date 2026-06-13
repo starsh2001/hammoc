@@ -99,6 +99,7 @@ import {
   readPermissionMode,
   permissionModeCycleIndex,
   isIdleInputGrid,
+  isGeneratingGrid,
   classifyPreInjectScreen,
   CLI_PERMISSION_MODE_CYCLE,
   type ParsedQuestion,
@@ -496,21 +497,25 @@ export class CliChatEngine implements ChatEngine {
       return;
     }
 
-    // The turn is live and modal-free — but only an IDLE input box accepts a verified mode-cycle
-    // keypress. A mid-generation spinner frame's CSI Z behavior is unverified (idle was the only
-    // observed state), so classify the settled grid and, if generating (or the PTY died), fall back
-    // to store-only (the next spawn applies `--permission-mode`).
+    // The turn is live and modal-free. Both an IDLE input box AND a mid-GENERATION frame render the
+    // mode status row at the very bottom of the reconstructed grid (spinner above, input box + mode
+    // row below) and cycle the permission mode live on Shift+Tab — owner-confirmed 2026-06-13, the
+    // promotion Story 37.5 deferred behind a manual gate ("생성 중 라이브 주입은 안전 확인되면 승격").
+    // So the read-verify closed loop drives in EITHER state (it reads the current mode from that
+    // bottom row and re-verifies after cycling). Only an UNKNOWN screen (boot/loading — neither idle
+    // nor generating) or a dead PTY falls back to store-only: no blind key into a screen we can't
+    // classify, and the next spawn applies the stored mode via `--permission-mode`.
     if (!control.isAlive()) {
       this.permissionMode = mode;
       return;
     }
     const grid = await control.readSettledGrid();
-    if (!control.isAlive() || !isIdleInputGrid(grid)) {
+    if (!control.isAlive() || !(isIdleInputGrid(grid) || isGeneratingGrid(grid))) {
       this.permissionMode = mode;
       return;
     }
 
-    // Idle: drive the closed loop and adopt the VERIFIED settled mode (never the assumed target).
+    // Idle or generating: drive the closed loop and adopt the VERIFIED settled mode (not the request).
     this.permissionMode = await this.cyclePermissionMode(control, mode, grid);
   }
 

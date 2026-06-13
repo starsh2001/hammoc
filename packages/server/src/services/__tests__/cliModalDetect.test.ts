@@ -23,6 +23,7 @@ import {
   readPermissionMode,
   permissionModeCycleIndex,
   isIdleInputGrid,
+  isGeneratingGrid,
   classifyPreInjectScreen,
   parseConfirmChoiceMenu,
   CLI_PERMISSION_MODE_CYCLE,
@@ -324,6 +325,30 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
         ' ❯ ',
       ];
       expect(isIdleInputGrid(grid)).toBe(false);
+    });
+  });
+
+  describe('isGeneratingGrid (Story 37.5 — positive generation signal for the live mode gate)', () => {
+    it('is generating on an esc-to-interrupt footer or a token counter', () => {
+      expect(isGeneratingGrid([' ❯ ', '✻ Working… (3s · ↓ 42 tokens)'])).toBe(true);
+      expect(isGeneratingGrid([' ❯ ', '✢ Deliberating…  esc to interrupt'])).toBe(true);
+    });
+
+    it('is NOT generating on an idle input box, nor on an unknown screen', () => {
+      expect(isGeneratingGrid([' ❯ ', ' ⏸ plan mode on (shift+tab to cycle) · ← for agents'])).toBe(false);
+      expect(isGeneratingGrid([' Connecting MCP servers…', ' Loading plugins…'])).toBe(false);
+    });
+
+    it('ignores generation phrases QUOTED in far-up scrollback (live region only)', () => {
+      // The idle input box is the live state; a prior answer that quoted the spinner phrases sits
+      // far up in the scrollback, out of the live footer window, so it must NOT read as generating.
+      const grid = [
+        '   설명: 생성 중에는 "esc to interrupt" / "↓ 365 tokens" 가 뜹니다.',
+        '   줄 2', '   줄 3', '   줄 4', '   줄 5', '   줄 6', '   줄 7', '   줄 8', '   줄 9',
+        ' ❯ ',
+        ' ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents',
+      ];
+      expect(isGeneratingGrid(grid)).toBe(false);
     });
   });
 
