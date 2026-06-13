@@ -3,6 +3,7 @@
  */
 
 import { api } from './client';
+import { socketIdHeader } from './socketHeader';
 import type {
   UserPreferences,
   PreferencesApiResponse,
@@ -16,8 +17,10 @@ export const preferencesApi = {
   /** Get all preferences (includes _overrides metadata) */
   get: () => api.get<PreferencesApiResponse>('/preferences'),
 
-  /** Update preferences (merge) */
-  update: (data: Partial<UserPreferences>) => api.patch<UserPreferences>('/preferences', data),
+  /** Update preferences (merge). Attaches the socket-id header so the server can
+   *  exclude this browser from the multi-device broadcast (no self-echo). */
+  update: (data: Partial<UserPreferences>) =>
+    api.patch<UserPreferences>('/preferences', data, { headers: socketIdHeader() }),
 
   /** Get Telegram settings (masked token, env override info) */
   getTelegram: () => api.get<TelegramSettingsApiResponse>('/preferences/telegram'),

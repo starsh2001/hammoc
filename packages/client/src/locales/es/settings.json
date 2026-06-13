@@ -1,4 +1,7 @@
 {
+    "sync": {
+        "deviceNotice": "Estos ajustes se aplican a todos los dispositivos y navegadores que han iniciado sesión en este servidor."
+    },
     "global": {
         "theme": "Tema",
         "themeOption": {

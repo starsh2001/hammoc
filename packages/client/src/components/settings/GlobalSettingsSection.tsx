@@ -13,6 +13,7 @@ import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
 import { CliModeSettingsPanel } from './CliModeSettingsPanel';
+import { SettingsSyncNotice } from './SettingsSyncNotice';
 import type { EngineMode, PermissionMode, PermissionSyncPolicy, SupportedLanguage, ThinkingEffort } from '@hammoc/shared';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
@@ -81,6 +82,8 @@ export function GlobalSettingsSection() {
 
   return (
     <div className="space-y-8">
+      <SettingsSyncNotice />
+
       {/* Theme Setting */}
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">

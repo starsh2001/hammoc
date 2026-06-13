@@ -10,6 +10,7 @@ import { webPushService } from '../services/webPushService.js';
 import { invalidateI18nCache } from '../middleware/i18n.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES } from '../services/chatService.js';
 import type { UpdateTelegramSettingsRequest, WebPushSubscribeRequest } from '@hammoc/shared';
+import { broadcastPreferencesChange } from '../handlers/websocket.js';
 
 const router = Router();
 
@@ -203,6 +204,12 @@ router.patch('/', async (req: Request, res: Response) => {
     if (req.body.telegram !== undefined || req.body.webPush !== undefined) {
       await notificationService.reload();
     }
+    // Multi-device sync: push the change to other connected browsers. The origin
+    // browser is identified by a socket-id header and excluded so it doesn't get
+    // its own echo (it already applied the change optimistically).
+    const rawSocketId = req.header('x-hammoc-socket-id');
+    const originSocketId = rawSocketId && rawSocketId.trim() ? rawSocketId.trim() : undefined;
+    broadcastPreferencesChange(updated, originSocketId);
     res.json(updated);
   } catch {
     res.status(500).json({ error: { code: 'PREFERENCES_WRITE_ERROR', message: req.t!('preferences.writeError') } });

@@ -13,6 +13,7 @@ import { useSessionStore } from '../../stores/sessionStore';
 import { preferencesApi } from '../../services/api/preferences';
 import { projectsApi } from '../../services/api/projects';
 import { api } from '../../services/api/client.js';
+import { SettingsSyncNotice } from './SettingsSyncNotice';
 
 /**
  * Poll server health after restart/update.
@@ -70,6 +71,9 @@ export function AdvancedSettingsSection() {
   // Local state for system prompt with debounced save
   const [promptText, setPromptText] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True while the textarea is focused — guards against a multi-device sync
+  // update overwriting in-progress typing (see the sync effect below).
+  const isPromptFocusedRef = useRef(false);
   const isCustomized = preferences.customSystemPrompt != null;
 
   // Fetch default template (project-independent)
@@ -101,8 +105,11 @@ export function AdvancedSettingsSection() {
       });
   }, [currentProjectSlug]);
 
-  // Sync local state when preferences load from server
+  // Sync local state when preferences load from server, or when another device
+  // changes the system prompt (multi-device sync). Skip while the textarea is
+  // focused so an incoming change never clobbers in-progress typing.
   useEffect(() => {
+    if (isPromptFocusedRef.current) return;
     if (preferences.customSystemPrompt != null) {
       setPromptText(preferences.customSystemPrompt);
     } else if (defaultTemplate) {
@@ -219,6 +226,8 @@ export function AdvancedSettingsSection() {
 
   return (
     <div className="space-y-8">
+      <SettingsSyncNotice />
+
       {/* Server Management - conditional on dev/user mode */}
       {isDevMode !== null && (
         <div>
@@ -346,6 +355,8 @@ export function AdvancedSettingsSection() {
             id="custom-system-prompt"
             value={promptText}
             onChange={(e) => handlePromptChange(e.target.value)}
+            onFocus={() => { isPromptFocusedRef.current = true; }}
+            onBlur={() => { isPromptFocusedRef.current = false; }}
             rows={16}
             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
                        bg-white dark:bg-[#263240] text-gray-900 dark:text-white font-mono text-sm

@@ -20,6 +20,8 @@ import type {
   PromptChainItem,
   ThinkingEffort,
   ChatUsage,
+  UserPreferences,
+  ProjectSettingsApiResponse,
 } from '@hammoc/shared';
 import { ERROR_CODES, IMAGE_CONSTRAINTS, parseQueueScript, TERMINAL_ERRORS, ROOT_BRANCH_KEY, effectiveModelIs1M } from '@hammoc/shared';
 import type { TerminalCreateRequest, TerminalListRequest, TerminalInputEvent, TerminalResizeEvent, TerminalErrorEvent } from '@hammoc/shared';
@@ -2439,6 +2441,48 @@ export async function broadcastSnippetList(
     io.to(originSocketId).emit('snippets:list', { snippets });
   } catch (err) {
     log.warn(`broadcastSnippetList failed for socket ${originSocketId}: ${String(err)}`);
+  }
+}
+
+/**
+ * Broadcast a global-preferences change to every OTHER connected browser
+ * (multi-device settings sync). The originating socket is excluded so it never
+ * receives its own echo — it already applied the change optimistically. With no
+ * origin id (e.g. a non-browser caller) the change goes to everyone.
+ */
+export function broadcastPreferencesChange(
+  preferences: UserPreferences,
+  originSocketId: string | undefined,
+): void {
+  try {
+    // Strip credential-bearing fields — telegram/webPush are managed via
+    // dedicated (masked) endpoints and must not be broadcast in plaintext to
+    // other browsers. Clients keep their existing values for these (merge).
+    const safe: UserPreferences = { ...preferences };
+    delete safe.telegram;
+    delete safe.webPush;
+    const target = originSocketId ? io.except(originSocketId) : io;
+    target.emit('preferences:changed', { preferences: safe });
+  } catch (err) {
+    log.warn(`broadcastPreferencesChange failed: ${String(err)}`);
+  }
+}
+
+/**
+ * Broadcast a project-settings change to OTHER browsers (multi-device sync).
+ * Sent to everyone except the origin socket; the payload is keyed by projectSlug
+ * so each client applies it only while viewing that project's settings.
+ */
+export function broadcastProjectSettingsChange(
+  projectSlug: string,
+  settings: ProjectSettingsApiResponse,
+  originSocketId: string | undefined,
+): void {
+  try {
+    const target = originSocketId ? io.except(originSocketId) : io;
+    target.emit('project:settings-changed', { projectSlug, settings });
+  } catch (err) {
+    log.warn(`broadcastProjectSettingsChange failed: ${String(err)}`);
   }
 }
 

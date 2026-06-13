@@ -110,10 +110,11 @@ class ApiClient {
     });
   }
 
-  async patch<T>(path: string, data?: unknown): Promise<T> {
+  async patch<T>(path: string, data?: unknown, options?: { headers?: Record<string, string> }): Promise<T> {
     return this.request<T>(path, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
+      headers: options?.headers,
     });
   }
 

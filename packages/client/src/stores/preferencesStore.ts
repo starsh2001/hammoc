@@ -12,6 +12,7 @@ import { create } from 'zustand';
 import type { UserPreferences, SupportedLanguage, CommandFavoriteEntry } from '@hammoc/shared';
 import { preferencesApi } from '../services/api/preferences';
 import { debugLogger } from '../utils/debugLogger';
+import { getSocket } from '../services/socket';
 import i18n from '../i18n';
 
 const CACHE_KEY = 'hammoc-preferences';
@@ -213,3 +214,39 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     schedulePatch({ language: lang });
   },
 }));
+
+// ── Multi-device sync ──────────────────────────────────────────────────────
+// Preference changes made on OTHER browsers arrive via the `preferences:changed`
+// socket event (the server excludes this browser from its own echo). Apply them
+// so an open settings screen on this device reflects the change live, instead of
+// only after a manual reload.
+let prefSyncRegistered = false;
+let prefSyncRetry = 0;
+const PREF_SYNC_MAX_RETRIES = 30;
+
+function registerPreferencesSync(): void {
+  if (prefSyncRegistered) return;
+  try {
+    const socket = getSocket();
+    socket.on('preferences:changed', (data: { preferences: UserPreferences }) => {
+      const current = usePreferencesStore.getState().preferences;
+      // Merge server state over local. Radio/select/toggle settings bind directly
+      // to the store and update live; text-editing sections keep local drafts, so
+      // this merge never clobbers in-progress typing.
+      const merged = { ...current, ...data.preferences };
+      usePreferencesStore.setState({ preferences: merged });
+      writeCache(merged);
+      // Follow a language change made on another device.
+      if (merged.language && merged.language !== i18n.language) {
+        i18n.changeLanguage(merged.language);
+      }
+    });
+    prefSyncRegistered = true;
+  } catch {
+    if (++prefSyncRetry < PREF_SYNC_MAX_RETRIES) {
+      setTimeout(registerPreferencesSync, 100);
+    }
+  }
+}
+
+setTimeout(registerPreferencesSync, 0);

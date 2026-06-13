@@ -5,6 +5,7 @@
  */
 
 import { api } from './client';
+import { socketIdHeader } from './socketHeader';
 import type {
   ProjectInfo,
   ProjectListResponse,
@@ -44,9 +45,10 @@ export const projectsApi = {
   getSettings: (projectSlug: string) =>
     api.get<ProjectSettingsApiResponse>(`/projects/${projectSlug}/settings`),
 
-  /** Update project settings (.hammoc/settings.json) */
+  /** Update project settings (.hammoc/settings.json). Attaches the socket-id
+   *  header so the server can exclude this browser from the broadcast. */
   updateSettings: (projectSlug: string, settings: UpdateProjectSettingsRequest) =>
-    api.patch<ProjectSettingsApiResponse>(`/projects/${projectSlug}/settings`, settings),
+    api.patch<ProjectSettingsApiResponse>(`/projects/${projectSlug}/settings`, settings, { headers: socketIdHeader() }),
 
   /** Get default system prompt template and resolved preview */
   getSystemPrompt: (projectSlug: string) =>

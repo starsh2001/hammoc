@@ -21,6 +21,7 @@ import {
 import type { PermissionMode } from '@hammoc/shared';
 import { validateBoardConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
+import { broadcastProjectSettingsChange } from '../handlers/websocket.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/chatService.js';
 import { createLogger } from '../utils/logger.js';
 import { extractRequestIP, isLoopbackIP } from '../utils/networkUtils.js';
@@ -348,6 +349,11 @@ export const projectController = {
       }
 
       const updated = await projectService.updateProjectSettings(projectSlug, settings);
+      // Multi-device sync: notify other browsers viewing this project. Origin
+      // excluded via socket-id header (see broadcastProjectSettingsChange).
+      const rawSocketId = req.header('x-hammoc-socket-id');
+      const originSocketId = rawSocketId && rawSocketId.trim() ? rawSocketId.trim() : undefined;
+      broadcastProjectSettingsChange(projectSlug, updated, originSocketId);
       res.json(updated);
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;

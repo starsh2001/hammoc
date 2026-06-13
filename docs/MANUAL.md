@@ -1822,6 +1822,8 @@ Access settings via the gear icon or the Settings page. The page has **8 tabs**:
 
 > Per-project overrides have moved out of this page. See §5.3 — they now live in each project's own Settings tab (the workbench-level General section).
 
+**Multi-device sync** — Settings here are stored on the server, so they apply to every device and browser signed in to the same server, not just the one you changed them on. When you change a setting on one browser, other open browsers update live over the WebSocket connection without a manual refresh (the browser you changed it on is excluded from its own echo). This covers the Global and Advanced settings on this page and per-project settings (§5.3). Credential-style settings (Telegram bot token, Web Push) are managed through their own masked endpoints and are **not** broadcast. A few view-only states that depend on screen size — quick panel width/side, board view mode, Git diff layout, queue wrap — stay local to each browser by design.
+
 ### 13.1 Theme
 
 - **Dark** — Dark background, light text (default)

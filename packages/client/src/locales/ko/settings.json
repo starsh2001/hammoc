@@ -1,4 +1,7 @@
 {
+    "sync": {
+        "deviceNotice": "이 설정은 같은 서버에 접속한 모든 기기·브라우저에 적용됩니다."
+    },
     "global": {
         "theme": "테마",
         "themeOption": {

@@ -10,6 +10,8 @@ import { Loader2 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { projectsApi } from '../../services/api/projects';
+import { getSocket } from '../../services/socket';
+import { SettingsSyncNotice } from './SettingsSyncNotice';
 import { MODEL_GROUPS } from '../ModelSelector';
 import type {
   EngineMode,
@@ -95,6 +97,24 @@ export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionPr
     return () => { cancelled = true; };
   }, [projectSlug, fetchKey, t]);
 
+  // Multi-device sync: apply settings changes made on another browser. The server
+  // broadcasts to every browser except the origin; we apply only the payload that
+  // matches the project currently shown here. All controls here are radio/select/
+  // toggle (no text input), so a live replace can't clobber in-progress typing.
+  useEffect(() => {
+    if (!projectSlug) return;
+    const socket = getSocket();
+    const handler = (data: { projectSlug: string; settings: ProjectSettingsApiResponse }) => {
+      if (data.projectSlug === projectSlug) {
+        setSettings(data.settings);
+      }
+    };
+    socket.on('project:settings-changed', handler);
+    return () => {
+      socket.off('project:settings-changed', handler);
+    };
+  }, [projectSlug]);
+
   const handleUpdateSetting = useCallback(async (update: UpdateProjectSettingsRequest, toastMessage?: string) => {
     if (!projectSlug) return;
     try {
@@ -172,6 +192,8 @@ export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionPr
 
   return (
     <div className="space-y-8">
+      <SettingsSyncNotice />
+
       {/* Loading State */}
       {loading && (
         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-300">

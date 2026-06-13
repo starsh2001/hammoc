@@ -137,6 +137,7 @@ describe('projectController', () => {
       mockReq = {
         t: vi.fn((key: string) => key),
         language: 'en',
+        header: vi.fn(() => undefined) as unknown as Request['header'],
         params: { projectSlug: 'test-project' },
         body: { permissionModeOverride: 'invalidMode' },
       };
@@ -158,6 +159,7 @@ describe('projectController', () => {
       mockReq = {
         t: vi.fn((key: string) => key),
         language: 'en',
+        header: vi.fn(() => undefined) as unknown as Request['header'],
         params: { projectSlug: 'test-project' },
         body: { permissionModeOverride: null },
       };
@@ -198,6 +200,7 @@ describe('projectController', () => {
       mockReq = {
         t: vi.fn((key: string) => key),
         language: 'en',
+        header: vi.fn(() => undefined) as unknown as Request['header'],
         params: { projectSlug: 'test-project' },
         body: { permissionModeOverride: 'plan' },
       };

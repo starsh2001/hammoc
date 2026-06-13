@@ -13,6 +13,8 @@ import type { DashboardStatusChangeEvent } from './dashboard.js';
 import type { HistoryMessage } from './history.js';
 import type { SnippetItem } from './command.js';
 import type { HarnessScope, HarnessExternalChangeEvent } from './harness.js';
+import type { UserPreferences } from './preferences.js';
+import type { ProjectSettingsApiResponse } from './project.js';
 
 // ===== Prompt Chain =====
 
@@ -236,6 +238,14 @@ export interface ServerToClientEvents {
   // Intentionally a separate channel from 'file:external-change' so the editor
   // and file-explorer panels do not over-react to harness edits.
   'harness:external-change': (data: HarnessExternalChangeEvent) => void;
+  // Settings multi-device sync: broadcast persisted settings changes to OTHER
+  // connected browsers so their open settings screens reflect the change live.
+  // The originating browser is excluded server-side (via a socket-id header) so
+  // it never receives its own echo. `preferences:changed` carries the full
+  // merged global preferences; `project:settings-changed` is keyed by
+  // projectSlug and the client ignores payloads for projects it isn't viewing.
+  'preferences:changed': (data: { preferences: UserPreferences }) => void;
+  'project:settings-changed': (data: { projectSlug: string; settings: ProjectSettingsApiResponse }) => void;
 }
 
 // ===== Inter-server Events =====
