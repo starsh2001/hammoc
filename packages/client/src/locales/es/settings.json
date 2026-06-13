@@ -1,6 +1,6 @@
 {
     "sync": {
-        "deviceNotice": "Estos ajustes se aplican a todos los dispositivos y navegadores que han iniciado sesión en este servidor."
+        "deviceNotice": "Estos ajustes se comparten entre todos los dispositivos conectados a este servidor, excepto los marcados como 'Solo este dispositivo'."
     },
     "global": {
         "theme": "Tema",

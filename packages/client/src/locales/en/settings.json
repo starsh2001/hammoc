@@ -1,6 +1,6 @@
 {
     "sync": {
-        "deviceNotice": "These settings apply to every device and browser signed in to this server."
+        "deviceNotice": "These settings are shared across every device signed in to this server, except items marked 'This device only'."
     },
     "global": {
         "theme": "Theme",
