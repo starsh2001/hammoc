@@ -224,6 +224,14 @@ const CLI_PERMISSION_DENY_KEY = '\x1b'; // Esc → "Esc to cancel"
 const CLI_PERMISSION_CYCLE_KEY = '\x1b[Z';
 
 /**
+ * Hard ceiling on the live permission-mode driver's steps (Story 37.5 re-design 2026-06-14).
+ * Normal reach is ≤ N-1 forward steps; the headroom absorbs a transient misread or a slow frame
+ * that costs an extra lap. A run that can't land within this many is abnormal — stop and let the
+ * next spawn's `--permission-mode` be the backstop rather than spinning the PTY forever.
+ */
+const CLI_PERMISSION_MAX_STEPS = CLI_PERMISSION_MODE_CYCLE.length * 3;
+
+/**
  * AskUserQuestion selection-modal interception (Story 32.8 — *constrained*; the JSONL/ANSI
  * behavior and EVERY key were verified against claude v2.1.162 by a real-PTY observation,
  * Task 1). Like the permission dialog (32.6), the question modal leaves **no structured
@@ -441,6 +449,12 @@ export class CliChatEngine implements ChatEngine {
    */
   private activeCliControl: CliLiveControl | null = null;
   /**
+   * Story 37.5 re-design — true while the live permission-mode driver loop is running. A concurrent
+   * `setPermissionMode` then just retargets (`this.permissionMode`) instead of starting a second
+   * driver that would fight the first over the same PTY's mode cycle.
+   */
+  private permissionLoopRunning = false;
+  /**
    * Story 33.3: user-configured `claude` binary path override (global preference).
    * Forwarded to every spawn; empty/undefined = auto-detect, invalid = graceful
    * fallback in `cliSessionPool.resolveClaudeBinary`.
@@ -478,92 +492,68 @@ export class CliChatEngine implements ChatEngine {
   }
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
-    // Story 37.5 — live Shift+Tab closed loop vs. store-only fallback. The stored
-    // `this.permissionMode` is always the authority the NEXT spawn maps to
-    // `--permission-mode` (AC7); when a live turn is idle we ALSO drive the running claude's
-    // mode in place and adopt the *verified* (screen-confirmed) mode rather than the request.
+    // Story 37.5 (re-design 2026-06-14) — the stored mode is BOTH the authority the next spawn maps
+    // to `--permission-mode` (AC7) AND the live TARGET the driver heads toward. Set it first so a
+    // driver already running adopts the new target on its next step (mid-flight retarget — the user
+    // cycling Ask→Auto→Bypass during one turn, which is the whole point of this feature).
+    this.permissionMode = mode;
+
     const control = this.activeCliControl;
+    // Store-only (no live key injection): no live turn (between turns, or the narrow spawn/teardown
+    // race where status is still 'running' but `activeCliControl` isn't set), or the target is OFF
+    // the Shift+Tab cycle (`dontAsk` — no reachable position). Aliveness, the modal guard, and the
+    // screen classification are re-checked every step INSIDE the driver (not pre-emptively here), so
+    // a generating frame is driven just like an idle one and a modal that comes up mid-drive still
+    // stops the keys before they land.
+    if (!control || permissionModeCycleIndex(mode) < 0) return;
 
-    // Store-only fallbacks (no live key injection). Three pre-emptive cases, in order:
-    //   (1) No live control — turn outside, OR the narrow spawn/teardown race where the handler
-    //       still sees status==='running' but `activeCliControl` is not (yet/any longer) set.
-    //   (2) A permission/question modal is up (the flag is checked BEFORE reading the grid — the
-    //       pre-emptive last line of defense, same shape as the 37.4 abort-race guard — so a stray
-    //       CSI Z can never land in a modal and disturb its key wiring).
-    //   (3) The target mode is OFF the Shift+Tab cycle (`dontAsk`) — no reachable cycle index, so
-    //       there is nothing to drive; the next spawn applies it via `--permission-mode`.
-    if (!control || control.isModalPending() || permissionModeCycleIndex(mode) < 0) {
-      this.permissionMode = mode;
-      return;
+    // A driver is already running — it re-reads `this.permissionMode` each step, so it now heads for
+    // the target we just stored. Never start a second concurrent driver (two would fight over the
+    // same PTY's mode cycle).
+    if (this.permissionLoopRunning) return;
+    this.permissionLoopRunning = true;
+    try {
+      await this.drivePermissionModeToTarget(control);
+    } finally {
+      this.permissionLoopRunning = false;
     }
-
-    // The turn is live and modal-free. Both an IDLE input box AND a mid-GENERATION frame render the
-    // mode status row at the very bottom of the reconstructed grid (spinner above, input box + mode
-    // row below) and cycle the permission mode live on Shift+Tab — owner-confirmed 2026-06-13, the
-    // promotion Story 37.5 deferred behind a manual gate ("생성 중 라이브 주입은 안전 확인되면 승격").
-    // So the read-verify closed loop drives in EITHER state (it reads the current mode from that
-    // bottom row and re-verifies after cycling). Only an UNKNOWN screen (boot/loading — neither idle
-    // nor generating) or a dead PTY falls back to store-only: no blind key into a screen we can't
-    // classify, and the next spawn applies the stored mode via `--permission-mode`.
-    if (!control.isAlive()) {
-      this.permissionMode = mode;
-      return;
-    }
-    const grid = await control.readSettledGrid();
-    if (!control.isAlive() || !(isIdleInputGrid(grid) || isGeneratingGrid(grid))) {
-      this.permissionMode = mode;
-      return;
-    }
-
-    // Idle or generating: drive the closed loop and adopt the VERIFIED settled mode (not the request).
-    this.permissionMode = await this.cyclePermissionMode(control, mode, grid);
   }
 
   /**
-   * Story 37.5 — the CSI Z (Shift+Tab) closed loop. Reads the current mode from the settled grid,
-   * advances claude's cycle to `target` with wrap-aware forward steps, then RE-READS to verify the
-   * mode the screen actually landed on. Returns the VERIFIED mode (never the assumed target):
-   *   - on convergence that is `target`;
-   *   - on non-convergence (fail-safe) it is whatever the screen actually shows — the SCREEN is the
-   *     authority, so the live claude and the stored next-spawn flag never disagree. No extra keys
-   *     are injected on non-convergence (no "wind it back to the assumed target"); a single warning
-   *     is logged.
-   * `initialGrid` is the caller's already-read, idle-verified settled grid — reused as the first
-   * current-mode read so we do not double-flush.
+   * Story 37.5 (re-design 2026-06-14) — drive claude's live permission mode toward the stored
+   * target by stepping ONE Shift+Tab (CSI Z) at a time and RE-READING the screen each step, until
+   * the target mode is the one shown. Self-corrects a misread or a slow frame (the next step
+   * re-checks) and never over-shoots permanently (it stops the moment the target is on screen). The
+   * target is re-read from `this.permissionMode` every step, so a mid-flight retarget (the user
+   * cycling Ask→Auto→Bypass within one turn) is followed live without restarting the driver.
+   *
+   * Replaces the old "read once → compute the N-step distance → inject the whole burst → verify
+   * once" loop, whose single up-front read made it brittle: one bad current-mode read sent the wrong
+   * key count with no chance to correct (the source of the mid-generation echo). Bounded by a step
+   * ceiling so a persistently-misreading screen (or one that never settles) can't spin forever — the
+   * next spawn's `--permission-mode` is the backstop in that abnormal case.
    */
-  private async cyclePermissionMode(
-    control: CliLiveControl,
-    target: PermissionMode,
-    initialGrid: string[],
-  ): Promise<PermissionMode> {
-    const N = CLI_PERMISSION_MODE_CYCLE.length;
-    const targetIdx = permissionModeCycleIndex(target); // caller guaranteed >= 0
-    const current = readPermissionMode(initialGrid);
-    const curIdx = permissionModeCycleIndex(current); // read from cycle labels ⇒ always >= 0
-    // Wrap-aware forward step count, bounded to [0, N-1] — so at most N-1 keypresses: the cycle
-    // length is the hard injection ceiling (a turn that can't reach the target within one lap is
-    // abnormal, so we never keep spinning). 0 steps ⇒ already on target ⇒ inject nothing.
-    const steps = (((targetIdx - curIdx) % N) + N) % N;
-    for (let i = 0; i < steps; i++) {
-      if (!control.isAlive()) return current; // PTY died mid-loop — stop, report last known
+  private async drivePermissionModeToTarget(control: CliLiveControl): Promise<void> {
+    for (let step = 0; step < CLI_PERMISSION_MAX_STEPS; step++) {
+      // Pre-key guards, re-checked every step: a torn-down PTY, or a modal that came up mid-drive (a
+      // stray CSI Z must never land in a permission/question modal — same guard as the old loop).
+      if (!control.isAlive() || control.isModalPending()) return;
+      const target = this.permissionMode; // re-read each step ⇒ follows a mid-flight retarget
+      if (permissionModeCycleIndex(target) < 0) return; // retargeted to `dontAsk` ⇒ store-only
+      const grid = await control.readSettledGrid();
+      if (!control.isAlive()) return;
+      // Only drive on a classifiable LIVE screen (idle input box or generating frame); an UNKNOWN
+      // boot/loading screen forbids blind keys (the next spawn applies the stored mode instead).
+      if (!isIdleInputGrid(grid) && !isGeneratingGrid(grid)) return;
+      if (readPermissionMode(grid) === target) return; // target is on screen — done
       control.writeKey(CLI_PERMISSION_CYCLE_KEY);
-      // Discrete keypresses, spaced like the menu keys (a coalesced burst could drop a step).
+      // Discrete keypress spacing (a coalesced burst could drop a step); the next iteration's
+      // readSettledGrid then observes the mode this keypress landed on.
       await new Promise((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
     }
-    // Re-read is async; re-check liveness before trusting the grid (37.4 abort-race shape — never
-    // adopt a grid read after the PTY was torn down).
-    if (!control.isAlive()) return current;
-    const finalGrid = await control.readSettledGrid();
-    if (!control.isAlive()) return current;
-    const verified = readPermissionMode(finalGrid);
-    if (verified !== target) {
-      // Fail-safe: do NOT inject more. Adopt the ACTUAL landed mode as the authority (not the
-      // target) so the live screen and the stored next-spawn flag stay in lockstep. Warn once.
-      log.warn(
-        `CLI permission-mode cycle did not converge: target=${target} landed=${verified} (steps=${steps}) — adopting the verified on-screen mode`,
-      );
-    }
-    return verified;
+    log.warn(
+      `CLI permission-mode did not reach target=${this.permissionMode} within ${CLI_PERMISSION_MAX_STEPS} steps — leaving it for the next spawn's --permission-mode`,
+    );
   }
 
   /**

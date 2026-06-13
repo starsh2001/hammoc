@@ -1056,6 +1056,38 @@ describe('CliChatEngine', () => {
     ]);
     const countKey = (key: string) => h.fakePty.write.mock.calls.filter((c) => c[0] === key).length;
 
+    const CYCLE = ['default', 'acceptEdits', 'plan', 'bypassPermissions'] as const;
+    type CycleMode = typeof CYCLE[number];
+    const MODE_LABEL: Record<CycleMode, string | undefined> = {
+      default: undefined, // no mode row ⇒ readPermissionMode returns 'default'
+      acceptEdits: '⏵⏵ accept edits on',
+      plan: '⏸ plan mode on',
+      bypassPermissions: '⏵⏵ auto mode on',
+    };
+    // A mid-generation frame at a given mode: footer carries "esc to interrupt" / "↓ N tokens" so
+    // isGeneratingGrid is true; the mode row sits at the very bottom. 'default' ⇒ no mode row.
+    const genGrid = (mode: CycleMode) =>
+      drawModal([
+        ' ✻ Working… (3s · ↓ 42 tokens · esc to interrupt)',
+        ' ❯ ',
+        ...(MODE_LABEL[mode] ? [modeRow(MODE_LABEL[mode]!)] : []),
+      ]);
+    // Make the fake PTY behave like real claude: each injected CSI Z advances the on-screen mode by
+    // one cycle step, so the driver's per-step re-read observes the mode each keypress landed on.
+    // `generating` picks an idle-input frame vs a mid-generation frame (both carry the bottom mode
+    // row). Seeds the initial frame at `start`.
+    function autoAdvanceMode(start: CycleMode, generating = false): void {
+      let idx = CYCLE.indexOf(start);
+      const frame = (m: CycleMode) => (generating ? genGrid(m) : idleGrid(MODE_LABEL[m]));
+      h.fakePty._onData?.(frame(CYCLE[idx]));
+      h.fakePty.write.mockImplementation((data: string) => {
+        if (data === CSI_Z) {
+          idx = (idx + 1) % CYCLE.length;
+          h.fakePty._onData?.(frame(CYCLE[idx]));
+        }
+      });
+    }
+
     // Drive the engine to the post-injection state (where activeCliControl is live), as the
     // permission/progress blocks do. Returns the turn promise wrapped (an async fn would auto-flatten
     // and deadlock — the turn completes only after the test writes the session).
@@ -1078,22 +1110,17 @@ describe('CliChatEngine', () => {
       await turn;
     }
 
-    it('drives the wrap-aware step count and adopts the VERIFIED mode (default → plan = 2 steps)', async () => {
+    it('steps one key at a time until the target mode is on screen (default → plan = 2 keys)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const { turn } = await injectThenReady(engine);
-      h.fakePty._onData?.(idleGrid()); // current: idle, default (no mode row)
+      autoAdvanceMode('default'); // each CSI Z advances the on-screen mode by one step
       await wait(20);
 
       const before = countKey(CSI_Z);
-      const p = engine.setPermissionMode('plan'); // plan = cycle idx 2 ⇒ (2 - 0 + 4) % 4 = 2 steps
-      // Once the first Shift+Tab fired the initial read is done; feed the converged frame so the
-      // re-read verifies plan.
-      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
-      h.fakePty._onData?.(idleGrid('⏸ plan mode on'));
-      await p;
+      await engine.setPermissionMode('plan'); // default → acceptEdits → plan = 2 keys
 
       expect(countKey(CSI_Z) - before).toBe(2);
-      expect(engine.getPermissionMode()).toBe('plan'); // verified, not assumed
+      expect(engine.getPermissionMode()).toBe('plan');
       await endTurn(turn);
     });
 
@@ -1110,39 +1137,52 @@ describe('CliChatEngine', () => {
       await endTurn(turn);
     });
 
-    it('wraps the cycle forward (plan → default wraps through auto = 2 steps)', async () => {
+    it('wraps the cycle forward (plan → default wraps through bypass = 2 keys)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const { turn } = await injectThenReady(engine);
-      h.fakePty._onData?.(idleGrid('⏸ plan mode on')); // current: plan (idx 2)
+      autoAdvanceMode('plan'); // current: plan (idx 2)
       await wait(20);
 
       const before = countKey(CSI_Z);
-      const p = engine.setPermissionMode('default'); // (0 - 2 + 4) % 4 = 2 steps (wrap through auto)
-      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
-      h.fakePty._onData?.(idleGrid()); // converged to default (no mode row)
-      await p;
+      await engine.setPermissionMode('default'); // plan → bypassPermissions → default = 2 keys (wrap)
 
       expect(countKey(CSI_Z) - before).toBe(2);
       expect(engine.getPermissionMode()).toBe('default');
       await endTurn(turn);
     });
 
-    it('fail-safe: on non-convergence adopts the ACTUAL landed mode (not the target) + warns once', async () => {
+    it('follows a mid-flight retarget — a second setPermissionMode redirects the running driver', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const { turn } = await injectThenReady(engine);
-      h.fakePty._onData?.(idleGrid()); // current: default
+      autoAdvanceMode('default');
+      await wait(20);
+
+      const p1 = engine.setPermissionMode('plan'); // start heading toward plan
+      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(0)); // first key fired
+      await engine.setPermissionMode('bypassPermissions'); // retarget mid-flight (no 2nd driver)
+      await p1;
+
+      // The single running driver re-reads the target each step, so it lands on the LATEST target.
+      expect(engine.getPermissionMode()).toBe('bypassPermissions');
+      await endTurn(turn);
+    });
+
+    it('stops at the step ceiling and warns when the target never lands on screen (misread guard)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      // Screen is STUCK on default — no auto-advance wired, so CSI Z never changes the mode row
+      // (simulates a persistently misread / never-settling frame). The driver must not spin forever:
+      // it stops at the ceiling and warns; the stored target is the next spawn's backstop.
+      h.fakePty._onData?.(idleGrid()); // default, and it stays default
+      h.fakePty.write.mockImplementation(() => {}); // CSI Z never advances the mode (stuck screen)
       await wait(20);
 
       const before = countKey(CSI_Z);
       const warnBefore = h.logger.warn.mock.calls.length;
-      const p = engine.setPermissionMode('plan'); // wants plan (2 steps)
-      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
-      // The screen actually lands on acceptEdits, NOT the requested plan → fail-safe.
-      h.fakePty._onData?.(idleGrid('⏵⏵ accept edits on'));
-      await p;
+      await engine.setPermissionMode('plan'); // never appears on screen ⇒ ceiling
 
-      expect(countKey(CSI_Z) - before).toBe(2); // bounded to the computed steps — no extra winding
-      expect(engine.getPermissionMode()).toBe('acceptEdits'); // verified actual, not the assumed target
+      expect(countKey(CSI_Z) - before).toBe(CYCLE.length * 3); // the CLI_PERMISSION_MAX_STEPS ceiling
+      expect(engine.getPermissionMode()).toBe('plan'); // stored target (next spawn's --permission-mode)
       expect(h.logger.warn.mock.calls.length - warnBefore).toBe(1); // warned exactly once
       await endTurn(turn);
     });
@@ -1181,25 +1221,21 @@ describe('CliChatEngine', () => {
       expect(countKey(CSI_Z) - before).toBe(0);
     });
 
-    it('drives the closed loop while GENERATING — mode row at the bottom, Shift+Tab cycles live', async () => {
-      // Owner-confirmed 2026-06-13: the reconstructed grid carries the mode status row at the very
-      // bottom in BOTH idle and generating states (spinner above, input box + mode row below), so the
-      // read-verify loop drives mid-generation too — the promotion Story 37.5 deferred behind a gate.
-      const genGrid = (modeLabel: string) =>
-        drawModal([' ✻ Working… (3s · ↓ 42 tokens · esc to interrupt)', ' ❯ ', modeRow(modeLabel)]);
+    it('drives mid-GENERATION too — one key at a time, mode row at the bottom (acceptEdits → bypass)', async () => {
+      // Owner-confirmed: the reconstructed grid carries the mode status row at the very bottom in
+      // BOTH idle and generating states (spinner above, input box + mode row below), so the driver
+      // steps the mode live mid-generation exactly like idle — this is the whole point of the
+      // feature (flip Ask→Bypass while a turn is mid-flight).
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const { turn } = await injectThenReady(engine);
-      h.fakePty._onData?.(genGrid('⏵⏵ accept edits on')); // current: acceptEdits (idx 1), generating
+      autoAdvanceMode('acceptEdits', true); // generating frames
       await wait(20);
 
       const before = countKey(CSI_Z);
-      const p = engine.setPermissionMode('bypassPermissions'); // (3 - 1 + 4) % 4 = 2 steps
-      await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(before));
-      h.fakePty._onData?.(genGrid('⏵⏵ auto mode on')); // converged (auto = bypassPermissions), still generating
-      await p;
+      await engine.setPermissionMode('bypassPermissions'); // acceptEdits → plan → bypass = 2 keys
 
       expect(countKey(CSI_Z) - before).toBe(2);
-      expect(engine.getPermissionMode()).toBe('bypassPermissions'); // verified mid-generation
+      expect(engine.getPermissionMode()).toBe('bypassPermissions'); // reached mid-generation
       await endTurn(turn);
     });
 
