@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import type { HistoryMessage, ImageRef } from '@hammoc/shared';
 import { generateUUID } from '../utils/uuid';
 import { debugLog } from '../utils/debugLogger';
+import { saveMessagesSnapshot } from '../utils/sessionSnapshotCache';
 
 interface MessageState {
   messages: HistoryMessage[];
@@ -59,6 +60,12 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     // user:message and stream:history / stream:complete-messages,
     // so client-side image preservation is no longer needed.
     set({ messages, isLoading: false, error: null });
+
+    // Cache this authoritative transcript locally so a refresh / reconnect / mobile sleep-wake
+    // can pre-paint it instantly before the next stream:history round-trips (overwritten on
+    // arrival — stale-while-revalidate). Pure browser-local; never sent anywhere.
+    const sid = get().currentSessionId;
+    if (sid) saveMessagesSnapshot(sid, messages);
   },
 
   clearMessages: () => {

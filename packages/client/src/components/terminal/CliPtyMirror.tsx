@@ -8,7 +8,9 @@
  * (default ON, opt-out — Story 37.7/37.8): besides watching a stalled turn, the everyday use
  * is simply seeing claude's screen, in color. Because every frame is a WHOLE screen (not an
  * in-place delta), one frame fully restores the view — so late-join, refresh, and collapse/
- * expand all converge by reset()+write(frame). On (re)mount the panel emits
+ * expand all converge by reset()+write(frame). The panel itself starts COLLAPSED by default —
+ * only its title bar shows, so opening a CLI chat does not surface the raw screen until the user
+ * expands it; expanding mounts the xterm and pulls the current frame. On (re)mount the panel emits
  * `cli:request-screen-frame` to pull the current screen from the server cache immediately (a
  * collapse→expand does not re-fire session:join). It is a pure observer:
  *   - input is disabled (the engine drives the PTY by injecting keystrokes itself; a key
@@ -20,7 +22,7 @@
  * is actually shown.
  */
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
@@ -30,6 +32,8 @@ import { getSocket } from '../../services/socket';
 import { useTheme } from '../../hooks/useTheme';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useChatStore } from '../../stores/chatStore';
+import { useMessageStore } from '../../stores/messageStore';
+import { loadSnapshot, saveFrameSnapshot } from '../../utils/sessionSnapshotCache';
 import { getXtermTheme } from './xtermTheme';
 
 /**
@@ -76,11 +80,14 @@ function MirrorPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const { resolvedTheme } = useTheme();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true); // default collapsed — show only the title bar
   const [panelHeight, setPanelHeight] = useState(192); // px — drag the bar atop the panel to resize
   // Scroll to the bottom (claude's input/spinner) on the first frame after a (re)mount/expand,
   // then leave the user's scroll position alone.
   const justExpandedRef = useRef(true);
+  // Previous panel height — used to anchor the BOTTOM of the screen on resize (see the layout
+  // effect below). Seeded with the initial height so the first resize delta is measured correctly.
+  const prevPanelHeightRef = useRef(192);
 
   // xterm init + live socket subscription. Re-runs on collapse/expand (the terminal is
   // disposed while collapsed) and on theme change. The subscription is a pure observer of
@@ -95,13 +102,16 @@ function MirrorPanel() {
     // in-place redraws (cursor-addressed overwrites like the spinner's "1m 36s"→"37s") — against
     // THESE coordinates. The old FitAddon sized xterm to the panel (a different column count), so
     // every cursor move landed at the wrong spot and redraws spilled into new lines instead of
-    // overwriting. We pin cols/rows and scale the FONT to fit the panel instead.
+    // overwriting. We pin cols/rows and use a FIXED font size; the panel keeps the text the same
+    // legible size at any width and scrolls HORIZONTALLY when the 120 columns are wider than the
+    // panel (a narrow/standard layout) — rather than shrinking the glyphs to cram all 120 cols in,
+    // which made the mirror unreadable on narrow widths.
     const COLS = 120;
     const ROWS = 80;
     const terminal = new Terminal({
       cols: COLS,
       rows: ROWS,
-      fontSize: 11,
+      fontSize: 13,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       scrollback: 5000,
       cursorBlink: false,
@@ -121,19 +131,23 @@ function MirrorPanel() {
     terminal.open(containerRef.current);
     terminalRef.current = terminal;
 
-    // Fit by FONT SIZE while cols/rows stay pinned to the PTY. monospace cell ≈ 0.6w × 1.2h
-    // of the font size; pick the largest font that keeps the full 120×40 grid inside the panel.
-    const fitFont = () => {
-      const el = containerRef.current;
-      if (!el) return;
-      const w = el.clientWidth;
-      if (!w) return;
-      // Size the font to the panel WIDTH so all 120 cols fit horizontally — that axis is what
-      // matters for in-place redraws. The 40 rows then overflow vertically and the panel
-      // scrolls; claude's active area (bottom input / spinner) stays in view.
-      const fontSize = Math.max(6, Math.min(13, Math.floor(w / COLS / 0.6)));
-      if (terminal.options.fontSize !== fontSize) terminal.options.fontSize = fontSize;
-    };
+    // Read-only mirror: it must never take focus or pop the mobile virtual keyboard. xterm always
+    // creates a hidden <textarea> and focuses it when the screen is tapped (even with stdin
+    // disabled) — on a phone that raises the keyboard and steals focus from the chat input, and on
+    // desktop it puts a focus ring on a panel the user can't type into. Make the whole xterm
+    // transparent to pointer events so taps fall through to the scroll container (scrolling still
+    // works), and neutralize the helper textarea so any residual/programmatic focus can't surface a
+    // keyboard or land in the tab order. (terminal.open is a no-op in unit tests where xterm is
+    // mocked, so these queries return null and are skipped — guarded accordingly.)
+    const xtermEl = containerRef.current.querySelector('.xterm') as HTMLElement | null;
+    if (xtermEl) xtermEl.style.pointerEvents = 'none';
+    const helperTextarea = containerRef.current.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement | null;
+    if (helperTextarea) {
+      helperTextarea.readOnly = true;
+      helperTextarea.tabIndex = -1;
+      helperTextarea.setAttribute('inputmode', 'none'); // suppress the on-screen keyboard if ever focused
+      helperTextarea.setAttribute('aria-hidden', 'true');
+    }
 
     const socket = getSocket();
     // Story 37.8: the server sends the whole CURRENT screen as a self-contained serialized
@@ -141,13 +155,13 @@ function MirrorPanel() {
     // the terminal (clears buffer + cursor + modes, absorbing the alt-buffer prefix that the
     // serialized frame repeats) and write the frame as the current screen. This single path
     // covers live updates, late-join, refresh, and collapse/expand — no delta accumulation.
-    const onFrame = (data: { frame: string }) => {
+    const paintFrame = (frame: string) => {
       // Full-frame repaint: clear the WHOLE screen (\x1b[2J) then write the serialized frame from
       // home, all inside one synchronized update (\x1b[?2026h … \x1b[?2026l) so the clear+redraw
       // is ATOMIC — the blank intermediate never reaches the screen, so no flicker, and a full
       // clear leaves zero residue from cursor-jumped rows. (Reverted from per-row erase, which
       // still mis-rendered the spinner rows.)
-      terminal.write('\x1b[?2026h\x1b[2J\x1b[H' + data.frame + '\x1b[?2026l');
+      terminal.write('\x1b[?2026h\x1b[2J\x1b[H' + frame + '\x1b[?2026l');
       // After a (re)mount/expand, snap to the bottom on the FIRST frame (claude's input/spinner
       // sits at the bottom of the 80-row grid); afterwards keep the user's scroll position.
       // The PANEL DOM scrolls — xterm renders all 80 rows TALLER than the panel, so xterm's own
@@ -161,28 +175,46 @@ function MirrorPanel() {
         });
       }
     };
+    const onFrame = (data: { frame: string }) => {
+      paintFrame(data.frame);
+      // Cache the latest frame for THIS session so a later remount / reconnect / mobile sleep-wake
+      // can pre-paint it instantly (browser-local; the next server frame overwrites it). sessionId
+      // is the chat currently being viewed, tracked by the message store.
+      const sid = useMessageStore.getState().currentSessionId;
+      if (sid) saveFrameSnapshot(sid, data.frame);
+    };
     socket.on('cli:screen-frame', onFrame);
+    // Pre-paint this browser's last-seen frame from the local cache BEFORE the server round-trip,
+    // so a refresh / reconnect / sleep-wake shows the previous screen with zero blank gap. The
+    // server's cached or live frame then overwrites it via the same path (stale-while-revalidate).
+    const viewingSessionId = useMessageStore.getState().currentSessionId;
+    const cachedFrame = viewingSessionId ? loadSnapshot(viewingSessionId)?.frame : null;
+    if (cachedFrame) paintFrame(cachedFrame);
     // Pull the current screen immediately — on first mount, and crucially after a collapse→
     // expand remount (which does not re-fire session:join). Cache miss → the server no-ops.
     socket.emit('cli:request-screen-frame');
 
-    let rafId: number | null = null;
-    const resizeObserver = new ResizeObserver(() => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(fitFont);
-    });
-    resizeObserver.observe(containerRef.current);
-    const initRaf = requestAnimationFrame(fitFont);
-
     return () => {
       socket.off('cli:screen-frame', onFrame);
-      resizeObserver.disconnect();
-      if (rafId) cancelAnimationFrame(rafId);
-      cancelAnimationFrame(initRaf);
       terminal.dispose();
       terminalRef.current = null;
     };
   }, [collapsed, resolvedTheme]);
+
+  // Keep the BOTTOM of the screen anchored when the panel is resized (drag the title bar). claude's
+  // active area — the input box / spinner — sits at the bottom of the 80-row grid, so growing or
+  // shrinking the panel should reveal/hide rows at the TOP while the bottom edge stays put. The
+  // screen height is fixed (rows are pinned), so the screen's scrollHeight doesn't change on a
+  // height drag; preserving the distance-from-bottom is therefore just: when the panel height
+  // changes by Δ, shift scrollTop by −Δ. (The browser's default is to leave scrollTop alone, which
+  // anchors the TOP — the opposite of what's wanted here.) Runs in a layout effect so it reads the
+  // already-applied height before paint, avoiding a visible jump.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    const delta = panelHeight - prevPanelHeightRef.current;
+    prevPanelHeightRef.current = panelHeight;
+    if (el && delta !== 0) el.scrollTop -= delta;
+  }, [panelHeight]);
 
   const handleClear = useCallback(() => {
     terminalRef.current?.clear();
@@ -232,7 +264,26 @@ function MirrorPanel() {
   }, [collapsed]);
 
   return (
-    <div className="border-t border-gray-300 dark:border-[#3a4d5e] bg-gray-50 dark:bg-[#1a1b26] shrink-0">
+    // The panel must YIELD vertical space rather than push the input bar (the footer below it in
+    // ChatPage's flex column) off the bottom of the viewport. The whole app relies on the layout
+    // viewport shrinking when the mobile keyboard opens (index.html: interactive-widget=
+    // resizes-content) and on a short screen to begin with; if this panel were shrink-0 it would
+    // keep its full set height, overflow the overflow-hidden chat root, and clip the footer.
+    // Instead it's a shrinkable flex column (flex + min-h-0): when there isn't room for its set
+    // height, the scroll area below shrinks and scrolls INTERNALLY, so the footer always stays
+    // visible — including while the keyboard is up. With room to spare it sits at its set height
+    // and the conversation (flex-1) takes the slack.
+    <div className="border-t border-gray-300 dark:border-[#3a4d5e] bg-gray-50 dark:bg-[#1a1b26] flex flex-col min-h-0">
+      {/* content-container tracks the chat's wide/standard layout mode: full-width in wide view,
+          capped + centered (80rem) in standard view — matching MessageArea / InputArea so the
+          mirror lines up with the conversation column instead of always spanning the viewport.
+          flex-col + min-h-0 so the shrink propagates down to the scroll area. w-full is REQUIRED:
+          in standard layout content-container has margin-inline:auto, and a flex item (this is one,
+          now that the outer is a flex column) with auto side margins drops `align-items: stretch`
+          and shrink-wraps to its content — the auto margins then center that shrunk box, so the
+          collapsed title bar would float in the middle. width:100% pins it back to the full column
+          width (still capped at 80rem and centered), keeping the title left-aligned. */}
+      <div className="content-container flex flex-col min-h-0 w-full">
       <div
         role="button"
         aria-expanded={!collapsed}
@@ -240,7 +291,7 @@ function MirrorPanel() {
         onPointerDown={onBarPointerDown}
         onPointerMove={onBarPointerMove}
         onPointerUp={onBarPointerUp}
-        className="flex items-center justify-between px-3 py-1.5 text-xs cursor-row-resize select-none touch-none"
+        className="flex items-center justify-between px-3 py-1.5 text-xs cursor-row-resize select-none touch-none shrink-0"
       >
         <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 pointer-events-none">
           {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -272,7 +323,10 @@ function MirrorPanel() {
           </div>
         )}
       </div>
-      {!collapsed && <div ref={containerRef} style={{ height: panelHeight }} className="w-full overflow-y-auto px-2 pb-2" />}
+      {/* height = the user's set/dragged height, but min-h-0 lets flex shrink it below that when
+          the viewport is too short (small screen / keyboard up); overflow-auto then scrolls. */}
+      {!collapsed && <div ref={containerRef} style={{ height: panelHeight }} className="w-full overflow-auto px-2 pb-2 min-h-0" />}
+      </div>
     </div>
   );
 }

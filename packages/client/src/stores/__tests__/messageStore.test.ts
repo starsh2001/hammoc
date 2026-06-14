@@ -6,6 +6,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { HistoryMessage } from '@hammoc/shared';
 import { useMessageStore } from '../messageStore';
+import {
+  loadSnapshot,
+  flushSnapshotsNow,
+  __resetSnapshotCacheForTests,
+} from '../../utils/sessionSnapshotCache';
 
 describe('useMessageStore', () => {
   beforeEach(() => {
@@ -232,6 +237,30 @@ describe('useMessageStore', () => {
 
       const messages = useMessageStore.getState().messages;
       expect(messages[0].images).toEqual(images);
+    });
+  });
+
+  describe('setMessages → browser snapshot cache', () => {
+    beforeEach(() => {
+      __resetSnapshotCacheForTests();
+    });
+
+    it('caches the authoritative transcript for the current session', () => {
+      useMessageStore.setState({ currentSessionId: 'sess-A' });
+      useMessageStore.getState().setMessages(mockMessages);
+      flushSnapshotsNow();
+
+      const snap = loadSnapshot('sess-A');
+      expect(snap?.messages).toHaveLength(2);
+      expect(snap?.messages[0].id).toBe('msg-1');
+    });
+
+    it('does not cache when no session is bound (nothing to key it by)', () => {
+      useMessageStore.setState({ currentSessionId: null });
+      useMessageStore.getState().setMessages(mockMessages);
+      flushSnapshotsNow();
+
+      expect(loadSnapshot('sess-A')).toBeNull();
     });
   });
 

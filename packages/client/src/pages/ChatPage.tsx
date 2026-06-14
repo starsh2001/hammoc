@@ -66,6 +66,7 @@ import { BudgetWarningBanner } from '../components/BudgetWarningBanner';
 import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
 import { useMessageTree } from '../hooks/useMessageTree';
 import { getBaseUuid } from '../utils/messageTree';
+import { loadSnapshot } from '../utils/sessionSnapshotCache';
 
 
 /**
@@ -525,12 +526,25 @@ export function ChatPage() {
       // if messageStore is momentarily cleared during unmount/remount cycles.
       useChainStore.getState().bindSession(sessionId);
       // Set session context so stream:history / stream:complete-messages can match.
-      // Set isLoading so a skeleton is shown until stream:history arrives.
-      useMessageStore.setState({
-        currentProjectSlug: projectSlug,
-        currentSessionId: sessionId,
-        isLoading: true,
-      });
+      // Pre-paint this browser's last-seen transcript instantly if we cached one, so a refresh /
+      // reconnect / mobile sleep-wake shows the conversation immediately instead of a skeleton;
+      // the incoming stream:history overwrites it (stale-while-revalidate). With no snapshot, keep
+      // the original behavior: show the skeleton (isLoading) until stream:history arrives.
+      const snapshot = loadSnapshot(sessionId);
+      useMessageStore.setState(
+        snapshot && snapshot.messages.length > 0
+          ? {
+              currentProjectSlug: projectSlug,
+              currentSessionId: sessionId,
+              messages: snapshot.messages,
+              isLoading: false,
+            }
+          : {
+              currentProjectSlug: projectSlug,
+              currentSessionId: sessionId,
+              isLoading: true,
+            },
+      );
 
       // Fail-safe: clear loading after timeout if stream:status never arrives
       // (e.g., server error, dropped connection, transport failure)
