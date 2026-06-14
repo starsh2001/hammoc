@@ -5,7 +5,7 @@
 
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { DiffViewer } from '../DiffViewer';
+import { DiffViewer, LARGE_FILE_THRESHOLD } from '../DiffViewer';
 import { getLanguageFromPath } from '../../utils/languageDetect';
 
 // Mock MergeView and unifiedMergeView from @codemirror/merge
@@ -235,6 +235,37 @@ describe('DiffViewer', () => {
       });
       const overlay = document.querySelector('.bg-black\\/50');
       expect(overlay).toBeInTheDocument();
+    });
+
+    it('portals out of a transformed ancestor in fullscreen mode', async () => {
+      // Regression: streaming tool cards wrap content in an `animate-fadeInUp`
+      // element whose `forwards` fill-mode leaves a lingering `transform: translateY(0)`.
+      // A transformed ancestor becomes the containing block for `position: fixed`,
+      // which would shrink the fullscreen diff to the card's box instead of the
+      // viewport. The portal must render to <body>, escaping the transformed wrapper.
+      let container: HTMLElement;
+      await act(async () => {
+        const result = render(
+          <div style={{ transform: 'translateY(0)' }}>
+            <DiffViewer {...defaultProps} fullscreen onClose={() => {}} />
+          </div>
+        );
+        container = result.container;
+      });
+      const region = screen.getByRole('region');
+      // Rendered to document.body via portal, NOT nested under the transformed wrapper.
+      expect(container!.querySelector('[role="region"]')).toBeNull();
+      expect(document.body.contains(region)).toBe(true);
+    });
+
+    it('renders inline within its parent (no portal) when not fullscreen', async () => {
+      let container: HTMLElement;
+      await act(async () => {
+        const result = render(<DiffViewer {...defaultProps} onClose={() => {}} />);
+        container = result.container;
+      });
+      // Inline mode stays inside the local container — it must not portal out.
+      expect(container!.querySelector('[role="region"]')).not.toBeNull();
     });
   });
 
@@ -477,8 +508,9 @@ describe('DiffViewer Performance (Story 6.6)', () => {
     modified: 'const a = 2;',
   };
 
-  const largeText = Array(5001).fill('line').join('\n');
-  const smallText = Array(4999).fill('line').join('\n');
+  // Derived from the component's own threshold so these stay in sync if it changes.
+  const largeText = Array(LARGE_FILE_THRESHOLD + 1).fill('line').join('\n');
+  const smallText = Array(LARGE_FILE_THRESHOLD - 1).fill('line').join('\n');
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -487,7 +519,7 @@ describe('DiffViewer Performance (Story 6.6)', () => {
     mockChunks = [];
   });
 
-  it('shows large file warning for files over 5000 lines', async () => {
+  it('shows large file warning for files over the large-file threshold', async () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} modified={largeText} />);
     });
@@ -510,7 +542,7 @@ describe('DiffViewer Performance (Story 6.6)', () => {
     expect(screen.getByTestId('mock-merge-view')).toBeInTheDocument();
   });
 
-  it('does not show large file warning for files under 5000 lines', async () => {
+  it('does not show large file warning for files under the large-file threshold', async () => {
     await act(async () => {
       render(<DiffViewer {...defaultProps} modified={smallText} />);
     });

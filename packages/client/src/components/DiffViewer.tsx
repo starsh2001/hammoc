@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { MergeView, unifiedMergeView, getChunks } from '@codemirror/merge';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
@@ -64,7 +65,7 @@ export interface DiffViewerProps {
 // without a modal, and only the extreme cases (minified bundles, snapshot
 // fixtures) hit the gate. Slower devices may see 2× these figures, so this
 // still leaves headroom under the 300ms "clearly sluggish" line.
-const LARGE_FILE_THRESHOLD = 200000;
+export const LARGE_FILE_THRESHOLD = 200000;
 
 function countLines(text: string): number {
   if (!text) return 0;
@@ -449,7 +450,7 @@ export function DiffViewer({
     />
   ) : null;
 
-  return (
+  const content = (
     <>
       {overlay}
       <div
@@ -595,6 +596,16 @@ export function DiffViewer({
       </div>
     </>
   );
+
+  // In fullscreen, render through a portal to <body>. A `position: fixed` overlay
+  // is positioned relative to the viewport ONLY when no ancestor has a transform —
+  // any non-`none` transform turns that ancestor into the containing block for fixed
+  // descendants. Streaming tool cards are wrapped in an `animate-fadeInUp` element
+  // whose `forwards` fill-mode leaves a lingering `transform: translateY(0)`, which
+  // would otherwise shrink this fullscreen diff to the card's box. Portaling to body
+  // escapes any transformed ancestor so the overlay always fills the screen.
+  // (Inline mode is laid out inside its parent on purpose, so it is never portaled.)
+  return fullscreen ? createPortal(content, document.body) : content;
 }
 
 export default DiffViewer;
