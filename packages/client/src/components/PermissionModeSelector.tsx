@@ -28,7 +28,7 @@ const COLOR = {
   plan: 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900/40 dark:border-blue-400 dark:text-blue-300',
   ask: 'bg-orange-100 border-orange-500 text-orange-700 dark:bg-orange-900/40 dark:border-orange-400 dark:text-orange-300',
   edits: 'bg-gray-50 border-gray-400 text-gray-700 dark:bg-[#263240] dark:border-gray-400 dark:text-gray-200',
-  auto: 'bg-purple-100 border-purple-500 text-purple-700 dark:bg-purple-900/40 dark:border-purple-400 dark:text-purple-300',
+  auto: 'bg-cyan-100 border-cyan-500 text-cyan-700 dark:bg-cyan-900/40 dark:border-cyan-400 dark:text-cyan-300',
   bypass: 'bg-red-100 border-red-500 text-red-700 dark:bg-red-900/40 dark:border-red-400 dark:text-red-300',
 } as const;
 

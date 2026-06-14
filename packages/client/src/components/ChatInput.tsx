@@ -60,9 +60,9 @@ const MODE_COLORS: Record<PermissionMode, { ring: string; border: string; button
     button: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600',
   },
   auto: {
-    ring: 'focus-within:ring-purple-500/40 dark:focus-within:ring-purple-400/40',
-    border: 'focus-within:border-purple-500 dark:focus-within:border-purple-400',
-    button: 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600',
+    ring: 'focus-within:ring-cyan-500/40 dark:focus-within:ring-cyan-400/40',
+    border: 'focus-within:border-cyan-500 dark:focus-within:border-cyan-400',
+    button: 'bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600',
   },
   dontAsk: {
     ring: 'focus-within:ring-yellow-500/40 dark:focus-within:ring-yellow-400/40',
