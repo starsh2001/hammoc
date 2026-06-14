@@ -533,6 +533,13 @@ export class CliChatEngine implements ChatEngine {
   private workingDirectory: string | undefined;
   private permissionMode: PermissionMode;
   /**
+   * Story 37.5 fix — claude carries `bypassPermissions` in its live Shift+Tab cycle ONLY when the
+   * session was SPAWNED in bypass. We ALWAYS spawn in bypass (SDK parity — every mode is reachable
+   * live; the on-screen mode is aligned to the user's button mode before injection), so this is
+   * always true once a turn starts. The cycle-index helper reads it to treat bypass as on-cycle.
+   */
+  private cycleHasBypass = false;
+  /**
    * Story 37.5: the live control surface for the in-flight turn (set at spawn, cleared at
    * teardown). Null between turns — `setPermissionMode` reads it to decide live closed loop
    * vs. store-only fallback. See `CliLiveControl`.
@@ -593,8 +600,10 @@ export class CliChatEngine implements ChatEngine {
     // Story 37.5 (re-design 2026-06-14) — the stored mode is BOTH the authority the next spawn maps
     // to `--permission-mode` (AC7) AND the live TARGET the driver heads toward. Set it first so a
     // driver already running adopts the new target on its next step (mid-flight retarget — the user
-    // cycling Ask→Accept Edits→Plan→Auto during one turn). A pick that lands off-cycle (Bypass) just
-    // stores the target; the live driver stops and the next spawn's --permission-mode applies it.
+    // cycling Ask→Accept Edits→Plan→Auto during one turn). A pick that lands off-cycle (Bypass in a
+    // turn NOT spawned in bypass; dontAsk) just stores the target; the live driver stops and the next
+    // spawn's --permission-mode applies it. In a bypass-SPAWNED turn claude carries bypass in its live
+    // cycle, so `cycleHasBypass` makes Bypass an on-cycle, live-drivable target (driven, not stored).
     this.permissionMode = mode;
 
     const control = this.activeCliControl;
@@ -605,7 +614,7 @@ export class CliChatEngine implements ChatEngine {
     // screen classification are re-checked every step INSIDE the driver (not pre-emptively here), so
     // a generating frame is driven just like an idle one and a modal that comes up mid-drive still
     // stops the keys before they land.
-    if (!control || permissionModeCycleIndex(mode) < 0) return;
+    if (!control || permissionModeCycleIndex(mode, this.cycleHasBypass) < 0) return;
 
     // A driver is already running — it re-reads `this.permissionMode` each step, so it now heads for
     // the target we just stored. Never start a second concurrent driver (two would fight over the
@@ -639,7 +648,7 @@ export class CliChatEngine implements ChatEngine {
       // stray CSI Z must never land in a permission/question modal — same guard as the old loop).
       if (!control.isAlive() || control.isModalPending()) return;
       const target = this.permissionMode; // re-read each step ⇒ follows a mid-flight retarget
-      if (permissionModeCycleIndex(target) < 0) return; // retargeted off-cycle (bypass/dontAsk) ⇒ store-only
+      if (permissionModeCycleIndex(target, this.cycleHasBypass) < 0) return; // off-cycle (bypass in a non-bypass turn / dontAsk) ⇒ store-only
       const grid = await control.readSettledGrid();
       if (!control.isAlive()) return;
       // Only drive on a classifiable LIVE screen (idle input box or generating frame); an UNKNOWN
@@ -732,8 +741,14 @@ export class CliChatEngine implements ChatEngine {
       // matches the caller's id — keeps the wire identical to SDK mode (no rekey).
       args.push('--session-id', options.sessionId);
     }
-    // AC7 best-effort permission posture (all Hammoc modes are valid CLI values).
-    args.push('--permission-mode', this.permissionMode);
+    // ALWAYS spawn in bypass so claude carries EVERY mode (incl. bypassPermissions) in its live
+    // Shift+Tab cycle — SDK parity (the SDK reaches any mode at runtime regardless of start mode, via
+    // query.setPermissionMode). The on-screen mode is aligned to the user's button mode BEFORE the
+    // prompt is injected (attemptInjectFromGrid → alignModeThenInject), so the turn runs under the
+    // chosen mode while bypass stays reachable live mid-turn. `this.permissionMode` stays the button
+    // mode (driver target + getPermissionMode); `cycleHasBypass` is therefore always true.
+    args.push('--permission-mode', 'bypassPermissions');
+    this.cycleHasBypass = true;
     // Apply the same 1M policy as SDK mode (resolveEffectiveModel): Opus auto-1M,
     // Sonnet bare unless explicitly opted in. Keeps both engines consistent.
     if (options.model) args.push('--model', resolveEffectiveModel(options.model)!);
@@ -1140,6 +1155,37 @@ export class CliChatEngine implements ChatEngine {
       };
 
       /**
+       * Story 37.5 fix — align the on-screen permission mode to the user's button mode, THEN inject.
+       * The PTY is always spawned in bypass, so a fresh idle box starts at `bypass permissions on`;
+       * if the button mode differs, step the screen down to it first (reusing the live driver + its
+       * idle/generating + modal + step-ceiling guards), then inject. A button of bypass is already
+       * there ⇒ inject straight away. Runs BEFORE the prompt lands so the turn's first tool runs under
+       * the chosen mode. A drive that can't land (abnormal misread) still falls through to inject —
+       * the next spawn's `--permission-mode` is the backstop, same as the live driver's own ceiling.
+       */
+      const alignModeThenInject = async () => {
+        if (injected || settled) return;
+        const control = this.activeCliControl;
+        if (control && this.permissionMode !== 'bypassPermissions' && !this.permissionLoopRunning) {
+          // Stop the boot settle/ceiling timers before the align await: a mid-align fallback would
+          // otherwise re-enter, see the loop already running, and injectPrompt onto a half-aligned
+          // screen. (driveBootChoiceMenu clears the same timers for the same reason.) Align always
+          // ends in injectPrompt, so the boot ceiling is no longer the backstop once we start aligning.
+          if (bootFallbackTimer) { clearTimeout(bootFallbackTimer); bootFallbackTimer = null; }
+          if (bootSettleTimer) { clearTimeout(bootSettleTimer); bootSettleTimer = null; }
+          if (bootRecoverTimer) { clearTimeout(bootRecoverTimer); bootRecoverTimer = null; }
+          this.permissionLoopRunning = true;
+          try {
+            await this.drivePermissionModeToTarget(control);
+          } finally {
+            this.permissionLoopRunning = false;
+          }
+          if (injected || settled) return;
+        }
+        injectPrompt();
+      };
+
+      /**
        * Story 37.6 — pre-injection screen classification gate. The `❯` readiness marker is a
        * *shared* glyph (idle input box, selection-menu highlight, and permission dialog all paint
        * it), so its presence is necessary but NOT sufficient to inject. Once boot output settles we
@@ -1189,7 +1235,7 @@ export class CliChatEngine implements ChatEngine {
           const classification = classifyPreInjectScreen(grid);
           if (process.env.HAMMOC_CLI_DEBUG) snapshotPreInject(grid, classification);
           if (classification === 'input-box') {
-            injectPrompt(); // AC1 — verified input box
+            void alignModeThenInject(); // AC1 — verified input box (align mode → inject)
             return;
           }
           if (classification === 'selection') {
@@ -1309,7 +1355,7 @@ export class CliChatEngine implements ChatEngine {
           await new Promise((r) => setTimeout(r, 100));
           await screen.flush();
           if (isIdleInputGrid(screen.readGrid())) {
-            injectPrompt();
+            await alignModeThenInject();
             return;
           }
         }

@@ -30,6 +30,7 @@ import {
   classifyPreInjectScreen,
   parseConfirmChoiceMenu,
   CLI_PERMISSION_MODE_CYCLE,
+  CLI_PERMISSION_MODE_CYCLE_WITH_BYPASS,
 } from '../cliModalDetect.js';
 
 /** Join grid rows the way `readScreenText()` does, for the line-spanning existence detectors. */
@@ -355,6 +356,18 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       expect(permissionModeCycleIndex('auto')).toBe(3);
       expect(permissionModeCycleIndex('bypassPermissions')).toBe(-1); // off cycle ⇒ next-spawn fallback
       expect(permissionModeCycleIndex('dontAsk')).toBe(-1); // off cycle ⇒ store-only fallback
+    });
+
+    it('puts bypassPermissions in a bypass-STARTED session cycle, inserted between plan and auto', () => {
+      // Empirically captured (claude v2.1.177): a session spawned with --permission-mode
+      // bypassPermissions cycles default→acceptEdits→plan→bypass→auto. A normal session never shows it.
+      expect(CLI_PERMISSION_MODE_CYCLE_WITH_BYPASS).toEqual(['default', 'acceptEdits', 'plan', 'bypassPermissions', 'auto']);
+    });
+
+    it('with includeBypass=true, bypassPermissions is an on-cycle live target; dontAsk and the normal session stay off-cycle', () => {
+      expect(permissionModeCycleIndex('bypassPermissions', true)).toBe(3); // live-drivable in a bypass-started turn
+      expect(permissionModeCycleIndex('dontAsk', true)).toBe(-1); // still headless-only
+      expect(permissionModeCycleIndex('bypassPermissions', false)).toBe(-1); // unchanged for a non-bypass turn
     });
   });
 

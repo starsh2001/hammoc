@@ -361,7 +361,9 @@ describe('CliChatEngine', () => {
 
       await wait(30);
       const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
-      expect(spawnArg.args).toEqual(expect.arrayContaining(['--session-id', SID, '--permission-mode', 'acceptEdits']));
+      // Story 37.5 fix: the PTY is ALWAYS spawned in bypass (SDK parity — every mode reachable live);
+      // the button mode (acceptEdits here) is applied via boot-time screen alignment, not the spawn flag.
+      expect(spawnArg.args).toEqual(expect.arrayContaining(['--session-id', SID, '--permission-mode', 'bypassPermissions']));
       expect(spawnArg.args).not.toContain('--print');
       expect(spawnArg.args).not.toContain('-p');
       expect(spawnArg.args).not.toContain('--output-format');
@@ -1314,7 +1316,7 @@ describe('CliChatEngine', () => {
       expect(engine.getPermissionMode()).toBe('plan'); // stored target (next spawn's --permission-mode)
       expect(h.logger.warn.mock.calls.length - warnBefore).toBe(1); // warned exactly once
       await endTurn(turn);
-    });
+    }, 8000); // 12 live-driver steps is intentionally slow; the always-bypass boot align adds one read — headroom
 
     it('stops injecting once the turn settles mid-loop — no stray CSI Z to a dead PTY (abort race)', async () => {
       const ac = new AbortController();
@@ -1411,21 +1413,58 @@ describe('CliChatEngine', () => {
       await endTurn(turn);
     });
 
-    it('store-only fallback for the off-cycle bypassPermissions target — applies on the next spawn', async () => {
-      // claude keeps bypass OUT of a normal session's Shift+Tab cycle, so it has no reachable on-screen
-      // position. Selecting Bypass must NOT spin the cycle; it stores the target for the next spawn's
-      // --permission-mode (the auto/bypass conflation fix — Bypass is no longer driven live).
-      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+    it('drives to bypass LIVE in a bypass-STARTED session (claude carries bypass in its cycle)', async () => {
+      // The user's bug: a turn spawned in bypass has bypassPermissions IN claude's Shift+Tab cycle
+      // (default→acceptEdits→plan→bypass→auto, verified 2.1.177). So selecting Bypass while the
+      // on-screen mode sits elsewhere must be driven LIVE to bypass — NOT stored for the next spawn.
+      const BYPASS_CYCLE = ['default', 'acceptEdits', 'plan', 'bypassPermissions', 'auto'] as const;
+      const bypassLabel = (m: string): string | undefined =>
+        (({ acceptEdits: '⏵⏵ accept edits on', plan: '⏸ plan mode on', bypassPermissions: '⏵⏵ bypass permissions on', auto: '⏵⏵ auto mode on' }) as Record<string, string>)[m];
+      const engine = new CliChatEngine({ workingDirectory: '/proj', permissionMode: 'bypassPermissions' });
       const { turn } = await injectThenReady(engine);
-      h.fakePty._onData?.(idleGrid()); // idle + live, yet bypassPermissions is off the cycle
+      // Seed the on-screen mode at 'plan' and advance through the BYPASS-inclusive cycle on each CSI Z.
+      let idx = BYPASS_CYCLE.indexOf('plan');
+      const frame = (m: string) => idleGrid(bypassLabel(m));
+      h.fakePty._onData?.(frame(BYPASS_CYCLE[idx]));
+      h.fakePty.write.mockImplementation((data: string) => {
+        if (data === CSI_Z) {
+          idx = (idx + 1) % BYPASS_CYCLE.length;
+          h.fakePty._onData?.(frame(BYPASS_CYCLE[idx]));
+        }
+      });
       await wait(20);
 
       const before = countKey(CSI_Z);
-      await engine.setPermissionMode('bypassPermissions');
-      expect(countKey(CSI_Z) - before).toBe(0);
+      await engine.setPermissionMode('bypassPermissions'); // plan → bypass = 1 key, driven live (not stored)
+      expect(countKey(CSI_Z) - before).toBe(1);
       expect(engine.getPermissionMode()).toBe('bypassPermissions');
       await endTurn(turn);
     });
+
+    it('spawns in bypass, then steps the screen DOWN to a non-bypass button mode before injecting', async () => {
+      // SDK parity: spawn is ALWAYS bypass, so the idle box opens at `bypass permissions on`. With a
+      // non-bypass button (Plan), the engine must step the screen to plan BEFORE the prompt lands, so
+      // the turn runs under Plan while bypass stays reachable live mid-turn.
+      const BYPASS_CYCLE = ['default', 'acceptEdits', 'plan', 'bypassPermissions', 'auto'] as const;
+      const labelOf = (m: string): string | undefined =>
+        (({ acceptEdits: '⏵⏵ accept edits on', plan: '⏸ plan mode on', bypassPermissions: '⏵⏵ bypass permissions on', auto: '⏵⏵ auto mode on' }) as Record<string, string>)[m];
+      let idx = BYPASS_CYCLE.indexOf('bypassPermissions'); // box opens at bypass (always-bypass spawn)
+      const engine = new CliChatEngine({ workingDirectory: '/proj', permissionMode: 'plan' });
+      const turn = engine.sendMessageWithCallbacks('do the thing', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.(idleGrid(labelOf(BYPASS_CYCLE[idx])));
+      h.fakePty.write.mockImplementation((data: string) => {
+        if (data === CSI_Z) {
+          idx = (idx + 1) % BYPASS_CYCLE.length;
+          h.fakePty._onData?.(idleGrid(labelOf(BYPASS_CYCLE[idx])));
+        }
+      });
+      // The prompt is injected only AFTER the screen reaches plan (bypass→auto→default→edits→plan).
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 5000 });
+      expect(BYPASS_CYCLE[idx]).toBe('plan'); // on-screen mode at the moment of injection
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
+      await turn;
+    }, 8000);
   });
 
   describe('live tool cards (Story 32.9 — onToolUse/onToolResult parity + permission-gated suppression)', () => {

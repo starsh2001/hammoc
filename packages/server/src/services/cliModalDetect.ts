@@ -405,10 +405,18 @@ export function parsePrecedingText(rows: string[]): string | null {
  */
 export const CLI_PERMISSION_MODE_CYCLE: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'auto'];
 
-/** Cycle position of a mode, or -1 when the mode is off the Shift+Tab cycle
- *  (`bypassPermissions` and `dontAsk` — both routed to the next-spawn `--permission-mode` path). */
-export function permissionModeCycleIndex(mode: PermissionMode): number {
-  return CLI_PERMISSION_MODE_CYCLE.indexOf(mode);
+/** A session STARTED in bypass renders `bypassPermissions` INSIDE its live Shift+Tab cycle —
+ *  inserted between `plan` and `auto` (empirically captured: `bypass → auto → default → accept
+ *  edits → plan → bypass`, claude v2.1.177). So for such a session bypass IS a live-drivable
+ *  target; a session NOT started in bypass keeps it off the cycle (`CLI_PERMISSION_MODE_CYCLE`
+ *  above) and bypass stays store-only / next-spawn. */
+export const CLI_PERMISSION_MODE_CYCLE_WITH_BYPASS: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions', 'auto'];
+
+/** Cycle position of a mode, or -1 when off the Shift+Tab cycle. `includeBypass` selects the
+ *  bypass-started session's cycle (where `bypassPermissions` is reachable live); the default
+ *  (false) keeps `bypassPermissions`/`dontAsk` off-cycle → next-spawn `--permission-mode` path. */
+export function permissionModeCycleIndex(mode: PermissionMode, includeBypass = false): number {
+  return (includeBypass ? CLI_PERMISSION_MODE_CYCLE_WITH_BYPASS : CLI_PERMISSION_MODE_CYCLE).indexOf(mode);
 }
 
 /** Status-row label → Hammoc mode. Each is anchored by its claude label phrase. `default`
