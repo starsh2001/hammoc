@@ -49,6 +49,7 @@ describe('isNative1MModel (capability gate — includes Sonnet)', () => {
       'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6',
       'claude-sonnet-4-6', 'claude-sonnet-4-6-20260101',
       'opus', 'sonnet', 'claude-sonnet-4-6[1m]', 'claude-opus-4-8[1m]',
+      'claude-fable-5', 'claude-fable-5[1m]',
     ]) {
       expect(isNative1MModel(m)).toBe(true);
     }
@@ -75,9 +76,10 @@ describe('isAutoNative1MModel (Opus-only — free on Max)', () => {
     }
   });
 
-  it('is false for Sonnet (its 1M is a paid opt-in) and non-1M models', () => {
+  it('is false for Sonnet/Fable (their 1M is a paid opt-in) and non-1M models', () => {
     for (const m of [
       'claude-sonnet-4-6', 'claude-sonnet-4-6[1m]', 'sonnet',
+      'claude-fable-5', 'claude-fable-5[1m]',
       'claude-opus-4-5-20251101', 'haiku', '',
     ]) {
       expect(isAutoNative1MModel(m)).toBe(false);
@@ -92,10 +94,12 @@ describe('resolveEffectiveModel (engine-boundary suffix resolution)', () => {
     expect(resolveEffectiveModel('opus')).toBe('opus[1m]');
   });
 
-  it('leaves Sonnet bare unless explicitly opted in', () => {
+  it('leaves Sonnet/Fable bare unless explicitly opted in', () => {
     expect(resolveEffectiveModel('claude-sonnet-4-6')).toBe('claude-sonnet-4-6');
     expect(resolveEffectiveModel('sonnet')).toBe('sonnet');
     expect(resolveEffectiveModel('claude-sonnet-4-6[1m]')).toBe('claude-sonnet-4-6[1m]');
+    expect(resolveEffectiveModel('claude-fable-5')).toBe('claude-fable-5');
+    expect(resolveEffectiveModel('claude-fable-5[1m]')).toBe('claude-fable-5[1m]');
   });
 
   it('is idempotent for already-suffixed and leaves non-1M models bare', () => {

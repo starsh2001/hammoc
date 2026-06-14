@@ -20,7 +20,7 @@ import { createLogger } from './logger.js';
 const log = createLogger('bundledBinaryModelSupport');
 
 /** Claude model ids embedded in the binary, e.g. claude-opus-4-8, claude-sonnet-4-6, claude-opus-4-20250514. */
-const MODEL_ID_RE = /claude-(?:opus|sonnet|haiku)-[0-9]+(?:-[0-9]+)*/g;
+const MODEL_ID_RE = /claude-(?:opus|sonnet|haiku|fable|mythos)-[0-9]+(?:-[0-9]+)*/g;
 
 let cache: { path: string; mtimeMs: number; models: Set<string> } | null = null;
 let scanPromise: Promise<Set<string>> | null = null;
@@ -86,7 +86,7 @@ export async function modelMissingNative1MSupport(model?: string): Promise<boole
   const base = model.replace(/\[1m\]$/i, '');
   // Only fully-versioned ids are checkable against the binary; bare aliases like
   // 'opus'/'sonnet' resolve to a concrete model server-side, so skip them.
-  if (!/^claude-(?:opus|sonnet|haiku)-[0-9]/.test(base)) return false;
+  if (!/^claude-(?:opus|sonnet|haiku|fable|mythos)-[0-9]/.test(base)) return false;
   if (!isNative1MModel(base)) return false;
 
   const recognized = await getRecognizedModels();

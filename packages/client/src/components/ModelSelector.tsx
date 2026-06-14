@@ -62,6 +62,12 @@ export const MODEL_GROUPS: ModelGroup[] = [
     ],
   },
   {
+    label: 'Mythos-class',
+    models: [
+      { value: 'claude-fable-5', label: 'Fable 5', description: 'Mythos-class · 1M opt-in' },
+    ],
+  },
+  {
     label: 'Claude 4.x',
     labelKey: 'model.claude4x',
     models: [
@@ -110,6 +116,7 @@ function getButtonLabel(model: string, activeModel: string | null | undefined): 
   if (effective.includes('opus')) return 'Opus';
   if (effective.includes('sonnet')) return 'Sonnet';
   if (effective.includes('haiku')) return 'Haiku';
+  if (effective.includes('fable')) return 'Fable';
   return getModelDisplayLabel(effective).split(' ')[0];
 }
 
@@ -128,7 +135,8 @@ function supportsMaxEffort(model: string | null | undefined, activeModel: string
   if (!m) return false;
   return (
     m === 'opus' || m === 'sonnet' ||
-    m.includes('opus-4-6') || m.includes('opus-4-7') || m.includes('opus-4-8') || m.includes('sonnet-4-6')
+    m.includes('opus-4-6') || m.includes('opus-4-7') || m.includes('opus-4-8') || m.includes('sonnet-4-6') ||
+    m.includes('fable')
   );
 }
 
@@ -136,7 +144,7 @@ function supportsMaxEffort(model: string | null | undefined, activeModel: string
 function supportsXHighEffort(model: string | null | undefined, activeModel: string | null | undefined): boolean {
   const m = effectiveModelId(model, activeModel);
   if (!m) return false;
-  return m === 'opus' || m.includes('opus-4-7') || m.includes('opus-4-8');
+  return m === 'opus' || m.includes('opus-4-7') || m.includes('opus-4-8') || m.includes('fable');
 }
 
 /** Bar config: level + active/default gradient colors */

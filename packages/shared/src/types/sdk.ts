@@ -182,12 +182,12 @@ export const CONTEXT_TOKEN_RESERVES = {
 
 /**
  * Models whose native context window is 1M but SDK may under-report as 200K.
- * Capability gate — includes Sonnet 4.6, which *can* run at 1M but only as a
- * paid usage-credit opt-in (not part of the subscription). Use this to decide
- * whether to offer a 1M control for a model at all.
+ * Capability gate — includes Sonnet 4.6 and Fable 5, which *can* run at 1M but
+ * only as a paid usage-credit opt-in (not part of the subscription). Use this to
+ * decide whether to offer a 1M control for a model at all.
  * See: https://github.com/anthropics/claude-code/issues/24208
  */
-const NATIVE_1M_MODELS = ['claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'opus', 'sonnet'];
+const NATIVE_1M_MODELS = ['claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-fable-5', 'opus', 'sonnet'];
 
 /**
  * Models that auto-upgrade to 1M context for free on a Max subscription (Opus

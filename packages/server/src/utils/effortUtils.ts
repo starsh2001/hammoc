@@ -15,9 +15,10 @@ export function clampEffortForModel(effort: ThinkingEffort | undefined, model: s
   if (!effort) return effort;
   const supportsMax = !!model && (
     model === 'opus' || model === 'sonnet' ||
-    model.includes('opus-4-6') || model.includes('opus-4-7') || model.includes('opus-4-8') || model.includes('sonnet-4-6')
+    model.includes('opus-4-6') || model.includes('opus-4-7') || model.includes('opus-4-8') || model.includes('sonnet-4-6') ||
+    model.includes('fable')
   );
-  const supportsXHigh = !!model && (model === 'opus' || model.includes('opus-4-7') || model.includes('opus-4-8'));
+  const supportsXHigh = !!model && (model === 'opus' || model.includes('opus-4-7') || model.includes('opus-4-8') || model.includes('fable'));
   if (effort === 'max' && !supportsMax) return 'high';
   if (effort === 'xhigh' && !supportsXHigh) return 'high';
   return effort;
@@ -34,6 +35,7 @@ export function supportsAdaptiveThinking(model: string | undefined): boolean {
   if (!model) return false;
   return (
     model === 'opus' || model === 'sonnet' ||
-    model.includes('opus-4-6') || model.includes('opus-4-7') || model.includes('opus-4-8') || model.includes('sonnet-4-6')
+    model.includes('opus-4-6') || model.includes('opus-4-7') || model.includes('opus-4-8') || model.includes('sonnet-4-6') ||
+    model.includes('fable')
   );
 }
