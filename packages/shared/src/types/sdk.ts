@@ -310,9 +310,14 @@ export const IMAGE_TOKEN_ESTIMATE = 1600;
 export type ThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 /**
- * Permission modes for tool usage
+ * Permission modes for tool usage. Mirrors claude's `--permission-mode` choices
+ * (acceptEdits, auto, bypassPermissions, default, dontAsk, plan).
+ *
+ * `auto` is claude's classifier-driven mode (screen label "auto mode on"), DISTINCT from
+ * `acceptEdits` ("accept edits on"). It is surfaced only by the CLI engine's permission
+ * selector; the SDK selector keeps the abstract Plan/Ask/Auto(=acceptEdits)/Bypass set.
  */
-export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'dontAsk';
+export type PermissionMode = 'default' | 'acceptEdits' | 'auto' | 'bypassPermissions' | 'plan' | 'dontAsk';
 
 /**
  * Conversation engine implementation behind the ChatEngine seam (Epic 32).

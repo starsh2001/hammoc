@@ -1756,6 +1756,7 @@
         "planDescription": "Claude solo planifica y no modifica archivos",
         "askDescription": "Pide aprobación antes de modificar archivos",
         "autoDescription": "Aprueba automáticamente las modificaciones de archivos",
+        "classifierDescription": "Aprueba automáticamente las acciones seguras; solo las arriesgadas piden confirmación",
         "bypassDescription": "Omite todas las solicitudes de permisos",
         "selectorAria": "Modo de permisos: {{label}}. {{description}}. Haz clic para cambiar al siguiente modo"
     },

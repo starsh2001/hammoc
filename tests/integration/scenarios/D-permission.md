@@ -57,14 +57,15 @@
 
 ## D2. 권한 모드 전환 `[SDK]`
 
-### D-02-01: Shift+Tab 사이클
+### D-02-01: Shift+Tab 사이클 (SDK·CLI 공통)
+**배경**: SDK·CLI 두 엔진 모두 claude 의 동일한 6개 권한 모드를 지원하므로 **권한 버튼은 공통 한 세트**다(2026-06-14 통합). 순환에 노출되는 5개(`dontAsk` 는 내부 전용): `Ask(default) / Edits(acceptEdits) / Plan / Auto(분류기) / Bypass`, claude Shift+Tab 순서. "Edits"=acceptEdits, "Auto"=claude 분류기 `auto`(별개 모드 — 이전엔 혼동). 엔진별 차이는 Bypass 적용 타이밍뿐(D-02-03).
 **절차**:
 1. ChatInput 포커스 상태에서 Shift+Tab 반복
-2. 4개 모드가 `Plan → Ask → Auto → Bypass → Plan …` (wrap-around) 순환하는지 확인 — 시작 모드는 이전 세션 상태에 따라 달라질 수 있으나 순서/총 모드 수는 고정.
-3. 각 프레스 후 `document.querySelector('button[aria-label*="권한 모드"]').getAttribute('aria-label')` 로 현재 모드 레이블 검증 (`"권한 모드: Plan"`, `"권한 모드: Ask"`, `"권한 모드: Auto"`, `"권한 모드: Bypass"`).
+2. 5개 모드가 `Ask → Edits → Plan → Auto → Bypass → Ask …` (wrap-around) 순환하는지 확인 — 시작 모드는 이전 세션 상태에 따라 달라질 수 있으나 순서/총 모드 수는 고정.
+3. 각 프레스 후 `document.querySelector('button[aria-label*="권한 모드"]').getAttribute('aria-label')` 로 현재 모드 레이블 검증 (`"권한 모드: Ask"`, `"권한 모드: Edits"`, `"권한 모드: Plan"`, `"권한 모드: Auto"`, `"권한 모드: Bypass"`).
 
 **기대 결과**:
-- UI 배지 표시 변경 (짧은 라벨 — `Plan` / `Ask` / `Auto` / `Bypass`)
+- UI 배지 표시 변경 (짧은 라벨 — `Ask` / `Edits` / `Plan` / `Auto` / `Bypass`)
 - `permission:mode-change` 이벤트 브로드캐스트
 - 다중 탭 동기화 (동일 세션 다른 탭도 배지 변경)
 
@@ -77,6 +78,25 @@
 **기대 결과**: 큐 실행 중에는 입력바 전체가 잠기므로 권한 모드 변경 버튼도 비활성화됨 — 모드 변경 시도 자체가 차단되는 것이 의도된 동작.
 
 > **구현 근거**: 큐 러너 실행 중 하단 입력바가 잠금 상태로 전환되어 Shift+Tab 포커스 진입 자체가 불가능. 따라서 "실행 중 모드 변경 후 다음 항목 적용" 시나리오는 현재 구현과 맞지 않음.
+
+### D-02-03: CLI 엔진 — Bypass 다음-메시지 적용 + auto/bypass 화면 정합 `[MANUAL]`
+**배경**: 권한 버튼은 SDK·CLI 공통(D-02-01)이지만 **CLI 엔진에선 적용 방식이 일부 다르다**. claude 는 `auto`(분류기 자동 승인)와 `bypassPermissions`(전체 우회)를 별개 모드로 두고 — 이전 구현은 화면 `auto mode on` 을 bypass 로 오인했다(2026-06-14 수정). claude 의 라이브 Shift+Tab 순환은 `default→accept edits→plan→auto` 라 **bypass 가 빠져 있다**(위험 모드). 그래서 CLI 에서 Bypass 를 고르면 라이브 전환이 아니라 **다음 메시지 전송 시** `--permission-mode bypassPermissions` 로 적용된다. (SDK 엔진은 Bypass 즉시 적용 — 버튼은 같지만 타이밍만 다름.)
+
+**[MANUAL] 사유**: D-01-03 과 동일 — 구독-인증 `claude` 바이너리 + 인터랙티브 PTY 필요.
+
+**선행 조건**: CLI 엔진 선택(P-06-01), 구독 로그인 `claude` 바이너리.
+
+**절차 (수동)**:
+1. CLI 엔진 모드로 전환, ChatInput 포커스
+2. **Auto** 선택 후 메시지 전송 → 라이브 PTY 화면 하단 모드 행이 `⏵⏵ auto mode on` 으로 표시되는지 확인 (Auto 버튼 ↔ claude `auto` 정합 — bypass 아님)
+3. **Bypass** 선택 → 라이브 화면은 즉시 안 바뀜(순환 밖) → 다음 메시지 전송 시 새 PTY 가 `⏵⏵ bypass permissions on` 으로 시작하는지 확인
+
+**기대 결과**:
+- `Auto` 버튼 = claude `auto mode on`(분류기), `Bypass` 버튼 = claude `bypass permissions on` — 둘이 별개로 정확히 매핑
+- Bypass 는 다음 메시지부터 적용 (라이브 순환 비도달, store-only → next-spawn)
+
+**엣지케이스**:
+- E1. (수정 전 회귀 신호) Bypass 선택 시 화면이 `auto mode on` 에서 멈추고 시스템이 bypass 로 표시 = auto/bypass 오매핑 회귀.
 
 ---
 

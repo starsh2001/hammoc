@@ -219,10 +219,13 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
     // The mode status row as claude renders it: "<glyph> <label> (shift+tab to cycle) · ← for agents".
     const modeRow = (label: string) => ` ${label} (shift+tab to cycle) · ← for agents`;
 
-    it('maps each of the four cycle labels to its Hammoc mode', () => {
+    it('maps each claude mode-row label to its Hammoc mode (auto≠bypass — distinct claude modes)', () => {
       expect(readPermissionMode([' ❯ ', modeRow('⏵⏵ accept edits on')])).toBe('acceptEdits');
       expect(readPermissionMode([' ❯ ', modeRow('⏸ plan mode on')])).toBe('plan');
-      expect(readPermissionMode([' ❯ ', modeRow('⏵⏵ auto mode on')])).toBe('bypassPermissions');
+      expect(readPermissionMode([' ❯ ', modeRow('⏵⏵ auto mode on')])).toBe('auto');
+      // bypassPermissions is OFF the live cycle, but a bypass-started session renders this row,
+      // so the reader must still recognize it (regression guard for the auto/bypass conflation).
+      expect(readPermissionMode([' ❯ ', modeRow('⏵⏵ bypass permissions on')])).toBe('bypassPermissions');
     });
 
     it('reads the ABSENCE of any mode status row as default (normal)', () => {
@@ -240,7 +243,7 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       // The grid never truly fuses, but if a stale row lingers above, the latest (bottom) row wins.
       expect(
         readPermissionMode([modeRow('⏸ plan mode on'), ' ❯ ', modeRow('⏵⏵ auto mode on')]),
-      ).toBe('bypassPermissions');
+      ).toBe('auto');
     });
 
     it('ignores a full mode-status row QUOTED in far-up scrollback when the live mode is default (resume-repaint poisoning class)', () => {
@@ -261,21 +264,22 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
         ' ❯ ',
         modeRow('⏵⏵ auto mode on'),
       ];
-      expect(readPermissionMode(grid)).toBe('bypassPermissions');
+      expect(readPermissionMode(grid)).toBe('auto');
     });
   });
 
   describe('CLI_PERMISSION_MODE_CYCLE / permissionModeCycleIndex (Story 37.5)', () => {
     it('orders the four cycle modes exactly as claude cycles them (normal→accept→plan→auto)', () => {
-      expect(CLI_PERMISSION_MODE_CYCLE).toEqual(['default', 'acceptEdits', 'plan', 'bypassPermissions']);
+      expect(CLI_PERMISSION_MODE_CYCLE).toEqual(['default', 'acceptEdits', 'plan', 'auto']);
     });
 
-    it('returns the cycle index for cycle modes and -1 for the off-cycle dontAsk', () => {
+    it('returns the cycle index for cycle modes and -1 for off-cycle bypass/dontAsk', () => {
       expect(permissionModeCycleIndex('default')).toBe(0);
       expect(permissionModeCycleIndex('acceptEdits')).toBe(1);
       expect(permissionModeCycleIndex('plan')).toBe(2);
-      expect(permissionModeCycleIndex('bypassPermissions')).toBe(3);
-      expect(permissionModeCycleIndex('dontAsk')).toBe(-1); // off the cycle ⇒ store-only fallback
+      expect(permissionModeCycleIndex('auto')).toBe(3);
+      expect(permissionModeCycleIndex('bypassPermissions')).toBe(-1); // off cycle ⇒ next-spawn fallback
+      expect(permissionModeCycleIndex('dontAsk')).toBe(-1); // off cycle ⇒ store-only fallback
     });
   });
 

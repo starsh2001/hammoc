@@ -1756,6 +1756,7 @@
         "planDescription": "Claudeはプランのみ作成し、ファイルを変更しません",
         "askDescription": "ファイル変更前に承認を求めます",
         "autoDescription": "ファイルの変更を自動的に承認します",
+        "classifierDescription": "安全な操作は自動承認し、リスクのある操作のみ確認します",
         "bypassDescription": "すべての権限リクエストをスキップします",
         "selectorAria": "権限モード：{{label}}。{{description}}。クリックして次のモードに切り替え"
     },

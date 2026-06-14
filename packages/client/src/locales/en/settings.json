@@ -1759,6 +1759,7 @@
         "planDescription": "Claude only plans and does not modify files",
         "askDescription": "Asks for approval before modifying files",
         "autoDescription": "Automatically approves file modifications",
+        "classifierDescription": "Auto-approves safe tool calls; only risky ones ask for confirmation",
         "bypassDescription": "Skips all permission requests",
         "selectorAria": "Permission mode: {{label}}. {{description}}. Click to switch to next mode"
     },

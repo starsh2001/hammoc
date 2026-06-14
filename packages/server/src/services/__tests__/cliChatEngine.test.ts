@@ -1056,13 +1056,13 @@ describe('CliChatEngine', () => {
     ]);
     const countKey = (key: string) => h.fakePty.write.mock.calls.filter((c) => c[0] === key).length;
 
-    const CYCLE = ['default', 'acceptEdits', 'plan', 'bypassPermissions'] as const;
+    const CYCLE = ['default', 'acceptEdits', 'plan', 'auto'] as const;
     type CycleMode = typeof CYCLE[number];
     const MODE_LABEL: Record<CycleMode, string | undefined> = {
       default: undefined, // no mode row ⇒ readPermissionMode returns 'default'
       acceptEdits: '⏵⏵ accept edits on',
       plan: '⏸ plan mode on',
-      bypassPermissions: '⏵⏵ auto mode on',
+      auto: '⏵⏵ auto mode on',
     };
     // A mid-generation frame at a given mode: footer carries "esc to interrupt" / "↓ N tokens" so
     // isGeneratingGrid is true; the mode row sits at the very bottom. 'default' ⇒ no mode row.
@@ -1137,14 +1137,14 @@ describe('CliChatEngine', () => {
       await endTurn(turn);
     });
 
-    it('wraps the cycle forward (plan → default wraps through bypass = 2 keys)', async () => {
+    it('wraps the cycle forward (plan → default wraps through auto = 2 keys)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const { turn } = await injectThenReady(engine);
       autoAdvanceMode('plan'); // current: plan (idx 2)
       await wait(20);
 
       const before = countKey(CSI_Z);
-      await engine.setPermissionMode('default'); // plan → bypassPermissions → default = 2 keys (wrap)
+      await engine.setPermissionMode('default'); // plan → auto → default = 2 keys (wrap)
 
       expect(countKey(CSI_Z) - before).toBe(2);
       expect(engine.getPermissionMode()).toBe('default');
@@ -1159,11 +1159,11 @@ describe('CliChatEngine', () => {
 
       const p1 = engine.setPermissionMode('plan'); // start heading toward plan
       await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(0)); // first key fired
-      await engine.setPermissionMode('bypassPermissions'); // retarget mid-flight (no 2nd driver)
+      await engine.setPermissionMode('auto'); // retarget mid-flight to another cycle mode (no 2nd driver)
       await p1;
 
       // The single running driver re-reads the target each step, so it lands on the LATEST target.
-      expect(engine.getPermissionMode()).toBe('bypassPermissions');
+      expect(engine.getPermissionMode()).toBe('auto');
       await endTurn(turn);
     });
 
@@ -1200,10 +1200,10 @@ describe('CliChatEngine', () => {
       await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
       h.fakePty._onData?.('Claude Code\n❯ ready');
       await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
-      h.fakePty._onData?.(idleGrid()); // default → bypassPermissions is 3 steps (a loop long enough to abort)
+      h.fakePty._onData?.(idleGrid()); // default → auto is 3 steps (a loop long enough to abort)
       await wait(20);
 
-      const p = engine.setPermissionMode('bypassPermissions');
+      const p = engine.setPermissionMode('auto');
       await vi.waitFor(() => expect(countKey(CSI_Z)).toBeGreaterThan(0)); // first Shift+Tab fired
       ac.abort('stop');
       await expect(turn).rejects.toThrow(/aborted/i);
@@ -1221,21 +1221,21 @@ describe('CliChatEngine', () => {
       expect(countKey(CSI_Z) - before).toBe(0);
     });
 
-    it('drives mid-GENERATION too — one key at a time, mode row at the bottom (acceptEdits → bypass)', async () => {
+    it('drives mid-GENERATION too — one key at a time, mode row at the bottom (acceptEdits → auto)', async () => {
       // Owner-confirmed: the reconstructed grid carries the mode status row at the very bottom in
       // BOTH idle and generating states (spinner above, input box + mode row below), so the driver
       // steps the mode live mid-generation exactly like idle — this is the whole point of the
-      // feature (flip Ask→Bypass while a turn is mid-flight).
+      // feature (flip Ask→Auto while a turn is mid-flight).
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const { turn } = await injectThenReady(engine);
       autoAdvanceMode('acceptEdits', true); // generating frames
       await wait(20);
 
       const before = countKey(CSI_Z);
-      await engine.setPermissionMode('bypassPermissions'); // acceptEdits → plan → bypass = 2 keys
+      await engine.setPermissionMode('auto'); // acceptEdits → plan → auto = 2 keys
 
       expect(countKey(CSI_Z) - before).toBe(2);
-      expect(engine.getPermissionMode()).toBe('bypassPermissions'); // reached mid-generation
+      expect(engine.getPermissionMode()).toBe('auto'); // reached mid-generation
       await endTurn(turn);
     });
 
@@ -1279,6 +1279,22 @@ describe('CliChatEngine', () => {
       await engine.setPermissionMode('dontAsk');
       expect(countKey(CSI_Z) - before).toBe(0);
       expect(engine.getPermissionMode()).toBe('dontAsk');
+      await endTurn(turn);
+    });
+
+    it('store-only fallback for the off-cycle bypassPermissions target — applies on the next spawn', async () => {
+      // claude keeps bypass OUT of a normal session's Shift+Tab cycle, so it has no reachable on-screen
+      // position. Selecting Bypass must NOT spin the cycle; it stores the target for the next spawn's
+      // --permission-mode (the auto/bypass conflation fix — Bypass is no longer driven live).
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const { turn } = await injectThenReady(engine);
+      h.fakePty._onData?.(idleGrid()); // idle + live, yet bypassPermissions is off the cycle
+      await wait(20);
+
+      const before = countKey(CSI_Z);
+      await engine.setPermissionMode('bypassPermissions');
+      expect(countKey(CSI_Z) - before).toBe(0);
+      expect(engine.getPermissionMode()).toBe('bypassPermissions');
       await endTurn(turn);
     });
   });

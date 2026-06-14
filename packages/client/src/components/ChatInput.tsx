@@ -24,7 +24,7 @@ import { CommandPalette } from './CommandPalette';
 import { filterCommands } from './CommandPalette';
 import { StarCommandPalette, filterStarCommands } from './StarCommandPalette';
 import { SnippetPalette, filterSnippets } from './SnippetPalette';
-import { PermissionModeSelector } from './PermissionModeSelector';
+import { PermissionModeSelector, PERMISSION_CYCLE } from './PermissionModeSelector';
 import { ModelSelector } from './ModelSelector';
 import { BmadAgentButton } from './BmadAgentButton';
 import { FavoritesPopup } from './FavoritesPopup';
@@ -58,6 +58,11 @@ const MODE_COLORS: Record<PermissionMode, { ring: string; border: string; button
     ring: 'focus-within:ring-red-500/40 dark:focus-within:ring-red-400/40',
     border: 'focus-within:border-red-500 dark:focus-within:border-red-400',
     button: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600',
+  },
+  auto: {
+    ring: 'focus-within:ring-purple-500/40 dark:focus-within:ring-purple-400/40',
+    border: 'focus-within:border-purple-500 dark:focus-within:border-purple-400',
+    button: 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600',
   },
   dontAsk: {
     ring: 'focus-within:ring-yellow-500/40 dark:focus-within:ring-yellow-400/40',
@@ -808,9 +813,8 @@ export function ChatInput({
       // Shift+Tab: cycle permission mode
       if (e.key === 'Tab' && e.shiftKey && permissionMode && onPermissionModeChange) {
         e.preventDefault();
-        const modes: PermissionMode[] = ['plan', 'default', 'acceptEdits', 'bypassPermissions'];
-        const idx = modes.indexOf(permissionMode);
-        onPermissionModeChange(modes[(idx + 1) % modes.length]);
+        const idx = PERMISSION_CYCLE.indexOf(permissionMode);
+        onPermissionModeChange(PERMISSION_CYCLE[(idx + 1) % PERMISSION_CYCLE.length]);
         return;
       }
 

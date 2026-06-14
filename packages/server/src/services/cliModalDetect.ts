@@ -308,23 +308,28 @@ export function parsePrecedingText(rows: string[]): string | null {
 /**
  * Story 37.5 — permission-mode control (the *write* application of the same settled grid).
  *
- * Hammoc permission modes that map 1:1 onto claude's Shift+Tab (`CSI Z`) cycle, **in cycle
- * order**: claude cycles `normal → accept edits on → plan mode on → auto mode on → (wrap)
- * normal` (empirically verified, claude v2.1.162). The forward step count from current→target
+ * CLI permission modes that map 1:1 onto claude's Shift+Tab (`CSI Z`) cycle, **in cycle order**:
+ * a normal session cycles `default → accept edits on → plan mode on → auto mode on → (wrap)
+ * default` (empirically captured, claude v2.1.162). The forward step count from current→target
  * is `(targetIdx - curIdx + N) % N`.
  *
- * The shared `PermissionMode` union has a FIFTH value, `dontAsk`, which has NO position on
- * claude's cycle — it is intentionally ABSENT from this array, so `permissionModeCycleIndex`
- * returns -1 for it and the engine routes it to the store-only / next-spawn `--permission-mode`
- * path instead of driving a live closed loop with no reachable target.
+ * `auto` is claude's classifier mode ("auto mode on"), a DISTINCT mode from `acceptEdits`
+ * ("accept edits on") — they are separate `--permission-mode` values. Earlier code wrongly read
+ * "auto mode on" as `bypassPermissions`; that conflation is fixed here.
  *
- * version-fragile: the `auto mode on ↔ bypassPermissions` mapping rests on the spike-observed
- * cycle label/order plus the *semantic* assumption that "auto mode" == permission bypass; the
- * label wording and cycle order can shift across claude versions (left as a live-verify item).
+ * Two values sit OFF this cycle, so `permissionModeCycleIndex` returns -1 and the engine routes
+ * them to the store-only / next-spawn `--permission-mode` path instead of a live closed loop:
+ *   - `bypassPermissions` — claude deliberately keeps it out of a normal session's cycle (it
+ *     surfaces in the cycle only once a session is explicitly STARTED in it). We never drive to it
+ *     live; selecting Bypass applies on the NEXT spawn via `--permission-mode bypassPermissions`.
+ *   - `dontAsk` — headless-only, never on the cycle.
+ *
+ * version-fragile: label wording / cycle order can shift across claude versions (live-verify item).
  */
-export const CLI_PERMISSION_MODE_CYCLE: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions'];
+export const CLI_PERMISSION_MODE_CYCLE: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'auto'];
 
-/** Cycle position of a mode, or -1 when the mode is off the Shift+Tab cycle (`dontAsk`). */
+/** Cycle position of a mode, or -1 when the mode is off the Shift+Tab cycle
+ *  (`bypassPermissions` and `dontAsk` — both routed to the next-spawn `--permission-mode` path). */
 export function permissionModeCycleIndex(mode: PermissionMode): number {
   return CLI_PERMISSION_MODE_CYCLE.indexOf(mode);
 }
@@ -334,7 +339,10 @@ export function permissionModeCycleIndex(mode: PermissionMode): number {
 const CLI_MODE_LABELS: Array<{ re: RegExp; mode: PermissionMode }> = [
   { re: /accept edits on/i, mode: 'acceptEdits' },
   { re: /plan mode on/i, mode: 'plan' },
-  { re: /auto mode on/i, mode: 'bypassPermissions' },
+  { re: /auto mode on/i, mode: 'auto' },
+  // bypassPermissions is off the normal cycle, but a session STARTED in bypass renders this row,
+  // so the reader must still recognize it (it just isn't a live-drivable target — see the cycle).
+  { re: /bypass permissions on/i, mode: 'bypassPermissions' },
 ];
 
 /** The mode status row renders the label together with this footer ("… (shift+tab to cycle) ·

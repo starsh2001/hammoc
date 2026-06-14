@@ -1756,6 +1756,7 @@
         "planDescription": "Claude 只制定计划，不修改文件",
         "askDescription": "修改文件前请求批准",
         "autoDescription": "自动批准文件修改",
+        "classifierDescription": "自动批准安全操作，仅对有风险的操作请求确认",
         "bypassDescription": "跳过所有权限请求",
         "selectorAria": "权限模式：{{label}}。{{description}}。点击切换到下一个模式"
     },

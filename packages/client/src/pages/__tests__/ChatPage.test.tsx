@@ -413,7 +413,7 @@ describe('ChatPage', () => {
 
   describe('PermissionModeSelector integration (Story 5.2)', () => {
     // PermissionModeSelector is now a single toggle button that cycles through modes
-    // Default mode is 'default' (label: 'Ask'), clicking cycles: default → acceptEdits → bypassPermissions → plan → default
+    // Default mode is 'default' (label: 'Ask'), clicking cycles: default → acceptEdits → plan → auto → bypassPermissions → default
     it('should render PermissionModeSelector in new session state', () => {
       render(
         <MemoryRouter initialEntries={['/project/test-project/session/new']}>
@@ -465,7 +465,7 @@ describe('ChatPage', () => {
       act(() => { setStoreWithSession({ messages: mockMessages, pagination: mockPagination }); });
 
       const permissionButton = screen.getByRole('button', { name: /권한 모드/i });
-      // Default mode is 'default' (Ask), clicking cycles to next: acceptEdits (Auto)
+      // Default mode is 'default' (Ask), clicking cycles to next: acceptEdits (Edits)
       fireEvent.click(permissionButton);
       expect(useChatStore.getState().permissionMode).toBe('acceptEdits');
     });

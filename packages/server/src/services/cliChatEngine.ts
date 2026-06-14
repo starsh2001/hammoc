@@ -495,13 +495,15 @@ export class CliChatEngine implements ChatEngine {
     // Story 37.5 (re-design 2026-06-14) — the stored mode is BOTH the authority the next spawn maps
     // to `--permission-mode` (AC7) AND the live TARGET the driver heads toward. Set it first so a
     // driver already running adopts the new target on its next step (mid-flight retarget — the user
-    // cycling Ask→Auto→Bypass during one turn, which is the whole point of this feature).
+    // cycling Ask→Accept Edits→Plan→Auto during one turn). A pick that lands off-cycle (Bypass) just
+    // stores the target; the live driver stops and the next spawn's --permission-mode applies it.
     this.permissionMode = mode;
 
     const control = this.activeCliControl;
     // Store-only (no live key injection): no live turn (between turns, or the narrow spawn/teardown
     // race where status is still 'running' but `activeCliControl` isn't set), or the target is OFF
-    // the Shift+Tab cycle (`dontAsk` — no reachable position). Aliveness, the modal guard, and the
+    // the Shift+Tab cycle (`bypassPermissions`/`dontAsk` — no reachable position; the next spawn's
+    // --permission-mode applies it instead). Aliveness, the modal guard, and the
     // screen classification are re-checked every step INSIDE the driver (not pre-emptively here), so
     // a generating frame is driven just like an idle one and a modal that comes up mid-drive still
     // stops the keys before they land.
@@ -525,7 +527,7 @@ export class CliChatEngine implements ChatEngine {
    * the target mode is the one shown. Self-corrects a misread or a slow frame (the next step
    * re-checks) and never over-shoots permanently (it stops the moment the target is on screen). The
    * target is re-read from `this.permissionMode` every step, so a mid-flight retarget (the user
-   * cycling Ask→Auto→Bypass within one turn) is followed live without restarting the driver.
+   * cycling Ask→Accept Edits→Plan→Auto within one turn) is followed live without restarting the driver.
    *
    * Replaces the old "read once → compute the N-step distance → inject the whole burst → verify
    * once" loop, whose single up-front read made it brittle: one bad current-mode read sent the wrong
@@ -539,7 +541,7 @@ export class CliChatEngine implements ChatEngine {
       // stray CSI Z must never land in a permission/question modal — same guard as the old loop).
       if (!control.isAlive() || control.isModalPending()) return;
       const target = this.permissionMode; // re-read each step ⇒ follows a mid-flight retarget
-      if (permissionModeCycleIndex(target) < 0) return; // retargeted to `dontAsk` ⇒ store-only
+      if (permissionModeCycleIndex(target) < 0) return; // retargeted off-cycle (bypass/dontAsk) ⇒ store-only
       const grid = await control.readSettledGrid();
       if (!control.isAlive()) return;
       // Only drive on a classifiable LIVE screen (idle input box or generating frame); an UNKNOWN

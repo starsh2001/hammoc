@@ -1759,6 +1759,7 @@
         "planDescription": "Claude가 계획만 세우고 파일을 수정하지 않습니다",
         "askDescription": "파일 수정 전 승인을 요청합니다",
         "autoDescription": "파일 수정을 자동으로 승인합니다",
+        "classifierDescription": "안전한 작업은 자동 승인하고 위험한 작업만 확인합니다",
         "bypassDescription": "모든 권한 요청을 건너뜁니다",
         "selectorAria": "권한 모드: {{label}}. {{description}}. 클릭하여 다음 모드로 전환"
     },
