@@ -655,6 +655,59 @@ describe('sendMessageWithCallbacks (Story 4.6)', () => {
     expect(callArgs.options).not.toHaveProperty('effort');
   });
 
+  it('passes settings.autoCompactEnabled:true to SDK queryOptions by default (shared auto-compact switch)', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result', subtype: 'success', result: 'Done', session_id: 'test-session',
+          uuid: 'msg-1', is_error: false, usage: { input_tokens: 10, output_tokens: 5 }, total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    await service.sendMessageWithCallbacks('Test message', { onComplete: vi.fn() });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          settings: expect.objectContaining({ autoCompactEnabled: true }),
+        }),
+      })
+    );
+  });
+
+  it('passes settings.autoCompactEnabled:false to SDK queryOptions when the preference is off', async () => {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
+    const offService = new ChatService({ autoCompactEnabled: false });
+    const mockIterator = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: 'init', session_id: 'test-session' };
+        yield {
+          type: 'result', subtype: 'success', result: 'Done', session_id: 'test-session',
+          uuid: 'msg-1', is_error: false, usage: { input_tokens: 10, output_tokens: 5 }, total_cost_usd: 0.001,
+        };
+      },
+      interrupt: vi.fn(),
+      setPermissionMode: vi.fn(),
+    };
+    vi.mocked(query).mockReturnValue(mockIterator as unknown as ReturnType<typeof query>);
+
+    await offService.sendMessageWithCallbacks('Test message', { onComplete: vi.fn() });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          settings: expect.objectContaining({ autoCompactEnabled: false }),
+        }),
+      })
+    );
+  });
+
   // 1M-context suffix resolution at the SDK boundary (resolveEffectiveModel).
   // Opus auto-upgrades (free on Max); Sonnet stays bare unless explicitly opted
   // in — forcing Sonnet to 1M is what tripped the "usage credits required" gate.

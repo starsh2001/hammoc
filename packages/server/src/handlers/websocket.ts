@@ -2734,7 +2734,11 @@ async function handleChatSend(
     // Captured once into a local so the progress-callback gating below reuses the same
     // decision (no second resolve, and `engineMode === 'cli'` stays consistent).
     const engineMode = await projectService.getEffectiveEngineMode(workingDirectory);
-    const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath, cliShowThinkingSummaries: effectivePrefs.cliShowThinkingSummaries, cliResumeChoice: effectivePrefs.cliResumeChoice });
+    // Auto-compaction master switch (both engines). Default ON. Gates the engine-internal
+    // auto-compact (forwarded into each engine's settings) AND Hammoc's overflow-triggered
+    // /compact recovery below, so one toggle controls all auto-compaction.
+    const autoCompactEnabled = effectivePrefs.autoCompactEnabled ?? true;
+    const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath, cliShowThinkingSummaries: effectivePrefs.cliShowThinkingSummaries, cliResumeChoice: effectivePrefs.cliResumeChoice, autoCompactEnabled });
     stream.chatService = chatService;
 
     const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
@@ -3140,6 +3144,7 @@ async function handleChatSend(
       // so it works even when context is overflowing.
       if (
         isResumeAttempt
+        && autoCompactEnabled
         && parsedError.code === SDKErrorCode.CONTEXT_OVERFLOW
         && !abortController.signal.aborted
         && !hasEmittedOutput

@@ -562,6 +562,13 @@ export class CliChatEngine implements ChatEngine {
   private cliShowThinkingSummaries: boolean;
   // Epic 37.6 follow-up: auto-pick for the resume confirm menu ('ask' = card, else auto-select).
   private cliResumeChoice: 'ask' | 'summary' | 'full';
+  /**
+   * Auto-compaction master switch (shared autoCompactEnabled preference; default true). Injected
+   * into the spawn's `--settings` blob — the bundled engine's enable resolver honors it, so OFF
+   * stops the interactive claude from auto-compacting when the context fills. Applies to BOTH
+   * engines (the SDK engine reads the same preference and passes it as an inline `settings`).
+   */
+  private autoCompactEnabled: boolean;
 
   /**
    * CLI mode performs no inline rewind-before-send, so this stays null. (Standalone
@@ -575,6 +582,7 @@ export class CliChatEngine implements ChatEngine {
     this.cliBinaryPath = config.cliBinaryPath;
     this.cliShowThinkingSummaries = config.cliShowThinkingSummaries ?? true;
     this.cliResumeChoice = config.cliResumeChoice ?? 'ask';
+    this.autoCompactEnabled = config.autoCompactEnabled ?? true;
   }
 
   getPermissionMode(): PermissionMode {
@@ -763,6 +771,10 @@ export class CliChatEngine implements ChatEngine {
     if (this.cliShowThinkingSummaries) {
       settingsObj.showThinkingSummaries = true;
     }
+    // Auto-compaction master switch (shared autoCompactEnabled preference). The bundled engine's
+    // enable resolver reads this key (default true); setting it explicitly makes Hammoc's toggle
+    // authoritative for the session without touching the global ~/.claude/settings.json.
+    settingsObj.autoCompactEnabled = this.autoCompactEnabled;
     args.push('--settings', JSON.stringify(settingsObj));
 
     // Experimental CLI debug instrumentation (HAMMOC_CLI_DEBUG=1). Adds claude's own

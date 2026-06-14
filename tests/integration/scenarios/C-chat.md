@@ -88,6 +88,7 @@
 
 **엣지케이스**:
 - E1. 1M 모델에서 SDK `contextWindow` 오보 → `correctContextWindow` 가 올바른 값으로 교정하는지 확인 (커밋 6219883 대응)
+- E2. **자동 Compact 토글 (both engines)**: 고급 설정의 "컨텍스트가 차면 자동 압축"(`autoCompactEnabled`, 기본 ON) 토글이 SDK·CLI 양쪽의 자동 압축을 함께 제어한다. SDK 는 query 인라인 `settings.autoCompactEnabled`, CLI 는 `--settings` 블록의 동일 키로 전달되고(같은 번들 엔진이 해석), Hammoc 의 resume-오버플로 자동 `/compact` 복구도 함께 게이트된다. OFF 로 두면 컨텍스트가 차도 자동 압축/`system:compact` 가 발생하지 않아 수동 `/compact` 가 필요하다 (검증은 C-04-01 과 동일하게 `[MANUAL]` — 90% 도달 비용 문제).
 
 ---
 

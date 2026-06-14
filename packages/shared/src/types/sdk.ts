@@ -33,6 +33,14 @@ export interface ChatServiceConfig {
    * auto-selects that option via the menu keys so the turn never blocks. SDK engine ignores it.
    */
   cliResumeChoice?: 'ask' | 'summary' | 'full';
+  /**
+   * Auto-compaction master switch — consumed by BOTH engines (unlike the cli* fields above).
+   * Default true. When false, the engine is told not to auto-compact when the context fills:
+   * the SDK engine passes `settings.autoCompactEnabled: false` on the query and the CLI engine
+   * injects the same key into its `--settings` blob (the shared bundled engine honors it).
+   * Mirrors the `autoCompactEnabled` user preference.
+   */
+  autoCompactEnabled?: boolean;
 }
 
 /**

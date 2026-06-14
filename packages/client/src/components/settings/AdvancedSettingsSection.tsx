@@ -572,6 +572,25 @@ export function AdvancedSettingsSection() {
         </label>
       </div>
 
+      {/* Auto-compaction master switch — autoCompactEnabled preference (both engines) */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={preferences.autoCompactEnabled ?? true}
+            onChange={(e) => {
+              updatePreference('autoCompactEnabled', e.target.checked);
+              toast.success(t('toast.settingChanged', { label: t('advanced.autoCompactEnabled') }));
+            }}
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+          />
+          <div>
+            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.autoCompactEnabled')}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.autoCompactEnabledDesc')}</p>
+          </div>
+        </label>
+      </div>
+
       {/* Default Thinking Effort — moved to GlobalSettingsSection */}
     </div>
   );

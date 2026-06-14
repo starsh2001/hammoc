@@ -406,6 +406,30 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
+    it('injects autoCompactEnabled:true into --settings by default (shared auto-compact switch)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+      await wait(30);
+      const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
+      const i = (spawnArg.args as string[]).indexOf('--settings');
+      const settings = JSON.parse((spawnArg.args as string[])[i + 1]);
+      expect(settings.autoCompactEnabled).toBe(true);
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('injects autoCompactEnabled:false into --settings when the preference is off', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj', autoCompactEnabled: false });
+      const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+      await wait(30);
+      const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
+      const i = (spawnArg.args as string[]).indexOf('--settings');
+      const settings = JSON.parse((spawnArg.args as string[])[i + 1]);
+      expect(settings.autoCompactEnabled).toBe(false);
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
     it('submits the prompt as text then a SEPARATE Enter once boot output settles (bracketed-paste safe)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks('hello world', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());

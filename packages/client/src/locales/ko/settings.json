@@ -192,7 +192,9 @@
         "showThinkingBlocks": "Claude의 사고 과정 표시",
         "showThinkingBlocksDesc": "Opus 4.7 등 최신 모델에서 응답 위에 접힌 'thinking' 블록을 표시합니다. 끄면 첫 응답 토큰이 조금 더 빨리 나옵니다 (비용은 동일).",
         "cardEntranceAnimation": "카드 등장 애니메이션",
-        "cardEntranceAnimationDesc": "스트리밍 중 메시지·도구 카드가 한꺼번에 나타나지 않고 아래에서 살짝 떠오르며 하나씩 페이드인합니다. 두 엔진 모두 적용 (미관용, 기본 켜짐)."
+        "cardEntranceAnimationDesc": "스트리밍 중 메시지·도구 카드가 한꺼번에 나타나지 않고 아래에서 살짝 떠오르며 하나씩 페이드인합니다. 두 엔진 모두 적용 (미관용, 기본 켜짐).",
+        "autoCompactEnabled": "컨텍스트가 차면 자동 압축",
+        "autoCompactEnabledDesc": "컨텍스트 윈도우가 가득 차면 대화를 자동으로 압축(이전 대화 요약)해 멈추지 않고 세션을 이어갑니다. 두 엔진 모두 적용, 기본 켜짐. 끄면 전체 기록을 유지하고 /compact로 직접 압축합니다."
     },
     "confirm": {
         "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",

@@ -137,6 +137,8 @@ export class ChatService implements ChatEngine {
   private permissionMode: PermissionMode;
   private allowedTools: string[];
   private disallowedTools: string[];
+  /** Auto-compaction master switch (both engines). Mirrors the autoCompactEnabled preference; default true. */
+  private autoCompactEnabled: boolean;
   private currentQuery: Query | null = null;
   /** Warning message from rewindFiles failure (non-fatal, streaming continues) */
   rewindWarning: string | null = null;
@@ -146,6 +148,7 @@ export class ChatService implements ChatEngine {
     this.permissionMode = config.permissionMode ?? 'default';
     this.allowedTools = [];
     this.disallowedTools = [];
+    this.autoCompactEnabled = config.autoCompactEnabled ?? true;
   }
 
   /**
@@ -242,6 +245,11 @@ export class ChatService implements ChatEngine {
       sessionId: options.sessionId,
       includePartialMessages: true, // Enable real-time streaming
       settingSources: ['user', 'project', 'local'], // Load settings & .claude/commands/ for skill discovery
+      // Auto-compaction master switch — inline flag-settings layer (highest priority among
+      // user-controlled settings, equivalent to the CLI's --settings). The bundled engine honors
+      // `autoCompactEnabled` (default true); false stops the SDK auto-compacting as context fills.
+      // Mirrors the user preference; sits on top of settingSources without replacing them.
+      settings: { autoCompactEnabled: this.autoCompactEnabled },
       systemPrompt,
       maxThinkingTokens: options.maxThinkingTokens,
       maxBudgetUsd: options.maxBudgetUsd,

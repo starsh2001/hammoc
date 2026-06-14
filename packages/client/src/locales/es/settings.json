@@ -189,7 +189,9 @@
         "showThinkingBlocks": "Mostrar el proceso de pensamiento de Claude",
         "showThinkingBlocksDesc": "Muestra bloques 'thinking' plegados sobre las respuestas en modelos recientes (Opus 4.7+). Desactívalo para obtener un primer token ligeramente más rápido (el coste no cambia).",
         "cardEntranceAnimation": "Animación de entrada de tarjetas",
-        "cardEntranceAnimationDesc": "Las tarjetas de mensajes y herramientas aparecen una a una con un efecto de desvanecimiento y deslizamiento hacia arriba durante la transmisión, en lugar de aparecer todas de golpe. Se aplica a ambos motores (estético; activado por defecto)."
+        "cardEntranceAnimationDesc": "Las tarjetas de mensajes y herramientas aparecen una a una con un efecto de desvanecimiento y deslizamiento hacia arriba durante la transmisión, en lugar de aparecer todas de golpe. Se aplica a ambos motores (estético; activado por defecto).",
+        "autoCompactEnabled": "Compactar automáticamente al llenarse el contexto",
+        "autoCompactEnabledDesc": "Cuando la ventana de contexto se llena, compacta automáticamente la conversación (resume los turnos antiguos) para que la sesión continúe en lugar de detenerse. Se aplica a ambos motores; activado por defecto. Desactívalo para conservar todo el historial y compactar manualmente con /compact."
     },
     "confirm": {
         "serverRestart": "Esto recompilará y reiniciará el servidor. ¿Continuar?",

@@ -96,6 +96,13 @@ export interface UserPreferences {
   // (a per-card "bubble in" effect) instead of popping in all at once. Applies to BOTH
   // engines, streaming segments only (not history/reload). Default ON; toggle in Advanced.
   cardEntranceAnimation?: boolean;
+  // Auto-compaction master switch — applies to BOTH engines. When the context window fills,
+  // Claude Code auto-compacts the conversation (summarizes older turns) so it can keep going.
+  // Default ON. Turning it OFF disables auto-compaction everywhere: the SDK query gets
+  // `settings.autoCompactEnabled: false`, the CLI spawn gets the same key in its `--settings`
+  // blob (the shared bundled engine honors it, default true), and Hammoc's own overflow-triggered
+  // /compact recovery is skipped. Toggle in Advanced settings.
+  autoCompactEnabled?: boolean;
   // i18n settings (Epic 22)
   language?: SupportedLanguage;     // User's preferred language
   // Permission sync policy across browsers
@@ -126,13 +133,14 @@ export interface UserPreferences {
 export type PermissionSyncPolicy = 'streaming' | 'always';
 
 /** Default values for global settings */
-export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defaultModel' | 'permissionMode' | 'chatTimeoutMs' | 'fileExplorerViewMode' | 'showThinkingBlocks'>> = {
+export const DEFAULT_PREFERENCES: Required<Pick<UserPreferences, 'theme' | 'defaultModel' | 'permissionMode' | 'chatTimeoutMs' | 'fileExplorerViewMode' | 'showThinkingBlocks' | 'autoCompactEnabled'>> = {
   theme: 'dark',
   defaultModel: '',
   permissionMode: 'default',
   chatTimeoutMs: 300000,
   fileExplorerViewMode: 'grid',
   showThinkingBlocks: true,
+  autoCompactEnabled: true,
 };
 
 /** API response type — includes server-only metadata */
