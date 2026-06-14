@@ -514,14 +514,18 @@ export function useStreaming() {
           }));
           // First question's choices as top-level for backward compat
           const firstQuestion = mappedQuestions[0];
-          addInteractiveSegment({
+          // Ride the presentation queue (delay 0 = no stagger) so the card lands AFTER any
+          // text/cards still queued for reveal — inserting it directly here let it jump ahead
+          // of its own preceding answer. flushChunkQueue() above already set the queue to
+          // flush, so this reveal fires immediately rather than waiting on the animation.
+          revealSegment(() => addInteractiveSegment({
             id: data.id,
             interactionType: 'question',
             toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
             choices: firstQuestion.choices,
             questions: mappedQuestions,
             multiSelect: firstQuestion.multiSelect,
-          });
+          }), 0);
           return;
         }
       }
@@ -531,12 +535,14 @@ export function useStreaming() {
       // AskUserQuestion already uses. SDK mode leaves `standalone` falsy and keeps the
       // tool-attached behavior below.
       if (data.standalone) {
-        addInteractiveSegment({
+        // Same queue-ordering fix as the question card above: ride the presentation queue so
+        // the standalone permission card lands after any preceding text/cards.
+        revealSegment(() => addInteractiveSegment({
           id: data.id,
           interactionType: 'permission',
           toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
           choices: [],
-        });
+        }), 0);
         return;
       }
 

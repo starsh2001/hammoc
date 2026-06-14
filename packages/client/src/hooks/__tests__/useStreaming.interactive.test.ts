@@ -479,4 +479,50 @@ describe('useStreaming synthetic typing (CLI mode)', () => {
     // Committed to completion with zero animation frames — the frozen-timer path was bypassed.
     expect(lastText()).toBe('Hello world');
   });
+
+  it('CLI + toggle ON: a question card arriving mid-stream lands AFTER the preceding thinking+text, not ahead', async () => {
+    // Regression for CLI card ordering: the question/permission card used to be inserted
+    // synchronously (addInteractiveSegment), bypassing the presentation queue. When a thinking
+    // card's stagger wait still held the chain — so the answer text was queued but not yet
+    // handed to the typer — the synchronously-inserted card jumped AHEAD of both. Riding the
+    // same queue, it must land LAST instead.
+    setEngine('cli', true);
+    renderHook(() => useStreaming());
+
+    // 1) Thinking card enters the queue first; its stagger wait parks the chain.
+    await act(async () => {
+      emitSocketEvent('thinking:chunk', { content: 'pondering' });
+      await Promise.resolve();
+    });
+    // 2) Answer text is queued behind it (still on the chain, not handed to the typer yet).
+    await act(async () => {
+      emitSocketEvent('message:chunk', { sessionId: 'test-session', messageId: 'm1', content: 'Here is my answer' });
+      await Promise.resolve();
+    });
+    // 3) The question modal arrives mid-stream.
+    await act(async () => {
+      emitSocketEvent('permission:request', {
+        id: 'cli-q-1',
+        sessionId: 'test-session',
+        toolCall: {
+          id: 'cli-q-1', name: 'AskUserQuestion',
+          input: { questions: [{ question: 'Pick', header: 'Q', options: [{ label: 'A' }, { label: 'B' }], multiSelect: false }] },
+        },
+        requiresApproval: true,
+      });
+      // Drain the flushed chain: thinking reveal → text commit → queued card.
+      for (let i = 0; i < 6; i++) await Promise.resolve();
+    });
+
+    const segs = useChatStore.getState().streamingSegments;
+    const qIdx = segs.findIndex((s) => s.type === 'interactive');
+    const thIdx = segs.findIndex((s) => s.type === 'thinking');
+    const tIdx = segs.findIndex((s) => s.type === 'text');
+    expect(qIdx).toBeGreaterThan(-1);
+    expect(thIdx).toBeGreaterThan(-1);
+    expect(tIdx).toBeGreaterThan(-1);
+    // The card rides the queue → it lands AFTER the thinking card and the answer text.
+    expect(qIdx).toBeGreaterThan(thIdx);
+    expect(qIdx).toBeGreaterThan(tIdx);
+  });
 });
