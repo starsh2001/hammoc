@@ -25,8 +25,13 @@ const MODEL_ID_RE = /claude-(?:opus|sonnet|haiku|fable|mythos)-[0-9]+(?:-[0-9]+)
 let cache: { path: string; mtimeMs: number; models: Set<string> } | null = null;
 let scanPromise: Promise<Set<string>> | null = null;
 
-/** Resolve the platform binary path (claude.exe on Windows, claude elsewhere), or null if not installed. */
-function resolveBundledBinaryPath(): string | null {
+/**
+ * Resolve the platform binary path (claude.exe on Windows, claude elsewhere) bundled inside
+ * @anthropic-ai/claude-agent-sdk, or null if not installed. Exported so CLI mode
+ * (cliSessionPool) can prefer this version-pinned engine over a system install — it is the
+ * same Claude Code CLI binary, so SDK and CLI modes run the identical engine.
+ */
+export function resolveBundledBinaryPath(): string | null {
   const pkg = `@anthropic-ai/claude-agent-sdk-${os.platform()}-${os.arch()}`;
   const exe = os.platform() === 'win32' ? 'claude.exe' : 'claude';
   try {

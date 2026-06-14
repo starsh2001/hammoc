@@ -48,6 +48,14 @@ vi.mock('../../utils/logger.js', () => ({
   createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: mockWarn, error: vi.fn(), verbose: vi.fn() }),
 }));
 
+// Bundled-binary resolver mocked so the "prefer bundled" precedence is deterministic. Default
+// null = no bundled binary present, which preserves the system auto-detect behavior the original
+// override/fallback tests assert.
+const { mockBundled } = vi.hoisted(() => ({ mockBundled: vi.fn((): string | null => null) }));
+vi.mock('../../utils/bundledBinaryModelSupport.js', () => ({
+  resolveBundledBinaryPath: () => mockBundled(),
+}));
+
 // Import after mocks.
 import { cliSessionPool } from '../cliSessionPool.js';
 import * as nodePty from 'node-pty';
@@ -62,6 +70,7 @@ describe('cliSessionPool — claude binary override (Story 33.3)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExistsSync.mockReturnValue(false);
+    mockBundled.mockReturnValue(null); // default: no bundled binary → system auto-detect
     cliSessionPool.destroyAll();
   });
 
@@ -109,5 +118,36 @@ describe('cliSessionPool — claude binary override (Story 33.3)', () => {
     expect(resolvedBinary()).toMatch(/claude(\.exe)?$/);
     expect(mockStatSync).not.toHaveBeenCalled();
     expect(mockWarn).not.toHaveBeenCalled();
+  });
+
+  it('prefers the bundled engine binary over system auto-detect (fable follow-up)', () => {
+    const bundled = process.platform === 'win32' ? 'C:\\bundled\\claude.exe' : '/bundled/claude';
+    mockBundled.mockReturnValue(bundled);
+    mockExistsSync.mockImplementation((p: string) => p === bundled); // only the bundled path exists
+
+    cliSessionPool.spawnClaude({ cwd: '/proj', args: [], binaryPathOverride: '' });
+
+    expect(resolvedBinary()).toBe(bundled);
+    expect(mockWarn).not.toHaveBeenCalled();
+  });
+
+  it('lets a valid override win over the bundled binary', () => {
+    const bundled = process.platform === 'win32' ? 'C:\\bundled\\claude.exe' : '/bundled/claude';
+    mockBundled.mockReturnValue(bundled);
+    mockExistsSync.mockImplementation((p: string) => p === bundled);
+    mockStatSync.mockReturnValue({ isFile: () => true }); // override is a valid file
+    mockAccessSync.mockReturnValue(undefined);
+    const override = process.platform === 'win32' ? 'C:\\tools\\claude.exe' : '/opt/claude/bin/claude';
+
+    cliSessionPool.spawnClaude({ cwd: '/proj', args: [], binaryPathOverride: override });
+
+    expect(resolvedBinary()).toBe(override); // override beats the bundled binary
+  });
+
+  it('falls back to system auto-detect when no bundled binary is present', () => {
+    mockBundled.mockReturnValue(null);
+    cliSessionPool.spawnClaude({ cwd: '/proj', args: [], binaryPathOverride: '' });
+
+    expect(resolvedBinary()).toMatch(/claude(\.exe)?$/);
   });
 });

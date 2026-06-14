@@ -22,6 +22,7 @@ import os from 'os';
 import path from 'path';
 import { existsSync, statSync, accessSync, constants as fsConstants } from 'fs';
 import { createLogger } from '../utils/logger.js';
+import { resolveBundledBinaryPath } from '../utils/bundledBinaryModelSupport.js';
 
 const log = createLogger('cliSessionPool');
 
@@ -182,6 +183,13 @@ class CliSessionPool {
       if (this.isValidBinaryOverride(trimmedOverride)) return trimmedOverride;
       log.warn(`Configured claude binary path is invalid (missing / not a file / not executable): "${trimmedOverride}" — falling back to auto-detect.`);
     }
+    // Prefer the bundled engine binary shipped inside @anthropic-ai/claude-agent-sdk: it is the
+    // SAME Claude Code CLI as a system install (interactive by default) but version-pinned by
+    // Hammoc's package.json, so CLI mode and SDK mode run the identical engine — both recognize
+    // newly-released models (e.g. Fable 5). Auth/session are unaffected: the spawn inherits the
+    // same env, hence the same ~/.claude. A valid user override above still takes precedence.
+    const bundled = resolveBundledBinaryPath();
+    if (bundled && existsSync(bundled)) return bundled;
     const home = os.homedir();
     const isWin = process.platform === 'win32';
     const candidates = isWin
