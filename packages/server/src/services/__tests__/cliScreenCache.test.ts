@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { setCliScreen, getCliScreen, deleteCliScreen } from '../cliScreenCache.js';
+import { setCliScreen, getCliScreen, setCliScreenStall, getCliScreenStall, deleteCliScreen } from '../cliScreenCache.js';
 
 describe('cliScreenCache (Story 37.8)', () => {
   afterEach(() => {
@@ -43,5 +43,46 @@ describe('cliScreenCache (Story 37.8)', () => {
     setCliScreen('sess-a', 'x');
     deleteCliScreen('sess-a');
     expect(getCliScreen('sess-a')).toBeUndefined();
+  });
+
+  // Soft screen-stall flag — mirrored onto the screen entry for session:join resync.
+
+  it('getCliScreenStall returns false on a cache miss', () => {
+    expect(getCliScreenStall('sess-a')).toBe(false);
+  });
+
+  it('setCliScreenStall annotates an existing entry and leaves the frame intact', () => {
+    setCliScreen('sess-a', 'frame');
+    setCliScreenStall('sess-a', true);
+    expect(getCliScreenStall('sess-a')).toBe(true);
+    expect(getCliScreen('sess-a')).toBe('frame');
+  });
+
+  it('setCliScreen preserves the stall flag across a frame refresh', () => {
+    setCliScreen('sess-a', 'frame-1');
+    setCliScreenStall('sess-a', true);
+    setCliScreen('sess-a', 'frame-2'); // a new frame arrives while still flagged
+    expect(getCliScreen('sess-a')).toBe('frame-2');
+    expect(getCliScreenStall('sess-a')).toBe(true);
+  });
+
+  it('clears the stall flag when set back to false (watchdog saw movement)', () => {
+    setCliScreen('sess-a', 'frame');
+    setCliScreenStall('sess-a', true);
+    setCliScreenStall('sess-a', false);
+    expect(getCliScreenStall('sess-a')).toBe(false);
+  });
+
+  it('setCliScreenStall is a no-op on a cache miss (never creates a frame-less entry)', () => {
+    setCliScreenStall('sess-a', true);
+    expect(getCliScreen('sess-a')).toBeUndefined();
+    expect(getCliScreenStall('sess-a')).toBe(false);
+  });
+
+  it('delete clears the stall flag too (back to false)', () => {
+    setCliScreen('sess-a', 'x');
+    setCliScreenStall('sess-a', true);
+    deleteCliScreen('sess-a');
+    expect(getCliScreenStall('sess-a')).toBe(false);
   });
 });

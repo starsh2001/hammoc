@@ -21,19 +21,41 @@
 
 interface CliScreenEntry {
   frame: string;
+  /**
+   * Soft screen-stall flag (cliScreenStallWatchdog), mirrored onto the session's screen entry so a
+   * late-joining / reconnecting socket can be resynced on session:join. The live `cli:screen-stall`
+   * signal fires ONLY on a stalled↔live transition, so a socket that connected AFTER the stall began
+   * (tab switch, mobile sleep/wake) would otherwise never learn the current state.
+   */
+  stalled: boolean;
   ts: number;
 }
 
 const cache = new Map<string, CliScreenEntry>();
 
-/** Store (or replace) the current serialized screen frame for a session. `ts` records recency. */
+/** Store (or replace) the current serialized screen frame for a session. `ts` records recency.
+ *  Preserves the existing `stalled` flag — only the watchdog (setCliScreenStall) mutates that. */
 export function setCliScreen(sessionId: string, frame: string): void {
-  cache.set(sessionId, { frame, ts: Date.now() });
+  const prev = cache.get(sessionId);
+  cache.set(sessionId, { frame, stalled: prev?.stalled ?? false, ts: Date.now() });
 }
 
 /** Return the cached serialized screen frame for a session, or undefined on a cache miss. */
 export function getCliScreen(sessionId: string): string | undefined {
   return cache.get(sessionId)?.frame;
+}
+
+/** Update the soft screen-stall flag on an EXISTING screen entry. No-op on a cache miss, so a
+ *  frame-less (leak-prone) entry is never created — a cached screen frame is what defines a session. */
+export function setCliScreenStall(sessionId: string, stalled: boolean): void {
+  const prev = cache.get(sessionId);
+  if (!prev) return;
+  cache.set(sessionId, { ...prev, stalled });
+}
+
+/** Current cached stall flag for a session (false on a miss). Used to resync late joiners. */
+export function getCliScreenStall(sessionId: string): boolean {
+  return cache.get(sessionId)?.stalled ?? false;
 }
 
 /** Drop a session's cached screen (called when its socket room empties — leak guard). */

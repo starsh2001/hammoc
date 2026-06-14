@@ -41,7 +41,7 @@ import { getOrCreateQueueService, getQueueInstances } from '../controllers/queue
 import { createLogger } from '../utils/logger.js';
 import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
 import { shouldForwardCliProgress, shouldForwardCliPtyMirror } from '../utils/cliEngineUtils.js';
-import { getCliScreen, deleteCliScreen } from '../services/cliScreenCache.js';
+import { getCliScreen, getCliScreenStall, setCliScreenStall, deleteCliScreen } from '../services/cliScreenCache.js';
 import { createScreenStallWatchdog, type ScreenStallWatchdog } from '../services/cliScreenStallWatchdog.js';
 import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
@@ -1397,6 +1397,15 @@ export async function initializeWebSocket(
       const cachedScreen = getCliScreen(sessionId);
       if (cachedScreen) {
         socket.emit('cli:screen-frame', { sessionId, frame: cachedScreen });
+      }
+
+      // Resync the soft screen-stall flag (CLI mode). cli:screen-stall is emitted only on a
+      // stalled↔live transition, so a socket that joined / reconnected AFTER the stall began
+      // (tab switch, mobile sleep/wake) never saw it and would otherwise show a stale card.
+      // Re-send the current flag once so the stall notice matches reality. Only when stalled:
+      // the client resets the flag to false on stream restore, so a false needs no wire traffic.
+      if (getCliScreenStall(sessionId)) {
+        socket.emit('cli:screen-stall', { sessionId, stalled: true });
       }
 
       if (!stream || stream.status !== 'running') {
@@ -2920,7 +2929,13 @@ async function handleChatSend(
     stallWatchdog = createScreenStallWatchdog({
       stallMs: screenStallMs,
       isActive: () => stream.status === 'running' && !permissionWaiting,
-      onStallChange: (stalled) => emit('cli:screen-stall', { sessionId, stalled }),
+      onStallChange: (stalled) => {
+        // Mirror onto the session screen cache so a late-join / reconnect can resync this
+        // transition-only signal (see session:join above). sessionId is set by the time a turn
+        // streams, but it's typed optional at this scope — guard so the cache key is never empty.
+        if (sessionId) setCliScreenStall(sessionId, stalled);
+        emit('cli:screen-stall', { sessionId, stalled });
+      },
     });
 
     // Story 32.7: forward the CLI engine's transient generation-progress counter

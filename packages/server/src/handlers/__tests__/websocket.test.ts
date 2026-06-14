@@ -12,7 +12,7 @@ import { ERROR_CODES } from '@hammoc/shared';
 import { projectService } from '../../services/projectService.js';
 // Story 37.7: real (un-mocked) session-lifetime screen cache — the late-join snapshot
 // push reads it on session:join. Tests seed/clear it directly.
-import { setCliScreen, deleteCliScreen } from '../../services/cliScreenCache.js';
+import { setCliScreen, setCliScreenStall, deleteCliScreen } from '../../services/cliScreenCache.js';
 
 // Shared mock state — accessible via vi.hoisted() for vi.mock factories
 const { mockState } = vi.hoisted(() => {
@@ -2837,6 +2837,31 @@ describe('WebSocket Handler', () => {
       await new Promise((resolve) => setTimeout(resolve, 120));
 
       expect(count).toBe(1);
+    });
+
+    it('re-sends cli:screen-stall {stalled:true} on join when the session is currently stalled', async () => {
+      // A socket that joins AFTER the stall transition fired must still be told it's stalled.
+      setCliScreen(SNAP_SESSION, 'frozen screen');
+      setCliScreenStall(SNAP_SESSION, true);
+
+      clientSocket = await connect();
+      const stall = new Promise<{ sessionId: string; stalled: boolean }>((resolve) => {
+        clientSocket.on('cli:screen-stall', (d) => resolve(d));
+      });
+
+      clientSocket.emit('session:join', SNAP_SESSION, 'test-project');
+      await expect(stall).resolves.toEqual({ sessionId: SNAP_SESSION, stalled: true });
+    });
+
+    it('does NOT re-send cli:screen-stall on join when the session is live (not stalled)', async () => {
+      setCliScreen(SNAP_SESSION, 'live screen'); // frame cached, but the stall flag stays false
+      clientSocket = await connect();
+      let received = false;
+      clientSocket.on('cli:screen-stall', () => { received = true; });
+
+      clientSocket.emit('session:join', SNAP_SESSION, 'test-project');
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      expect(received).toBe(false);
     });
   });
 });

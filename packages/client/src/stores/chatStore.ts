@@ -1012,6 +1012,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingSegments: [],
       streamingStartedAt: new Date(),
       lastResultError: null,
+      // Clear the soft CLI screen-stall flag on restore so a value carried over from before a
+      // reconnect / tab-switch can't linger. The server re-sends the CURRENT flag on session:join
+      // (only when actually stalled), so a genuine ongoing stall reappears and a resolved one stays gone.
+      cliScreenStalled: false,
     });
   },
 
