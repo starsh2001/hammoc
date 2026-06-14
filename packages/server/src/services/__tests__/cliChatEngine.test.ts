@@ -154,6 +154,17 @@ function compactBoundaryLine(uuid: string, opts: { trigger?: string; preTokens?:
   });
 }
 
+// claude's standalone interrupt marker — a user-text line with NO end_turn (the turn-end safety net).
+function interruptLine(uuid: string): string {
+  return JSON.stringify({
+    type: 'user',
+    uuid,
+    timestamp: '2026-06-04T00:00:03.000Z',
+    cwd: '/proj',
+    message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] },
+  });
+}
+
 async function writeSession(sid: string, lines: string[]): Promise<void> {
   await fs.writeFile(path.join(h.state.sessionsDir, `${sid}.jsonl`), lines.join('\n') + '\n', 'utf8');
 }
@@ -742,6 +753,58 @@ describe('CliChatEngine', () => {
         userLine('u0'),
         compactBoundaryLine('cb-old'),
         assistantLine('a-old', { text: 'old' }),
+        assistantLine('a-new', { text: 'fresh' }),
+      ]);
+
+      const response = await promise;
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(response.content).toBe('fresh');
+    });
+  });
+
+  describe('interrupt completion (turn-end safety net — ISSUE-99 follow-up)', () => {
+    it('completes the turn on a "[Request interrupted by user]" line (no end_turn) instead of hanging', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onComplete = vi.fn();
+      const onError = vi.fn();
+      const promise = engine.sendMessageWithCallbacks('do the thing', { onComplete, onError }, { sessionId: SID }, undefined, vi.fn());
+
+      await wait(30);
+      // An interrupt writes a standalone user-text marker and NO end_turn — without the safety net the
+      // turn waits forever (실측 2026-06-14: a stray Esc left claude idle for 21 min).
+      await writeSession(SID, [
+        userLine('u1'),
+        assistantLine('a1', { text: 'partial', stopReason: 'tool_use' }),
+        interruptLine('int1'),
+      ]);
+
+      const response = await promise; // resolves — no hang
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
+      expect(response.done).toBe(true);
+    });
+
+    it('ignores a PRIOR interrupt marker already in the transcript when resuming (no instant finish)', async () => {
+      // Pre-existing transcript: a past interrupted turn.
+      await writeSession(SID, [
+        userLine('u0'),
+        assistantLine('a-old', { text: 'old', stopReason: 'tool_use' }),
+        interruptLine('int-old'),
+      ]);
+
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onComplete = vi.fn();
+      const promise = engine.sendMessageWithCallbacks('again', { onComplete, onError: vi.fn() }, { resume: SID }, undefined, vi.fn());
+
+      await wait(30);
+      // Resume seeded the old interrupt marker → it does NOT end this turn (no premature finish).
+      expect(onComplete).not.toHaveBeenCalled();
+
+      // A fresh end_turn assistant arrives → now it completes (the old marker stayed ignored).
+      await writeSession(SID, [
+        userLine('u0'),
+        assistantLine('a-old', { text: 'old', stopReason: 'tool_use' }),
+        interruptLine('int-old'),
         assistantLine('a-new', { text: 'fresh' }),
       ]);
 

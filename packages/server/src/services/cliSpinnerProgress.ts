@@ -27,8 +27,14 @@ import { liveFooterRows } from './cliGridRegion.js';
  * the grid lets us capture it. The rotating glyph word (Flowing…/Crunched/Brewed/
  * Moseying…) is deliberately NOT part of the match — it is version-fragile, so the row
  * is identified by the counter alone.
+ *
+ * Both arrow directions are accepted (`[↑↓]`): claude renders the counter as "↓ N tokens"
+ * for some phases and "↑ N tokens" for others (실측 2026-06-14 — a long step showed
+ * "↑ 95.6k tokens"). The ↓-only regex MISSED the ↑ form, so a long ↑-phase emitted no
+ * progress at all and the UI looked frozen ("멈춤 vs 느림" 구분 불가). The arrow is required
+ * (not optional) so a bare "N tokens" in prose can't flash a phantom counter.
  */
-const GRID_COUNTER_RE = /↓\s*([\d.,]+k?)\s*tokens/i;
+const GRID_COUNTER_RE = /[↑↓]\s*([\d.,]+k?)\s*tokens/i;
 
 /**
  * The leading elapsed clock, paren-anchored (Story 37.3 — "Xm Ys" summation). claude

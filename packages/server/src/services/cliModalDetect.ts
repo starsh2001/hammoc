@@ -468,7 +468,11 @@ export function readPermissionMode(grid: string[]): PermissionMode {
  */
 export function isGeneratingGrid(grid: string[]): boolean {
   const footer = liveFooterText(grid);
-  return /esc to interrupt/i.test(footer) || /↓\s*[\d.,]+k?\s*tokens/i.test(footer);
+  // Either arrow direction (`[↑↓]`): claude renders the spinner counter as "↓ N tokens" or
+  // "↑ N tokens" depending on phase (실측 2026-06-14). The ↓-only test let a long "↑ N tokens"
+  // generation read as NOT generating, which (a) suppressed progress and (b) would let the
+  // post-injection modal guard fire mid-generation — both fixed by accepting both arrows.
+  return /esc to interrupt/i.test(footer) || /[↑↓]\s*[\d.,]+k?\s*tokens/i.test(footer);
 }
 
 /**

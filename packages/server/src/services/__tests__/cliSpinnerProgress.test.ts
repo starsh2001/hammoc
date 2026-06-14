@@ -160,4 +160,11 @@ describe('readSpinnerProgress (Story 37.2 — grid token reader)', () => {
     ];
     expect(readSpinnerProgress(grid)).toEqual({ tokens: 42, elapsedSeconds: 3 });
   });
+
+  it('reads the "↑ N tokens" arrow form too (실측 2026-06-14 — a 22-min step showed "↑ 95.6k tokens", which the ↓-only regex MISSED → the UI looked frozen)', async () => {
+    // claude renders the counter with ↑ for some phases; the old ↓-only regex returned null, so a long
+    // ↑-phase emitted no progress and the user could not tell "frozen" from "slow". Both arrows now read.
+    const p = await read([drawSpinner('✶ Adding unit + flow tests… (22m 22s · ↑ 95.6k tokens · esc to interrupt)')]);
+    expect(p).toEqual({ tokens: 95600, elapsedSeconds: 1342 }); // 22m 22s = 1342s; 95.6k → 95600
+  });
 });

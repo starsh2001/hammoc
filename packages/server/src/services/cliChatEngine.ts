@@ -417,6 +417,31 @@ export function buildMultiQuestionKeys(
   return perQuestion;
 }
 
+/**
+ * Does this JSONL line carry claude's "[Request interrupted by user]" marker (or its "…for tool use]"
+ * variant) — the standalone user-text line claude writes when its turn is INTERRUPTED (Esc / Ctrl+C)?
+ * An interrupt writes NO end_turn assistant line, so the turn-completion drain (`tick`) never sees a
+ * `stop_reason` and would otherwise wait forever; treating this marker as a turn end is the safety net
+ * (a real 21-minute hang was observed 2026-06-14 when a stray Esc interrupted the agent and the turn
+ * never recovered — that Esc's root cause is fixed separately, but ANY interrupt-to-idle must still end
+ * the turn). Matched STRICTLY — the whole text must BE the bracketed marker — so a user PROMPT that
+ * merely *mentions* an interrupt (a question about this very behavior) cannot false-trigger it.
+ */
+function isCliInterruptLine(raw: RawJSONLMessage): boolean {
+  if (raw.type !== 'user') return false;
+  const content = raw.message?.content as unknown;
+  const text =
+    typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content
+            .filter((b) => (b as { type?: string }).type === 'text')
+            .map((b) => (b as { text?: string }).text ?? '')
+            .join(' ')
+        : '';
+  return /^\s*\[Request interrupted[^\]]*\]\s*$/i.test(text);
+}
+
 /** Map the cliResumeChoice auto-pick ('summary' | 'full') to the matching resume-menu option label.
  *  Match by keyword on claude's wording ("Resume from summary …" / "Resume full session as-is"),
  *  falling back to position (summary first, full second) when the wording shifts across versions. */
@@ -791,11 +816,12 @@ export class CliChatEngine implements ChatEngine {
       if (resumeId) {
         lastSize = await fileSize(sessionFile);
         for (const m of await parseJSONLFile(sessionFile)) {
-          // Seed assistant uuids AND any prior compact_boundary so resume replays neither. The
-          // compact_boundary seed is load-bearing for the hang fix in `tick` below: without it a
-          // compaction already in the transcript would be re-read as "this turn ended" the instant
-          // we resume, finishing the turn before the model ever responds.
-          if (m.type === 'assistant' || (m.type === 'system' && m.subtype === 'compact_boundary')) {
+          // Seed assistant uuids AND any prior compact_boundary / interrupt marker so resume replays
+          // none of them. These seeds are load-bearing for the turn-end signals in `tick` below:
+          // without them a compaction OR a "[Request interrupted by user]" line already in the
+          // transcript would be re-read as "this turn ended" the instant we resume, finishing the new
+          // turn before the model ever responds.
+          if (m.type === 'assistant' || (m.type === 'system' && m.subtype === 'compact_boundary') || isCliInterruptLine(m)) {
             emittedUuids.add(m.uuid);
           }
         }
@@ -2048,6 +2074,16 @@ export class CliChatEngine implements ChatEngine {
                 return;
               }
             } else if (raw.type === 'user') {
+              // An interrupt ("[Request interrupted by user]") writes NO end_turn assistant line, so
+              // without this the turn would hang until a hard stop (실측 2026-06-14 — a stray Esc left
+              // claude idle and the turn ran 21 min before the user stopped it). A NEW marker (not
+              // seeded on resume, not already handled) ends the turn with whatever was generated so far.
+              if (!emittedUuids.has(raw.uuid) && isCliInterruptLine(raw)) {
+                emittedUuids.add(raw.uuid);
+                log.info('[CLI] interrupt marker in JSONL (no end_turn will follow) — finishing turn');
+                finishTurn();
+                return;
+              }
               emitToolResults(raw);
             } else if (raw.type === 'system' && raw.subtype === 'compact_boundary') {
               // Turn-completion signal for a compaction. claude itself writes this when it
