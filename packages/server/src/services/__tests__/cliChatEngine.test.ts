@@ -82,7 +82,7 @@ vi.mock('../../utils/logger.js', () => ({
 }));
 
 // Import after mocks. historyParser (real) is pulled in transitively for parseJSONLFile.
-import { CliChatEngine } from '../cliChatEngine.js';
+import { CliChatEngine, buildMultiQuestionKeys } from '../cliChatEngine.js';
 // NOT mocked — the real singleton; spied per-test to drive the usage-limit corroboration guard.
 import { rateLimitProbeService } from '../rateLimitProbeService.js';
 
@@ -157,6 +157,48 @@ function compactBoundaryLine(uuid: string, opts: { trigger?: string; preTokens?:
 async function writeSession(sid: string, lines: string[]): Promise<void> {
   await fs.writeFile(path.join(h.state.sessionsDir, `${sid}.jsonl`), lines.join('\n') + '\n', 'utf8');
 }
+
+// ISSUE-99: the answer→keys translation for a MULTI-question modal is pure (questions + answers →
+// one option-key array per tab), so it is exercised directly — no engine, no PTY, no timing. The
+// engine's handleMultiQuestion then drives keys[i] on tab i and adds the inter-tab → / final Enter.
+describe('buildMultiQuestionKeys (ISSUE-99 — multi-question answer → per-tab option keys, pure)', () => {
+  const DOWN = '\x1b[B';
+  const SPACE = ' ';
+  const Q_COLOR = { question: 'Which color?', header: 'Color', multiSelect: false, options: [{ label: 'Red' }, { label: 'Green' }, { label: 'Blue' }] };
+  const Q_SIZE = { question: 'Which sizes?', header: 'Size', multiSelect: true, options: [{ label: 'Small' }, { label: 'Large' }, { label: 'XL' }] };
+
+  it('single-select per question: ↓×index, and NOTHING for index 0 (highlight = the recorded answer)', () => {
+    const keys = buildMultiQuestionKeys(
+      [Q_COLOR, { ...Q_COLOR, question: 'Second?' }],
+      { 'Which color?': 'Green', 'Second?': 'Red' }, // index 1, index 0
+    );
+    expect(keys).toEqual([[DOWN], []]); // Green = one ↓; Red (index 0) = no move
+  });
+
+  it('multiSelect question: walks down toggling each pick with Space (array answer, NOT joined)', () => {
+    // Small (idx 0) + XL (idx 2): Space at 0, then two downs to XL, Space — no leading down for idx 0.
+    expect(buildMultiQuestionKeys([Q_SIZE], { 'Which sizes?': ['Small', 'XL'] })).toEqual([[SPACE, DOWN, DOWN, SPACE]]);
+  });
+
+  it('mixes single + multi questions in tab order', () => {
+    const keys = buildMultiQuestionKeys([Q_COLOR, Q_SIZE], { 'Which color?': 'Blue', 'Which sizes?': ['Large'] }); // Blue idx2; Large idx1
+    expect(keys).toEqual([[DOWN, DOWN], [DOWN, SPACE]]);
+  });
+
+  it('returns null when ANY answer maps to no listed option (custom/Other → cancel the WHOLE modal)', () => {
+    expect(buildMultiQuestionKeys([Q_COLOR, Q_SIZE], { 'Which color?': 'Green', 'Which sizes?': ['Nope'] })).toBeNull();
+    expect(buildMultiQuestionKeys([Q_COLOR], { 'Which color?': 'Purple' })).toBeNull();
+  });
+
+  it('falls back to the POSITIONAL answer when the question-text key is absent (insertion order = tab order)', () => {
+    const keys = buildMultiQuestionKeys([Q_COLOR, { ...Q_COLOR, question: 'Second?' }], { a: 'Green', b: 'Blue' });
+    expect(keys).toEqual([[DOWN], [DOWN, DOWN]]); // Green idx1, Blue idx2 — by position
+  });
+
+  it('returns null when answers is undefined', () => {
+    expect(buildMultiQuestionKeys([Q_COLOR], undefined)).toBeNull();
+  });
+});
 
 describe('CliChatEngine', () => {
   beforeEach(async () => {
@@ -1763,17 +1805,22 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
-    it('guards a multi-question (tabbed) modal: Esc-cancels WITHOUT calling canUseTool', async () => {
+    it('multi-question (tabbed) modal: ISSUE-99 engages the driver, and a non-navigable frame is safely Esc-cancelled', async () => {
+      // ISSUE-99: a >1-tab modal is now DRIVEN (handleMultiQuestion), not blind-guarded. The READ phase
+      // scrapes tab 0, presses → to reach tab 1, then re-reads. Here the frame is STATIC (no reactive
+      // next-tab paint), so the question does not change after → — the driver detects the stall and
+      // Esc-cancels rather than half-answering, keeping the turn responsive. (The full happy-path drive,
+      // which needs a reactive PTY that repaints each tab on →, is exercised separately.)
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const canUseTool = vi.fn();
       const { turn } = await injectThenReady(engine, canUseTool);
       h.fakePty._onData?.(Q_MODAL_MULTIQ);
 
-      // Detected (footer + affordance) but unparseable as ONE round-trip → Esc, no card.
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 });
+      // It attempts to navigate to tab 1 (→), sees the tab did not advance, and cancels (Esc) — it
+      // never raised a card (READ failed before PRESENT).
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 3000 });
       expect(canUseTool).not.toHaveBeenCalled();
-      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[B');
-      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[C');
+      expect(h.fakePty.write).toHaveBeenCalledWith('\x1b[C'); // the → read-navigation WAS attempted (driver engaged)
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'cancelled' })]);
       await turn;

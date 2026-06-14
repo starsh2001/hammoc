@@ -19,6 +19,9 @@ import {
   extractPromptSentence,
   detectQuestionModal,
   parseQuestionModal,
+  countQuestionTabs,
+  parseQuestionTabHeaders,
+  parseQuestionTabBody,
   parsePrecedingText,
   readPermissionMode,
   permissionModeCycleIndex,
@@ -185,6 +188,78 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       expect(
         parseQuestionModal([' ☐ Color', '   4. Type something.', '   5. Chat about this', ' Enter to select · ↑/↓ to navigate']),
       ).toBeNull(); // only affordance rows → no real options
+    });
+  });
+
+  describe('multi-question tab readers (ISSUE-99 — tabbed modal reconstruction)', () => {
+    // One tab of a 2-question modal: the tab bar lists every question header + Submit; the body
+    // below shows only the ACTIVE question. parseQuestionModal guards this (>1 ballot box → null);
+    // the per-tab readers reconstruct it.
+    const TAB_COLOR = [
+      ' ←  ☐ Color  ☐ Size  ✔ Submit  →',
+      ' Which color do you want?',
+      ' ❯ 1. Red',
+      '   2. Green',
+      '   3. Blue',
+      '   5. Chat about this',
+      ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+    ];
+    const TAB_SIZE = [
+      ' ←  ☐ Color  ☐ Size  ✔ Submit  →',
+      ' Pick the sizes. Choose any.',
+      ' ❯ 1. [ ] Small',
+      '   2. [ ] Large',
+      '   5. Chat about this',
+      ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+    ];
+
+    describe('countQuestionTabs', () => {
+      it('counts 1 for a single-select / single multiSelect question, >1 for a tabbed modal', () => {
+        expect(countQuestionTabs([' ☐ Color', ' ❯ 1. Red', ' Enter to select · ↑/↓ to navigate'])).toBe(1);
+        expect(countQuestionTabs([' ←  ☐ Pets  ✔ Submit  →', ' ❯ 1. [ ] Cat', ' Enter to select · ↑/↓ to navigate'])).toBe(1);
+        expect(countQuestionTabs(TAB_COLOR)).toBe(2); // ☐ Color + ☐ Size (Submit's ✔ is not a ballot box)
+      });
+
+      it('returns 0 when there is no ballot-box header (a confirm-style menu / not a question modal)', () => {
+        expect(countQuestionTabs([' ❯ 1. Resume from summary', ' Enter to confirm · Esc to cancel'])).toBe(0);
+        expect(countQuestionTabs([])).toBe(0);
+      });
+    });
+
+    describe('parseQuestionTabHeaders', () => {
+      it('returns the ordered question labels from the tab bar, excluding the Submit tab', () => {
+        expect(parseQuestionTabHeaders(TAB_COLOR)).toEqual(['Color', 'Size']);
+      });
+
+      it('returns [] when there is no tab bar', () => {
+        expect(parseQuestionTabHeaders([' ❯ 1. Red', ' Enter to select · ↑/↓ to navigate'])).toEqual([]);
+      });
+    });
+
+    describe('parseQuestionTabBody (the per-tab scrape parseQuestionModal guards away)', () => {
+      it('scrapes the ACTIVE question of a tabbed modal — where parseQuestionModal returns null', () => {
+        // The single-question reader guards the >1-ballot-box tab bar; the per-tab reader does not.
+        expect(parseQuestionModal(TAB_COLOR)).toBeNull();
+        expect(parseQuestionTabBody(TAB_COLOR)).toEqual({
+          question: 'Which color do you want?',
+          multiSelect: false,
+          options: [{ label: 'Red' }, { label: 'Green' }, { label: 'Blue' }],
+        });
+      });
+
+      it('detects multiSelect + strips the "[ ]" checkboxes on a tab, ignoring the multi-box tab bar', () => {
+        expect(parseQuestionTabBody(TAB_SIZE)).toEqual({
+          question: 'Pick the sizes. Choose any.',
+          multiSelect: true,
+          options: [{ label: 'Small' }, { label: 'Large' }],
+        });
+      });
+
+      it('returns null for a tab with no real options (half-painted frame)', () => {
+        expect(
+          parseQuestionTabBody([' ←  ☐ Color  ☐ Size  ✔ Submit  →', '   5. Chat about this', ' Enter to select · ↑/↓ to navigate']),
+        ).toBeNull();
+      });
     });
   });
 
@@ -439,6 +514,37 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
         '   추가 설명 줄 A',
         '   추가 설명 줄 B',
         ' ✻ Baked for 4m 4s',
+        ' ──────────────────────────────────────────────',
+        ' ❯ ',
+        ' ──────────────────────────────────────────────',
+        ' ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents',
+      ];
+      expect(classifyPreInjectScreen(grid)).toBe('input-box');
+    });
+
+    it('does NOT mistake a resume-repaint that QUOTES an AskUserQuestion modal high in scrollback for a live selection — classifies as input-box (ISSUE-99, the abort that surfaced as "응답 시간 초과")', () => {
+      // The exact poisoning that aborted a resume boot: the conversation was WRITING AskUserQuestion
+      // test fixtures, so claude's resume-repaint painted those fixture lines — a numbered option
+      // list, the "Enter to select · ↑/↓ to navigate" footer, and the "Chat about this" affordance —
+      // into the scrollback BODY, far above the live input box. The OLD whole-screen scan read that as
+      // a live question modal and returned 'selection' → injection withheld → boot abort (surfaced as
+      // a generic "timeout"). The LIVE state is the idle input box at the BOTTOM, so footer-anchored
+      // detection must classify this as input-box and inject. (Whole-screen scan would return
+      // 'selection' here — this is the regression guard.)
+      const grid = [
+        ' ● 멀티질문 파서 유닛 테스트를 추가합니다.',
+        "    const Q_MODAL_SINGLE = [",
+        "      ' ❯ 1. Red',",
+        "      '   2. Green',",
+        "      '   5. Chat about this',",
+        "      ' Enter to select · ↑/↓ to navigate · Esc to cancel',", // ← quoted modal footer (poison)
+        '    ];',
+        '    describe("parseQuestionTabHeaders", () => {',
+        '    describe("parseQuestionTabBody", () => {',
+        '    describe("parsePrecedingText (lead-in prose above the modal)", () => {',
+        '      it("returns the prose rows above the modal", () => {',
+        '        const rows = [',
+        '  ⎿  Interrupted · What should Claude do instead?',
         ' ──────────────────────────────────────────────',
         ' ❯ ',
         ' ──────────────────────────────────────────────',

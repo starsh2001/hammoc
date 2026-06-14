@@ -95,6 +95,9 @@ import {
   extractPromptSentence,
   detectQuestionModal,
   parseQuestionModal,
+  countQuestionTabs,
+  parseQuestionTabHeaders,
+  parseQuestionTabBody,
   parseConfirmChoiceMenu,
   readPermissionMode,
   permissionModeCycleIndex,
@@ -105,6 +108,7 @@ import {
   type ParsedQuestion,
   type PreInjectScreen,
 } from './cliModalDetect.js';
+import { liveFooterText } from './cliGridRegion.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
@@ -251,18 +255,20 @@ const CLI_PERMISSION_MAX_STEPS = CLI_PERMISSION_MODE_CYCLE.length * 3;
  *   - **multiSelect:** **Space** toggles the highlighted `[ ]` checkbox; after toggling,
  *     **→** (right) moves to the header "✔ Submit" tab and **Enter** submits — count-
  *     independent (Task 1: Space on Cat, →, Enter confirmed `=Cat`).
- *   - **Esc** cancels the modal — the deadlock guard for an unparseable modal, a
- *     multi-question (tabbed) modal, or an answer that maps to no listed option.
+ *   - **Esc** cancels the modal — the deadlock guard for an unparseable modal or an answer
+ *     that maps to no listed option.
  *
- * Scope (*constrained*) = **single-question** only. A multi-question modal is *tabbed*
- * (one question's options visible at a time → `←  ☐ Q1  ☐ Q2  ✔ Submit  →`), so a faithful
- * single-round-trip card cannot be built from the first frame; those are cancelled (Esc)
- * rather than half-answered. The web card/round-trip (`canUseTool('AskUserQuestion')` →
- * `updatedInput.answers`) is reused verbatim (client + `@hammoc/shared` unchanged — the
- * engine only *calls* it and translates the answer to keys). See `handleQuestion` below.
+ * A multi-question modal is *tabbed* (one question's options visible at a time →
+ * `←  ☐ Q1  ☐ Q2  ✔ Submit  →`). 32.8 left these as a *single-question* constraint and Esc-cancelled
+ * them; **ISSUE-99 drives them** by navigating the tabs to reconstruct every question, presenting one
+ * multi-question card, and driving each answer back into the tab bar (`handleMultiQuestion` below).
+ * The web card/round-trip (`canUseTool('AskUserQuestion')` → `updatedInput.answers`) is reused
+ * verbatim for both (client + `@hammoc/shared` unchanged — the engine only *calls* it and translates
+ * the answer to keys). See `handleQuestion` (single) / `handleMultiQuestion` (multi) below.
  */
 const CLI_QUESTION_DOWN_KEY = '\x1b[B'; // ↓ — move highlight to the next option
-const CLI_QUESTION_RIGHT_KEY = '\x1b[C'; // → — move to the header "✔ Submit" tab (multiSelect)
+const CLI_QUESTION_RIGHT_KEY = '\x1b[C'; // → — move to the next tab (multiSelect Submit / next question)
+const CLI_QUESTION_LEFT_KEY = '\x1b[D'; // ← — move to the PREVIOUS tab (ISSUE-99 multi-question return)
 const CLI_QUESTION_SPACE_KEY = ' '; // toggle the highlighted multiSelect checkbox
 const CLI_QUESTION_ENTER_KEY = '\r'; // select+submit (single) / activate Submit (multi)
 const CLI_QUESTION_ESC_KEY = '\x1b'; // cancel the modal (deadlock guard — AC4)
@@ -308,35 +314,44 @@ function capturePreInjectScreen(
 }
 
 /**
- * Translate the user's answer (canUseTool `updatedInput.answers`) into the TUI menu key
- * sequence (Story 32.8). The highlight starts on option 0 (verified Task 1). Returns null
- * when the answer maps to no scraped option (e.g. a custom "Other" entry) — not safely
- * drivable, so the caller cancels (Esc) rather than risk a wrong selection.
+ * Normalize a canUseTool answer for ONE question into the sorted option indices it selects (Story
+ * 32.8 + ISSUE-99). The answer arrives in one of three shapes and all three map to the same indices:
+ *   - a bare array (`['Cat','Fish']`) — the MULTI-question card returns each multiSelect answer as an
+ *     array verbatim (websocket.ts passes the answers object through unchanged);
+ *   - a ", "-joined string (`'Cat, Fish'`) — the SINGLE-question card's multiSelect array is joined
+ *     on that separator by the reused canUseTool branch (websocket.ts:2674 / queueService.ts:845),
+ *     so it is split back on the same separator (the 32.8-MULTISELECT-DROP fix);
+ *   - a single label (`'Green'`) — a single-select answer, taken as-is (NOT split: a label may
+ *     itself contain ", ").
+ * An unmappable token (a custom "Other" entry) contributes no index, so an all-custom answer yields
+ * [] and the caller cancels rather than mis-selecting.
  */
-function buildQuestionKeys(parsed: ParsedQuestion, answer: string | string[] | undefined): string[] | null {
-  const labels = parsed.options.map((o) => o.label);
-  // Normalize the answer into individual option tokens. A multiSelect answer arrives here as a
-  // single ", "-joined string, because the reused canUseTool('AskUserQuestion') branch joins the
-  // web card's bare answer array on that separator (websocket.ts:2674 / queueService.ts:845).
-  // Split it back on the same separator so every chosen label is recovered — otherwise the joined
-  // string ("Cat, Fish") matches no single option label, `selected` is empty, and the modal is
-  // silently Esc-cancelled (the 32.8-MULTISELECT-DROP defect). A single-select answer is one label
-  // and must NOT be split (a label may itself contain ", ").
+function resolveSelectedIndices(labels: string[], answer: string | string[] | undefined, multiSelect: boolean): number[] {
   const tokens = Array.isArray(answer)
     ? answer
     : answer == null
       ? []
-      : parsed.multiSelect
+      : multiSelect
         ? answer.split(', ')
         : [answer];
-  const selected = tokens
+  return tokens
     .map((a) => labels.indexOf(a))
     .filter((i) => i >= 0)
     .sort((a, b) => a - b);
+}
+
+/**
+ * Translate the user's answer (canUseTool `updatedInput.answers`) into the TUI menu key
+ * sequence for a SINGLE-question modal (Story 32.8). The highlight starts on option 0 (verified
+ * Task 1). Returns null when the answer maps to no scraped option (e.g. a custom "Other" entry) —
+ * not safely drivable, so the caller cancels (Esc) rather than risk a wrong selection.
+ */
+function buildQuestionKeys(parsed: ParsedQuestion, answer: string | string[] | undefined): string[] | null {
+  const selected = resolveSelectedIndices(parsed.options.map((o) => o.label), answer, parsed.multiSelect);
   if (selected.length === 0) return null;
   const keys: string[] = [];
   if (!parsed.multiSelect) {
-    // Single-select: ↓ to the option, Enter selects + submits.
+    // Single-select: ↓ to the option, Enter selects + submits (one keypress — verified Task 1).
     for (let i = 0; i < selected[0]; i++) keys.push(CLI_QUESTION_DOWN_KEY);
     keys.push(CLI_QUESTION_ENTER_KEY);
     return keys;
@@ -350,6 +365,56 @@ function buildQuestionKeys(parsed: ParsedQuestion, answer: string | string[] | u
   }
   keys.push(CLI_QUESTION_RIGHT_KEY, CLI_QUESTION_ENTER_KEY);
   return keys;
+}
+
+/**
+ * ISSUE-99 — translate a MULTI-question answer set into the per-tab OPTION keys (↓ / Space) for each
+ * question, leaving the tab navigation (→ between tabs, final Enter) to the engine's grid-verified
+ * driver (`handleMultiQuestion`). Returns one key array per question, in tab order; the engine drives
+ * array i on tab i, then advances. Returns null when ANY question's answer maps to no listed option
+ * (custom/Other) — a multi-question modal submits every question at once, so one unmappable answer
+ * cancels the WHOLE modal (Esc) rather than half-answering it.
+ *
+ * The composed key model is derived from the verified single-question primitives (Task 1, claude
+ * v2.1.162): within each tab the highlight starts at option 0; a multiSelect question Space-toggles
+ * each pick; a SINGLE-select question only highlights its pick (↓×index) — the highlighted option is
+ * the recorded answer, committed by the final Submit Enter (NOT a per-question Enter, which is
+ * reserved for Submit). ⚠️ This single-select "highlight = recorded answer" step is the one element
+ * not directly observed for the tabbed modal (single-question single-select used Enter, which here
+ * would submit prematurely); it is flagged for owner live-verification. The engine's closed-loop tab
+ * verification + Esc-cancel-on-anomaly fallback cap the downside at the prior behavior (a cleanly
+ * cancelled modal), never a corrupted session.
+ */
+export function buildMultiQuestionKeys(
+  questions: ParsedQuestion[],
+  answers: Record<string, string | string[]> | undefined,
+): string[][] | null {
+  if (!answers) return null;
+  const answerValues = Object.values(answers); // positional fallback (insertion order = question order)
+  const perQuestion: string[][] = [];
+  for (let qi = 0; qi < questions.length; qi++) {
+    const q = questions[qi];
+    // Prefer the by-question-text key (self-consistent: the engine's scrape IS the card's answer
+    // key); fall back to position if the text key is absent (defensive — should not happen by
+    // construction, but a positional answer still lands on the right tab).
+    const answer = answers[q.question] ?? answerValues[qi];
+    const selected = resolveSelectedIndices(q.options.map((o) => o.label), answer, q.multiSelect);
+    if (selected.length === 0) return null;
+    const keys: string[] = [];
+    if (q.multiSelect) {
+      let cur = 0;
+      for (const idx of selected) {
+        for (let i = cur; i < idx; i++) keys.push(CLI_QUESTION_DOWN_KEY);
+        keys.push(CLI_QUESTION_SPACE_KEY);
+        cur = idx;
+      }
+    } else {
+      // Single-select within a tabbed modal: highlight the pick; the tab move (→) records it.
+      for (let i = 0; i < selected[0]; i++) keys.push(CLI_QUESTION_DOWN_KEY);
+    }
+    perQuestion.push(keys);
+  }
+  return perQuestion;
 }
 
 /** Map the cliResumeChoice auto-pick ('summary' | 'full') to the matching resume-menu option label.
@@ -1266,10 +1331,11 @@ export class CliChatEngine implements ChatEngine {
        * *calls* it with the scraped questions/options, then translates the returned
        * `updatedInput.answers` into TUI menu keys (`buildQuestionKeys`). Honest constraints:
        *   - Detection + the questions/options are ANSI scrapes (version-fragile, low fidelity).
-       *   - Scope is **single-question**; a multi-question (tabbed) modal, an unparseable
-       *     modal, or an answer that maps to no listed option (custom "Other") is **not
-       *     driven** — the modal is cancelled with **Esc** so the turn ends cleanly instead
-       *     of hanging (AC4 deadlock guard; the response-path is restored, never frozen).
+       *   - This handler drives the **single-question** modal; a multi-question (tabbed) modal is
+       *     routed to `handleMultiQuestion` (ISSUE-99) instead. An unparseable modal or an answer
+       *     that maps to no listed option (custom "Other") is **not driven** — the modal is
+       *     cancelled with **Esc** so the turn ends cleanly instead of hanging (AC4 deadlock guard;
+       *     the response-path is restored, never frozen).
        *   - The wait no longer times out: Story 35.1 pauses the browser path's inactivity
        *     timer for the whole input-wait, so even a static modal (which emits no PTY
        *     frames) waits indefinitely — "respond when you can". The S-1 onRawMessage
@@ -1346,6 +1412,167 @@ export class CliChatEngine implements ChatEngine {
               return;
             }
             await new Promise((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
+          }
+          // Allow a subsequent question in the same turn to be detected afresh.
+          questionPending = false;
+        })();
+      };
+
+      /**
+       * ISSUE-99 — AskUserQuestion **multi-question** round-trip. claude renders a multi-question
+       * modal as a TABBED box: one question's options are visible at a time, with a header tab bar
+       * (`←  ☐ Q1  ☐ Q2  ✔ Submit  →`) navigated left/right. The single-question path (32.8) cannot
+       * build a one-shot card from the first frame, so 32.8 Esc-cancelled these; this driver fills
+       * that gap by *interactively* reconstructing every question, presenting ONE multi-question web
+       * card (the client already supports it), then driving each answer back into the tab bar.
+       *
+       * Three phases, every one guarded by `settled` (abort race) + `questionPending` and falling
+       * back to a clean Esc-cancel on ANY anomaly — so the worst case is the prior behavior (a
+       * cancelled modal), never a corrupted session:
+       *   1. READ (non-destructive — only → is pressed): scrape tab 0 (already painted), then → to
+       *      each next tab and scrape it, verifying the question actually changed. Reuses the verified
+       *      single-question body scrape per tab; headers come positionally from the tab bar.
+       *   2. PRESENT: call the SAME `canUseTool('AskUserQuestion')` seam with ALL questions → the
+       *      existing multi-question card + indefinite wait (35.1). Client / `@hammoc/shared` = 0.
+       *   3. WRITE (grid-verified closed loop): return to tab 0 (← until the first question is back,
+       *      bounded), then for each tab drive its option keys (↓ / Space — `buildMultiQuestionKeys`),
+       *      → to the next tab (verifying the advance), and a final Enter on the Submit tab. A failed
+       *      verification or an unmappable answer Esc-cancels.
+       *
+       * Honest constraints (the same family 32.8 documented): detection + every scrape is ANSI/grid
+       * low-fidelity (version-fragile), and the single-select "highlight = recorded answer" commit is
+       * the one composed step not directly observed for the tabbed modal (owner live-verify gate —
+       * see `buildMultiQuestionKeys`). Fired fire-and-forget from the settle timer.
+       */
+      const handleMultiQuestion = (initialGrid: string[], tabCount: number, toolUseID: string): void => {
+        void (async () => {
+          const cancel = (why: string) => {
+            log.warn(`AskUserQuestion(multi): ${why} — cancelling modal (Esc) to keep the turn responsive`);
+            if (!settled) {
+              try {
+                pty.write(CLI_QUESTION_ESC_KEY);
+              } catch {
+                /* PTY may already be gone */
+              }
+            }
+            questionPending = false;
+          };
+          const settle = () => new Promise<void>((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
+          const readSettled = async (): Promise<string[]> => {
+            await screen.flush();
+            return screen.readGrid();
+          };
+
+          // ---- PHASE 1: READ — navigate tabs (→ only; non-destructive) scraping each question. ----
+          const questions: ParsedQuestion[] = [];
+          let grid = initialGrid;
+          for (let i = 0; i < tabCount; i++) {
+            if (settled || !questionPending) return;
+            let body = parseQuestionTabBody(grid);
+            if (!body) {
+              grid = await readSettled(); // one re-read in case the tab was mid-paint
+              body = parseQuestionTabBody(grid);
+            }
+            if (!body) {
+              cancel(`tab ${i + 1}/${tabCount} not parseable`);
+              return;
+            }
+            const headers = parseQuestionTabHeaders(grid);
+            questions.push({ question: body.question, header: headers[i], multiSelect: body.multiSelect, options: body.options });
+            if (i < tabCount - 1) {
+              pty.write(CLI_QUESTION_RIGHT_KEY); // → to the next question tab
+              await settle();
+              if (settled || !questionPending) return;
+              grid = await readSettled();
+              const next = parseQuestionTabBody(grid);
+              // The tab must actually have advanced (the question text changed); if not, the nav model
+              // is off — cancel rather than scrape the same tab twice / mis-map answers.
+              if (!next || next.question === questions[i].question) {
+                cancel(`tab ${i + 2}/${tabCount} did not advance`);
+                return;
+              }
+            }
+          }
+          // We are now parked on the LAST tab (tabCount-1); the static modal emits no frames while we wait.
+
+          // ---- PHASE 2: PRESENT — one multi-question card via the reused canUseTool seam. ----
+          let result: PermissionResult;
+          const input = {
+            questions: questions.map((q) => ({ question: q.question, header: q.header, multiSelect: q.multiSelect, options: q.options })),
+          };
+          try {
+            const signal = options.abortController?.signal ?? new AbortController().signal;
+            result = await canUseTool!('AskUserQuestion', input as unknown as Record<string, unknown>, {
+              signal,
+              toolUseID,
+              title: questions[0].question,
+            });
+          } catch (err) {
+            cancel(`canUseTool threw (${err instanceof Error ? err.message : String(err)})`);
+            return;
+          }
+          if (settled) return;
+
+          const answers =
+            result.behavior === 'allow' && result.updatedInput
+              ? ((result.updatedInput as Record<string, unknown>).answers as Record<string, string | string[]> | undefined)
+              : undefined;
+          const perQuestion = buildMultiQuestionKeys(questions, answers);
+          if (!perQuestion) {
+            cancel('an answer did not map to a listed option (custom/Other is not drivable)');
+            return;
+          }
+
+          // ---- PHASE 3: WRITE — return to tab 0, then answer each tab, advance, and submit. ----
+          // Closed-loop return to the first tab (robust to a clamped/wrapped ← and a dropped key):
+          // step ← until the first question is back on screen, bounded by the tab count + slack.
+          let atFirst = false;
+          for (let attempt = 0; attempt <= tabCount + 2; attempt++) {
+            if (settled || !questionPending) return;
+            grid = await readSettled();
+            if (parseQuestionTabBody(grid)?.question === questions[0].question) {
+              atFirst = true;
+              break;
+            }
+            pty.write(CLI_QUESTION_LEFT_KEY); // ← to the previous tab
+            await settle();
+          }
+          if (!atFirst) {
+            cancel('could not return to the first question tab');
+            return;
+          }
+
+          for (let i = 0; i < questions.length; i++) {
+            // Drive this tab's option keys (↓ / Space), re-checking the abort guard before each write.
+            for (const key of perQuestion[i]) {
+              if (settled || !questionPending) return;
+              try {
+                pty.write(key);
+              } catch (err) {
+                log.warn(`multi-question key injection failed: ${err instanceof Error ? err.message : String(err)}`);
+                questionPending = false;
+                return;
+              }
+              await settle();
+            }
+            // Advance one tab right: to the next question, or (after the last) to the Submit tab.
+            if (settled || !questionPending) return;
+            pty.write(CLI_QUESTION_RIGHT_KEY);
+            await settle();
+            if (i < questions.length - 1) {
+              grid = await readSettled();
+              if (parseQuestionTabBody(grid)?.question !== questions[i + 1].question) {
+                cancel(`could not advance to tab ${i + 2}/${questions.length}`);
+                return;
+              }
+            }
+          }
+          // Parked on the Submit tab now — Enter commits every question's answer at once.
+          if (settled || !questionPending) return;
+          try {
+            pty.write(CLI_QUESTION_ENTER_KEY);
+          } catch {
+            /* PTY may already be gone */
           }
           // Allow a subsequent question in the same turn to be detected afresh.
           questionPending = false;
@@ -1434,7 +1661,14 @@ export class CliChatEngine implements ChatEngine {
         // (3) Permission modal (Story 32.6). `permissionPending` is the per-modal re-fire guard: set
         // true on detection, cleared once handlePermission resolves (key driven). The dialog stays on
         // the living screen every frame until then, so the flag (not a buffer clear) bounds it to once.
-        if (canUseTool && !permissionPending && detectPermissionDialog(text)) {
+        //
+        // ISSUE-99 poisoning fix: detect over the LIVE FOOTER region (not the whole screen) and only
+        // when generation is PAUSED. A real dialog renders at the bottom with the spinner gone; the
+        // agent's own OUTPUT can print dialog-like text (code quoting "Do you want to…" / a permission
+        // fixture) up in the scrollback while the spinner runs below — a whole-screen scan mistook that
+        // for a live dialog and drove a key that interrupted the agent (the post-injection sibling of
+        // the pre-injection classifier poisoning, 실측 2026-06-14).
+        if (canUseTool && !permissionPending && !isGeneratingGrid(grid) && detectPermissionDialog(liveFooterText(grid))) {
           permissionPending = true;
           const toolName = extractToolName(text);
           const sentence = extractPromptSentence(text);
@@ -1450,7 +1684,15 @@ export class CliChatEngine implements ChatEngine {
         // (4) AskUserQuestion modal (Story 32.8). Mutually exclusive with the permission path above
         // (checked first; the two detectors require disjoint signatures, so they never cross-fire).
         // `questionPending` is the per-modal re-fire guard, held across the settle timer + round-trip.
-        if (canUseTool && !permissionPending && !questionPending && detectQuestionModal(text)) {
+        //
+        // ISSUE-99 poisoning fix — this is the bug that froze THIS session for 21 minutes (실측
+        // 2026-06-14): detect over the LIVE FOOTER region and only when generation is PAUSED. The agent
+        // had just EDITED a file full of AskUserQuestion *test fixtures* ("Enter to select" / "Chat about
+        // this" / a tabbed "☐ … ☐ … ✔ Submit" header); claude painted that diff in the scrollback while
+        // the spinner ran, the old whole-screen scan read it as a live multi-question modal, failed to
+        // parse it, and drove an Esc that interrupted the agent — and the turn never recovered. A real
+        // modal sits in the live region with the spinner gone, so both guards still admit it.
+        if (canUseTool && !permissionPending && !questionPending && !isGeneratingGrid(grid) && detectQuestionModal(liveFooterText(grid))) {
           questionPending = true;
           // Let the modal finish painting (the footer first appearing does not mean every option row is
           // drawn yet). When the timer FIRES, re-flush and re-read the grid: the modal is fully painted
@@ -1470,8 +1712,15 @@ export class CliChatEngine implements ChatEngine {
               await catchUpJSONL();
               if (settled || !questionPending) return;
               const freshGrid = screen.readGrid();
-              const parsed = parseQuestionModal(freshGrid);
-              handleQuestion(parsed, `cli-q-${++questionCounter}`);
+              // ISSUE-99: branch on the header tab count. A single ballot box ⇒ the single-round-trip
+              // path (32.8); more than one ⇒ the tabbed multi-question driver. Either way a
+              // non-drivable case ends in a clean Esc-cancel.
+              const toolUseID = `cli-q-${++questionCounter}`;
+              if (countQuestionTabs(freshGrid) > 1) {
+                handleMultiQuestion(freshGrid, countQuestionTabs(freshGrid), toolUseID);
+              } else {
+                handleQuestion(parseQuestionModal(freshGrid), toolUseID);
+              }
             });
           }, CLI_QUESTION_SETTLE_MS);
         }

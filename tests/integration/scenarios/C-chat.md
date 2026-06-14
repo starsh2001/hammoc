@@ -498,3 +498,28 @@
 - E6. **스크롤백 보존(과거 보기)**: claude 가 normal buffer 라 출력이 위로 흐르므로 서버 화면 모델 scrollback 을 500 줄로 둬서 직렬 프레임이 과거 줄을 담는다 → 미러에서 위로 스크롤해 과거 확인. 갱신은 매 프레임 `reset()`+write 라 **정지(idle) 시 동일 프레임 skip 으로 스크롤 위치가 유지**되고 생성 중(busy)엔 최신으로 따라간다(tail-f). `readGrid`(viewport)는 불변이라 검출 무관
 
 > **자동 회귀**: serialize 색 보존 + readGrid 평문 유지는 `cliScreenModel.test.ts`, trailing throttle(leading 즉시·burst 최신 1회·cancel)은 `trailingThrottle.test.ts`, 세션 화면 캐시(프레임 문자열) set/get/delete 는 `cliScreenCache.test.ts`, 게이트(`shouldForwardCliPtyMirror`: CLI+undefined→true·false→false·SDK→false)는 `cliEngineUtils.test.ts`, `session:join` 캐시 히트 시 `cli:screen-frame` 1회·미스 0회·같은 소켓 재-join dedup 0회 는 `websocket.test.ts`, 클라 미러의 프레임 수신 시 `reset()`+`write(frame)`·매 프레임 재-reset·`cli:request-screen-frame` emit·cleanup off 는 `CliPtyMirror.test.tsx` 가 커버. 수동 단계는 실제 PTY/구독·다중 기기에서의 *육안* 화면 동기화·색 보존·접기펴기 복원·깜빡임만 확인(PTY 화면은 dev shell 재현 불가).
+
+### C-11-09: CLI 다중질문 AskUserQuestion 구동 + 화면 오감지(self-interrupt) 차단 (ISSUE-99) (수동)
+**배경**: claude TUI 는 질문이 하나면 세로 옵션 목록으로, 여럿이면 **탭 모달**(`←  ☐ Q1  ☐ Q2  ✔ Submit  →`, 한 번에 한 질문만 표시·좌우 탭 전환)로 그린다. 예전 CLI 브릿지는 단일 질문만 구동하고 다중질문은 Esc 로 취소했다(응답 불가). 이제는 탭을 →로 순회하며 각 질문을 스크레이프해 **하나의 다중질문 카드**(클라이언트 기존 지원)로 제시하고, 사용자가 답하면 탭 0 으로 복귀해 각 질문에 옵션 키(↓/Space)를 주입하고 →로 다음 탭 이동 후 최종 Enter 로 제출한다. 각 탭 전환은 **화면 재독으로 검증**(닫힌 루프)하고, 어느 단계든 이상하면 **Esc 로 깨끗이 취소**(최악도 기존 동작). 단일 질문(32.8)·권한(32.6) 경로는 불변.
+   또한 이 작업이 드러낸 **화면 오감지(self-interrupt)** 를 함께 막는다: 권한/질문 모달 감지가 예전엔 *화면 전체* 를 스캔해, 에이전트가 편집/출력한 텍스트에 모달 문자열(질문 픽스처 등)이 섞이면 *가짜 모달* 로 오인→Esc 주입→**에이전트 자기 인터럽트**(2026-06-14 실측, 21분 침묵)가 났다. 이제 감지를 **화면 하단 라이브 영역만 + 생성 중이 아닐 때만** 본다(진짜 모달은 생성이 멈춘 채 하단 푸터로 뜸 — 둘 다 통과; 스크롤백 본문의 인용 모달 문자열은 둘 다 차단).
+
+**선행 조건**: C-11-01 과 동일(구독 로그인된 `claude` 바이너리). CLI 엔진 선택. 모델이 **질문 2개 이상의 AskUserQuestion** 을 호출하도록 명시 유도 필요(Opus 는 자발 호출 안 함).
+
+**스텝**:
+1. 전역 설정 → CLI 엔진 선택
+2. 다중질문 유도 송신(예: `AskUserQuestion 으로 질문 2개를 한 번에 물어봐: 색(red/green/blue)과 크기(small/large). 다른 건 하지 마.`)
+3. **하나의** 다중질문 카드가 뜨면 각 질문에 답을 고르고 제출 → claude 가 두 답을 모두 반영해 진행하는지 확인(tool_result 에 두 답)
+4. (self-interrupt 회귀) 모달 문자열이 잔뜩 든 파일(예: 이 모달 테스트 픽스처)을 편집/출력하게 하는 작업 송신 → 생성 중 화면에 그 텍스트가 비쳐도 **턴이 인터럽트되지 않고** 계속 진행되는지 확인(서버 로그에 `cancelling modal (Esc)` 가 뜨지 않음)
+
+**기대 결과**:
+- **다중질문 구동**: 2~4개 질문이 한 카드로 뜨고 답이 탭별로 정확히 주입돼 제출됨(단일선택 ↓ 하이라이트, 다중선택 Space 토글)
+- **안전 취소**: 탭이 안 넘어가거나(정지)·답이 옵션에 없거나(Other)·파싱 실패면 Esc 로 취소 — 잘못된 선택 대신 깨끗한 종료(최악=기존 동작)
+- **self-interrupt 0**: 에이전트가 편집/출력한 모달-유사 텍스트가 화면 본문에 있어도 가짜 모달로 오감지해 Esc 를 넣지 않음. 진짜 모달(생성 멈춤·하단 푸터)은 그대로 감지(권한/질문 회귀 0)
+- **격리**: 단일질문(32.8)·권한(32.6)·SDK 모드 회귀 0
+
+**엣지케이스**:
+- E1. **단일선택 커밋 라이브-검증 게이트**: 탭 모달의 단일선택은 "하이라이트=기록(→ 탭 이동 시 확정)"으로 가정 — 단일질문 단일선택의 Enter 와 다른 경로라 오너 라이브 1회 확인 권장(닫힌 루프 + Esc 폴백이 안전망이라 오선택 대신 취소로 떨어짐)
+- E2. **탭 0 복귀 클램프 가정**: WRITE 전 ←를 질문[0] 텍스트가 보일 때까지(상한 내) 눌러 복귀 — wrap 모델이면 검증 실패 시 Esc 취소(안전)
+- E3. **version-fragile**: 탭바/푸터/어포던스 문구·←→ 클램프 거동은 claude TUI 버전에 취약(그리드가 *융합* 취약성만 제거)
+
+> **자동 회귀**: 순수 파서(`countQuestionTabs`·`parseQuestionTabHeaders`·`parseQuestionTabBody`)와 답→키 변환(`buildMultiQuestionKeys`: 단일선택 ↓×index·다중선택 Space 토글·Other→null·위치 폴백)은 `cliModalDetect.test.ts`·`cliChatEngine.test.ts` 가 **직접** 커버; 다중질문 모달이 드라이버를 **구동**(→ 네비)하고 비-네비 프레임이 **안전 Esc** 로 떨어지는 것은 `cliChatEngine.test.ts`(가짜 PTY); 화면 오감지 차단(footer 앵커링 + 생성중 가드 → 본문 인용 모달을 input-box 로 분류)은 `cliModalDetect.test.ts`. 전 구간 탭 순회→제시→복귀→제출 end-to-end + 단일선택 커밋은 실제 PTY/구독 의존이라 수동(오너 라이브 스모크).

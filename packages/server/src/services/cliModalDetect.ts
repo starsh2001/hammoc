@@ -39,7 +39,9 @@
 import type { PermissionMode } from '@hammoc/shared';
 import { liveFooterRows, liveFooterText } from './cliGridRegion.js';
 
-/** A single scraped AskUserQuestion choice (Story 32.8 — single-question scope). */
+/** A single scraped AskUserQuestion choice. Story 32.8 scraped one of these from a single-question
+ *  modal; ISSUE-99 reuses the same shape per-tab to reconstruct a **multi-question** (tabbed) modal,
+ *  one ParsedQuestion per tab. */
 export interface ParsedQuestion {
   question: string;
   header?: string;
@@ -149,30 +151,35 @@ function stripBoxChrome(s: string): string {
 }
 
 /**
- * Scrape one question + its options from the modal's screen ROWS (Story 32.8 — low fidelity,
- * the documented constraint; Story 37.4 — reads the settled grid rows instead of a linear
- * buffer). The grid renders **each option on its own row**, so the box-chrome that used to fuse
- * into labels is now confined to each row's border cells and `stripBoxChrome` removes it cleanly
- * (the "│"-laden / "──────"-stretched labels of the 32.8 bug report are structurally gone).
- *
- * Returns null when it cannot build a usable *single*-question structure — no options, or a
- * **multi-question** tabbed modal (more than one header ballot-box tab) which this constrained
- * bridge does not drive (the caller then cancels with Esc). Crucially the scrape order equals the
- * grid row order (top-to-bottom), which equals the ↓-count used to drive the answer, so the
- * option↔index mapping is self-consistent — the grid only *strengthens* this (row order IS the
- * navigation index).
+ * The modal region (header ballot-box row down to just above the footer) and its header row, or
+ * null when no selection footer is on the grid. Shared by every question reader so they bound the
+ * scan to the rendered box identically — lead-in prose far above the box cannot leak into a scrape.
  */
-export function parseQuestionModal(rows: string[]): ParsedQuestion | null {
+function questionModalRegion(rows: string[]): { region: string[]; headerIdx: number; modalRows: string[] } | null {
   const footerIdx = lastRowMatching(rows, /to\s+navigate/i);
   if (footerIdx < 0) return null;
-  // The modal sits directly above the footer. Bound the scan to the rendered box by starting at
-  // its header ballot-box tab row (☐/☒) when present, so lead-in prose far above cannot leak in.
   const region = rows.slice(0, footerIdx);
   const headerIdx = region.findIndex((r) => /[☐☒]/.test(r));
   const modalRows = headerIdx >= 0 ? region.slice(headerIdx) : region;
-  // Multi-question modals show >1 ballot-box tab in the header row (☐ Q1 ☐ Q2 ✔ Submit) — not a
-  // single round-trip, so guard rather than half-answer.
-  if ((modalRows.join('').match(/[☐☒]/g) || []).length > 1) return null;
+  return { region, headerIdx, modalRows };
+}
+
+/**
+ * Scrape the question text + multiSelect flag + options from the modal region rows — the body
+ * common to BOTH the single-question modal (Story 32.8) and one tab of a multi-question modal
+ * (ISSUE-99). NO single-question guard here (a tabbed modal legitimately has >1 header ballot box);
+ * the guard lives in `parseQuestionModal`. `header` (when known) is excluded from the question-text
+ * candidates so the short tab label never masquerades as the full question.
+ *
+ * The grid renders **each option on its own row**, so the box-chrome that used to fuse into labels
+ * is confined to each row's border cells and `stripBoxChrome` removes it cleanly. Crucially the
+ * scrape order equals the grid row order (top-to-bottom), which equals the ↓-count used to drive
+ * the answer, so the option↔index mapping is self-consistent (row order IS the navigation index).
+ */
+function scrapeQuestionBody(
+  modalRows: string[],
+  header: string | undefined,
+): { question: string; multiSelect: boolean; options: Array<{ label: string }> } | null {
   const multiSelect = modalRows.some((r) => /\[\s*[✔x ]?\s*\]/.test(r)); // [ ] / [✔] ⇒ multiSelect
   // Numbered option rows; last label wins per number, then order by number. One option per row, so
   // a per-row match suffices — no cross-row scanning, no fusion.
@@ -190,9 +197,6 @@ export function parseQuestionModal(rows: string[]): ParsedQuestion | null {
     .filter((l) => !/^Type something\.?$/i.test(l) && !/^Chat about this\.?$/i.test(l))
     .map((label) => ({ label }));
   if (options.length === 0) return null;
-  const headerRow = headerIdx >= 0 ? region[headerIdx] : undefined;
-  const headerMatch = headerRow?.match(/[☐☒]\s*([^✔→\n]+?)(?:\s{2,}|$)/);
-  const header = headerMatch ? headerMatch[1].trim() : undefined;
   // Question = the last meaningful row between the header tab and the first numbered option
   // (best-effort; it may not end in '?' — e.g. "Which pets? Choose any."). Strip tab/cursor glyphs
   // and drop the header line itself.
@@ -206,7 +210,80 @@ export function parseQuestionModal(rows: string[]): ParsedQuestion | null {
     header ??
     'Claude is asking a question'
   ).trim();
-  return { question, header, multiSelect, options };
+  return { question, multiSelect, options };
+}
+
+/**
+ * Scrape one question + its options from a SINGLE-question modal's screen ROWS (Story 32.8 — low
+ * fidelity, the documented constraint; Story 37.4 — reads the settled grid rows instead of a linear
+ * buffer).
+ *
+ * Returns null when it cannot build a usable *single*-question structure — no options, or a
+ * **multi-question** tabbed modal (more than one header ballot-box tab) which this single-round-trip
+ * reader does not drive. ISSUE-99 added a separate per-tab path (`countQuestionTabs` +
+ * `parseQuestionTabBody`) for the multi-question case; THIS function and its guard are unchanged so
+ * the single-question path stays byte-for-byte identical.
+ */
+export function parseQuestionModal(rows: string[]): ParsedQuestion | null {
+  const r = questionModalRegion(rows);
+  if (!r) return null;
+  const { region, headerIdx, modalRows } = r;
+  // Multi-question modals show >1 ballot-box tab in the header row (☐ Q1 ☐ Q2 ✔ Submit) — not a
+  // single round-trip, so guard rather than half-answer (the multi-question driver handles those).
+  if ((modalRows.join('').match(/[☐☒]/g) || []).length > 1) return null;
+  const headerRow = headerIdx >= 0 ? region[headerIdx] : undefined;
+  const headerMatch = headerRow?.match(/[☐☒]\s*([^✔→\n]+?)(?:\s{2,}|$)/);
+  const header = headerMatch ? headerMatch[1].trim() : undefined;
+  const body = scrapeQuestionBody(modalRows, header);
+  if (!body) return null;
+  return { question: body.question, header, multiSelect: body.multiSelect, options: body.options };
+}
+
+/**
+ * Count the question tabs (header ballot boxes ☐/☒) in a detected AskUserQuestion modal (ISSUE-99).
+ * claude renders a single question as one ballot box (`☐ Color`) and a **multi-question** modal as a
+ * tab bar with one box per question plus a Submit tab (`←  ☐ Color  ☐ Size  ✔ Submit  →`). So the
+ * count is the branch signal: 1 ⇒ the single-round-trip `parseQuestionModal` path; >1 ⇒ the tabbed
+ * multi-question driver. 0 ⇒ no header (a confirm-style menu / not a question modal). Pure — counts
+ * the ballot glyphs on the header row only (option checkboxes are `[ ]`, a distinct glyph). */
+export function countQuestionTabs(rows: string[]): number {
+  const r = questionModalRegion(rows);
+  if (!r || r.headerIdx < 0) return 0;
+  return (r.region[r.headerIdx].match(/[☐☒]/g) || []).length;
+}
+
+/**
+ * The ordered question header labels from a multi-question tab bar (ISSUE-99). For
+ * `←  ☐ Color  ☐ Size  ✔ Submit  →` this returns `['Color', 'Size']` — each label is the text after
+ * a ballot box up to the next box / `✔` Submit / arrow. The Submit tab is excluded (it is not a
+ * question). The labels are positional: the i-th label is the i-th tab the driver visits in order,
+ * so the engine attaches `headers[i]` to the question it scrapes on tab i. Pure. */
+export function parseQuestionTabHeaders(rows: string[]): string[] {
+  const r = questionModalRegion(rows);
+  if (!r || r.headerIdx < 0) return [];
+  const headerRow = r.region[r.headerIdx];
+  const labels: string[] = [];
+  const re = /[☐☒]\s*([^☐☒✔→←\n]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(headerRow)) !== null) {
+    const label = stripBoxChrome(m[1]).trim();
+    if (label && !/^Submit$/i.test(label)) labels.push(label);
+  }
+  return labels;
+}
+
+/**
+ * Scrape ONE tab of a multi-question modal — the active question's text + multiSelect + options
+ * (ISSUE-99). The tabbed modal shows only the active question's body below the tab bar, so this is
+ * the same body scrape as the single-question path but WITHOUT the single-question guard (the tab
+ * bar legitimately carries >1 ballot box). The header label is NOT read here (it is supplied
+ * positionally by `parseQuestionTabHeaders`), so a multi-box tab bar row is harmless — it is not a
+ * numbered option and is never the last pre-option row (the question text is). Returns null when the
+ * tab has no real options (e.g. a half-painted frame). Pure. */
+export function parseQuestionTabBody(rows: string[]): { question: string; multiSelect: boolean; options: Array<{ label: string }> } | null {
+  const r = questionModalRegion(rows);
+  if (!r) return null;
+  return scrapeQuestionBody(r.modalRows, undefined);
 }
 
 /** A confirm-style choice menu — e.g. claude's "resume full session vs summary" prompt shown when
@@ -461,14 +538,21 @@ const CLI_NUMBERED_OPTION_RE = /^\s*\d{1,2}\.\s/;
  * note above). Pure — no node-pty / no engine state.
  */
 export function classifyPreInjectScreen(grid: string[]): PreInjectScreen {
-  const text = grid.join('\n');
-  // (1) Recognized selection menus/modals, OR a numbered list WITH a live footer (AND-gate). The
-  // footer is matched over the LIVE region only (`liveFooterText`) so a resume-repaint that quotes a
-  // nav/cancel footer ("↑/↓ to navigate") in the scrollback body can't pair with quoted numbered
-  // rows and read as a live menu — the symmetric scrollback-poisoning guard to isIdleInputGrid's.
-  const hasNumberedOption = grid.some((row) => CLI_NUMBERED_OPTION_RE.test(row));
-  const hasSelectionFooter = CLI_SELECTION_FOOTER_RE.test(liveFooterText(grid));
-  if (detectPermissionDialog(text) || detectQuestionModal(text) || (hasNumberedOption && hasSelectionFooter)) {
+  // (1) Recognized selection menus/modals, OR a numbered list WITH a live footer (AND-gate). EVERY
+  // selection signal here is matched over the LIVE FOOTER region only (`liveFooterText` /
+  // `liveFooterRows`), NEVER the whole screen. A resume-repaint can QUOTE a modal's text — a
+  // nav/cancel footer, a permission phrase, an AskUserQuestion fixture in a transcript that merely
+  // *discusses* these menus — in the scrollback BODY; a whole-screen scan then mistook that for a
+  // live modal and WITHHELD injection (boot abort, surfaced to the user as a generic "timeout"). A
+  // genuinely live modal renders at the BOTTOM of the screen, so its signature lands in the live
+  // region; a quoted one sits up in the body with the idle input box below it. (Until ISSUE-99 only
+  // the generic numbered-list path was footer-anchored; the named permission/question detectors
+  // still scanned the whole screen — exactly the hole ISSUE-99's modal test fixtures fell through.
+  // Now all three are footer-anchored, the same discipline the idle/generating/mode readers use.)
+  const footer = liveFooterText(grid);
+  const hasNumberedOption = liveFooterRows(grid).some((row) => CLI_NUMBERED_OPTION_RE.test(row));
+  const hasSelectionFooter = CLI_SELECTION_FOOTER_RE.test(footer);
+  if (detectPermissionDialog(footer) || detectQuestionModal(footer) || (hasNumberedOption && hasSelectionFooter)) {
     return 'selection';
   }
   // (2) A verified idle input box (no selection signature + `❯` present + not mid-generation).
