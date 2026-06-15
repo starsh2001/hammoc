@@ -3,8 +3,8 @@
  * GET /api/preferences surfaces server-only metadata (_overrides). The engine-mode
  * billing gate was removed, so the response no longer carries _engineModeToggleEnabled.
  *
- * The router imports chatService (which pulls in the SDK) at module load, so the
- * dependency modules are mocked to isolate the route handler.
+ * The router surfaces the default workspace template (now from the lightweight
+ * workspaceContext module); peer services are mocked to isolate the route handler.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -19,7 +19,7 @@ vi.mock('../../services/preferencesService.js', () => ({
 vi.mock('../../services/notificationService.js', () => ({ notificationService: { reload: vi.fn() } }));
 vi.mock('../../services/webPushService.js', () => ({ webPushService: {} }));
 vi.mock('../../middleware/i18n.js', () => ({ invalidateI18nCache: vi.fn() }));
-vi.mock('../../services/chatService.js', () => ({ DEFAULT_WORKSPACE_TEMPLATE: 'tmpl', TEMPLATE_VARIABLES: [] }));
+vi.mock('../../services/workspaceContext.js', () => ({ DEFAULT_WORKSPACE_TEMPLATE: 'tmpl', TEMPLATE_VARIABLES: [] }));
 
 import preferencesRoutes from '../preferences.js';
 import { preferencesService } from '../../services/preferencesService.js';

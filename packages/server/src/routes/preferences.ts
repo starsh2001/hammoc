@@ -8,7 +8,7 @@ import { preferencesService } from '../services/preferencesService.js';
 import { notificationService } from '../services/notificationService.js';
 import { webPushService } from '../services/webPushService.js';
 import { invalidateI18nCache } from '../middleware/i18n.js';
-import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES } from '../services/chatService.js';
+import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES } from '../services/workspaceContext.js';
 import type { UpdateTelegramSettingsRequest, WebPushSubscribeRequest } from '@hammoc/shared';
 import { broadcastPreferencesChange } from '../handlers/websocket.js';
 

@@ -432,6 +432,45 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
+    it('appends the Hammoc workspace context via --append-system-prompt (SDK-mode parity)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+      await wait(30);
+      const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
+      const i = (spawnArg.args as string[]).indexOf('--append-system-prompt');
+      expect(i).toBeGreaterThanOrEqual(0);
+      const appended = (spawnArg.args as string[])[i + 1];
+      // The default Hammoc context — identity + the clickable-link convention SDK mode injects.
+      expect(appended).toContain('# Hammoc Context');
+      expect(appended).toContain('You are running inside Hammoc');
+      // {homeDir} is resolved at runtime (not left as a literal placeholder) — same substitution as SDK mode.
+      expect(appended).not.toContain('{homeDir}');
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
+    it('honors customSystemPrompt over the default template in --append-system-prompt', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks(
+        'hi',
+        { onComplete: vi.fn(), onError: vi.fn() },
+        { sessionId: SID, customSystemPrompt: 'Custom override referencing {homeDir}.' },
+        undefined,
+        vi.fn(),
+      );
+      await wait(30);
+      const spawnArg = h.cliSessionPool.spawnClaude.mock.calls[0][0];
+      const i = (spawnArg.args as string[]).indexOf('--append-system-prompt');
+      expect(i).toBeGreaterThanOrEqual(0);
+      const appended = (spawnArg.args as string[])[i + 1];
+      expect(appended).toContain('Custom override referencing');
+      expect(appended).not.toContain('# Hammoc Context');
+      // {variable} resolution still applies to the custom prompt (parity with SDK mode).
+      expect(appended).not.toContain('{homeDir}');
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+    });
+
     it('submits the prompt as text then a SEPARATE Enter once boot output settles (bracketed-paste safe)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks('hello world', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());

@@ -22,7 +22,7 @@ import type { PermissionMode } from '@hammoc/shared';
 import { validateBoardConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { broadcastProjectSettingsChange } from '../handlers/websocket.js';
-import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/chatService.js';
+import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/workspaceContext.js';
 import { createLogger } from '../utils/logger.js';
 import { extractRequestIP, isLoopbackIP } from '../utils/networkUtils.js';
 

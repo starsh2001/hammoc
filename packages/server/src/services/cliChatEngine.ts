@@ -112,6 +112,7 @@ import { liveFooterText } from './cliGridRegion.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
+import { DEFAULT_WORKSPACE_TEMPLATE, resolveTemplateVariables } from './workspaceContext.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
 import { SDKError, SDKErrorCode } from '../utils/errors.js';
@@ -761,6 +762,17 @@ export class CliChatEngine implements ChatEngine {
     for (const dir of uniqueAttachmentDirs(options.attachedImagePaths)) {
       args.push('--add-dir', dir);
     }
+    // Hammoc workspace context — SDK-mode parity. SDK mode appends this same template to the
+    // `claude_code` system-prompt preset (chatService); the interactive `claude` already runs that
+    // preset, so CLI mode appends the IDENTICAL resolved template via --append-system-prompt. This
+    // is what makes the agent Hammoc-aware (identity, clickable-link convention, feature pointers,
+    // manual/internals locations) — without it CLI-mode chats lose all of that. The customSystemPrompt
+    // override + {variable} resolution mirror chatService exactly (single source of truth =
+    // workspaceContext). Verified: node-pty delivers the multi-line arg intact to the PTY child, and
+    // billing is unaffected (the pool is set by interactive-vs-print, not prompt content — this only
+    // adds input tokens to the same subscription pool).
+    const appendTemplate = options.customSystemPrompt || DEFAULT_WORKSPACE_TEMPLATE;
+    args.push('--append-system-prompt', resolveTemplateVariables(appendTemplate, cwd));
     // Session-scoped `--settings` JSON (the global ~/.claude/settings.json is never
     // modified). Two things ride on it:
     //  - Story 36.1: a PreToolUse command hook that denies ANY background tool call
