@@ -14,6 +14,7 @@ import { preferencesApi } from '../../services/api/preferences';
 import { projectsApi } from '../../services/api/projects';
 import { api } from '../../services/api/client.js';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
+import { CliModeSettingsPanel } from './CliModeSettingsPanel';
 
 /**
  * Poll server health after restart/update.
@@ -308,6 +309,14 @@ export function AdvancedSettingsSection() {
         </div>
       )}
 
+      {/* ===== SDK-only group ===== */}
+      <div className="pt-2 border-t border-gray-200 dark:border-[#3a4d5e]">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {t('advanced.groupSdk')}
+        </h3>
+        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupSdkDesc')}</p>
+      </div>
+
       {/* System Prompt Template */}
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -492,6 +501,33 @@ export function AdvancedSettingsSection() {
         </p>
       </div>
 
+      {/* Thinking block visibility (Opus 4.7+ flipped API default to 'omitted'; same on 4.8) */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={preferences.showThinkingBlocks ?? true}
+            onChange={(e) => {
+              updatePreference('showThinkingBlocks', e.target.checked);
+              toast.success(t('toast.settingChanged', { label: t('advanced.showThinkingBlocks') }));
+            }}
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+          />
+          <div>
+            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.showThinkingBlocks')}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.showThinkingBlocksDesc')}</p>
+          </div>
+        </label>
+      </div>
+
+      {/* ===== Common group (both engines) ===== */}
+      <div className="pt-2 border-t border-gray-200 dark:border-[#3a4d5e]">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {t('advanced.groupCommon')}
+        </h3>
+        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupCommonDesc')}</p>
+      </div>
+
       {/* File Checkpointing */}
       <div>
         <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
@@ -534,25 +570,6 @@ export function AdvancedSettingsSection() {
         </div>
       </div>
 
-      {/* Thinking block visibility (Opus 4.7+ flipped API default to 'omitted'; same on 4.8) */}
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={preferences.showThinkingBlocks ?? true}
-            onChange={(e) => {
-              updatePreference('showThinkingBlocks', e.target.checked);
-              toast.success(t('toast.settingChanged', { label: t('advanced.showThinkingBlocks') }));
-            }}
-            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
-          />
-          <div>
-            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.showThinkingBlocks')}</span>
-            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.showThinkingBlocksDesc')}</p>
-          </div>
-        </label>
-      </div>
-
       {/* Card entrance animation: streaming cards bubble in one by one (both engines) */}
       <div>
         <label className="flex items-center gap-3 cursor-pointer">
@@ -591,7 +608,14 @@ export function AdvancedSettingsSection() {
         </label>
       </div>
 
-      {/* Default Thinking Effort — moved to GlobalSettingsSection */}
+      {/* ===== CLI-only group (moved from Global settings) ===== */}
+      <div className="pt-2 border-t border-gray-200 dark:border-[#3a4d5e]">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {t('advanced.groupCli')}
+        </h3>
+        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupCliDesc')}</p>
+      </div>
+      <CliModeSettingsPanel />
     </div>
   );
 }

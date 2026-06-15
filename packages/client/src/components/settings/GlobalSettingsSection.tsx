@@ -12,7 +12,6 @@ import { usePanelStore } from '../../stores/panelStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
-import { CliModeSettingsPanel } from './CliModeSettingsPanel';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
 import { DeviceLocalBadge } from '../DeviceLocalBadge';
 import type { EngineMode, PermissionMode, PermissionSyncPolicy, SupportedLanguage, ThinkingEffort } from '@hammoc/shared';
@@ -84,6 +83,62 @@ export function GlobalSettingsSection() {
   return (
     <div className="space-y-8">
       <SettingsSyncNotice />
+
+      {/* Engine Mode Setting (Epic 33 — conversation engine: SDK or CLI). Top of Global: the primary,
+          highest-impact choice — it gates which engine every chat below runs on. */}
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          {t('global.engineMode')}
+        </legend>
+        {/* Side-by-side cards (two prominent choices read better than a tall stack of wide buttons). */}
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { value: 'sdk' as const, labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk' },
+            { value: 'cli' as const, labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli' },
+          ]).map((opt) => (
+            <label
+              key={opt.value}
+              className={`
+                relative flex flex-col gap-2 p-4 rounded-lg border cursor-pointer transition-colors
+                ${engineModePref === opt.value
+                  ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                name="engineMode"
+                value={opt.value}
+                checked={engineModePref === opt.value}
+                onChange={() => handleEngineModeChange(opt.value)}
+                className="sr-only"
+                aria-describedby={`engine-desc-${opt.value}`}
+              />
+              <div className="flex items-center gap-2">
+                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  engineModePref === opt.value
+                    ? 'border-blue-500'
+                    : 'border-gray-400 dark:border-gray-500'
+                }`}>
+                  {engineModePref === opt.value && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
+                <span className={`text-base font-semibold ${engineModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                  {t(opt.labelKey)}
+                </span>
+              </div>
+              <p
+                id={`engine-desc-${opt.value}`}
+                className="text-xs text-gray-500 dark:text-gray-300 leading-snug"
+              >
+                {t(opt.descKey)}
+              </p>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       {/* Theme Setting */}
       <fieldset>
@@ -267,64 +322,6 @@ export function GlobalSettingsSection() {
           ))}
         </div>
       </fieldset>
-
-      {/* Engine Mode Setting (Epic 33 — conversation engine: SDK or CLI) */}
-      <fieldset>
-        <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          {t('global.engineMode')}
-        </legend>
-        {/* Side-by-side cards (two prominent choices read better than a tall stack of wide buttons). */}
-        <div className="grid grid-cols-2 gap-3">
-          {([
-            { value: 'sdk' as const, labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk' },
-            { value: 'cli' as const, labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli' },
-          ]).map((opt) => (
-            <label
-              key={opt.value}
-              className={`
-                relative flex flex-col gap-2 p-4 rounded-lg border cursor-pointer transition-colors
-                ${engineModePref === opt.value
-                  ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-300 dark:border-[#455568] hover:bg-gray-50 dark:hover:bg-[#263240]'
-                }
-              `}
-            >
-              <input
-                type="radio"
-                name="engineMode"
-                value={opt.value}
-                checked={engineModePref === opt.value}
-                onChange={() => handleEngineModeChange(opt.value)}
-                className="sr-only"
-                aria-describedby={`engine-desc-${opt.value}`}
-              />
-              <div className="flex items-center gap-2">
-                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                  engineModePref === opt.value
-                    ? 'border-blue-500'
-                    : 'border-gray-400 dark:border-gray-500'
-                }`}>
-                  {engineModePref === opt.value && (
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  )}
-                </div>
-                <span className={`text-base font-semibold ${engineModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                  {t(opt.labelKey)}
-                </span>
-              </div>
-              <p
-                id={`engine-desc-${opt.value}`}
-                className="text-xs text-gray-500 dark:text-gray-300 leading-snug"
-              >
-                {t(opt.descKey)}
-              </p>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
-      {/* CLI Mode Sub-settings (Epic 33.2 — self-gated behind the same billing flag) */}
-      <CliModeSettingsPanel />
 
       {/* Auto-approve safety checks in Bypass mode */}
       <div className="flex items-start gap-3">

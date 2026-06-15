@@ -191,7 +191,13 @@
         "cardEntranceAnimation": "Animação de entrada dos cartões",
         "cardEntranceAnimationDesc": "Os cartões de mensagem e ferramenta surgem um a um com efeito de fade e deslize para cima durante o streaming, em vez de aparecerem todos de uma vez. Aplica-se a ambos os motores (estético; ativado por padrão).",
         "autoCompactEnabled": "Compactar automaticamente quando o contexto encher",
-        "autoCompactEnabledDesc": "Quando a janela de contexto enche, compacta automaticamente a conversa (resume os turnos antigos) para a sessão continuar em vez de travar. Aplica-se a ambos os motores; ativado por padrão. Desative para manter o histórico completo e compactar manualmente com /compact."
+        "autoCompactEnabledDesc": "Quando a janela de contexto enche, compacta automaticamente a conversa (resume os turnos antigos) para a sessão continuar em vez de travar. Aplica-se a ambos os motores; ativado por padrão. Desative para manter o histórico completo e compactar manualmente com /compact.",
+        "groupCommon": "Comum (ambos os motores)",
+        "groupCommonDesc": "Configurações aplicadas aos motores SDK e CLI.",
+        "groupSdk": "Apenas motor SDK",
+        "groupSdkDesc": "Configurações aplicadas apenas quando o motor de conversa é SDK.",
+        "groupCli": "Apenas motor CLI",
+        "groupCliDesc": "Configurações aplicadas apenas quando o motor de conversa é CLI."
     },
     "confirm": {
         "serverRestart": "Isso irá recompilar e reiniciar o servidor. Continuar?",

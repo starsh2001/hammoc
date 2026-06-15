@@ -191,7 +191,13 @@
         "cardEntranceAnimation": "卡片入场动画",
         "cardEntranceAnimationDesc": "流式输出时，消息和工具卡片逐个从下方淡入上浮，而不是一次性全部弹出。两种引擎均适用（装饰性，默认开启）。",
         "autoCompactEnabled": "上下文占满时自动压缩",
-        "autoCompactEnabledDesc": "当上下文窗口占满时，自动压缩对话（总结较早的回合），让会话得以继续而不会卡住。两种引擎均适用，默认开启。关闭后将保留完整历史，需用 /compact 手动压缩。"
+        "autoCompactEnabledDesc": "当上下文窗口占满时，自动压缩对话（总结较早的回合），让会话得以继续而不会卡住。两种引擎均适用，默认开启。关闭后将保留完整历史，需用 /compact 手动压缩。",
+        "groupCommon": "通用（两种引擎）",
+        "groupCommonDesc": "对 SDK 和 CLI 两种引擎都生效的设置。",
+        "groupSdk": "仅 SDK 引擎",
+        "groupSdkDesc": "仅当对话引擎为 SDK 时生效的设置。",
+        "groupCli": "仅 CLI 引擎",
+        "groupCliDesc": "仅当对话引擎为 CLI 时生效的设置。"
     },
     "confirm": {
         "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",

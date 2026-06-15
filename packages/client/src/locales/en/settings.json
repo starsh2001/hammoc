@@ -194,7 +194,13 @@
         "cardEntranceAnimation": "Card entrance animation",
         "cardEntranceAnimationDesc": "Streaming message and tool cards fade and slide up one by one as they appear, instead of popping in all at once. Applies to both engines (cosmetic; on by default).",
         "autoCompactEnabled": "Auto-compact when context fills",
-        "autoCompactEnabledDesc": "When the context window fills up, automatically compact the conversation (summarize older turns) so the session keeps going instead of stalling. Applies to both engines; on by default. Turn off to keep the full history and compact manually with /compact."
+        "autoCompactEnabledDesc": "When the context window fills up, automatically compact the conversation (summarize older turns) so the session keeps going instead of stalling. Applies to both engines; on by default. Turn off to keep the full history and compact manually with /compact.",
+        "groupCommon": "Common (both engines)",
+        "groupCommonDesc": "Settings that apply to both the SDK and CLI engines.",
+        "groupSdk": "SDK engine only",
+        "groupSdkDesc": "Settings used only when the conversation engine is set to SDK.",
+        "groupCli": "CLI engine only",
+        "groupCliDesc": "Settings used only when the conversation engine is set to CLI."
     },
     "confirm": {
         "serverRestart": "This will rebuild and restart the server. Continue?",

@@ -191,7 +191,13 @@
         "cardEntranceAnimation": "カード登場アニメーション",
         "cardEntranceAnimationDesc": "ストリーミング中、メッセージやツールのカードが一度に表示されるのではなく、下からふわっと1枚ずつフェードインします。両エンジンに適用（装飾用・既定でオン）。",
         "autoCompactEnabled": "コンテキストが一杯になったら自動圧縮",
-        "autoCompactEnabledDesc": "コンテキストウィンドウが一杯になると、会話を自動的に圧縮（古いやり取りを要約）して、停止せずにセッションを継続します。両エンジンに適用・既定でオン。オフにすると全履歴を保持し、/compact で手動圧縮します。"
+        "autoCompactEnabledDesc": "コンテキストウィンドウが一杯になると、会話を自動的に圧縮（古いやり取りを要約）して、停止せずにセッションを継続します。両エンジンに適用・既定でオン。オフにすると全履歴を保持し、/compact で手動圧縮します。",
+        "groupCommon": "共通（両エンジン）",
+        "groupCommonDesc": "SDK・CLI 両エンジンに適用される設定です。",
+        "groupSdk": "SDK 専用",
+        "groupSdkDesc": "会話エンジンが SDK のときだけ適用される設定です。",
+        "groupCli": "CLI 専用",
+        "groupCliDesc": "会話エンジンが CLI のときだけ適用される設定です。"
     },
     "confirm": {
         "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",
