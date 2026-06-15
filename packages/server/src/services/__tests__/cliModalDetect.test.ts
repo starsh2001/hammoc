@@ -289,6 +289,24 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       // The header ballot-box tab is the top row, so there is nothing above the modal — no prose.
       expect(parsePrecedingText(rows)).toBeNull();
     });
+
+    it('returns a SHORT real lead-in (14 chars) — the over-aggressive 16-char floor regression (실측 2026-06-15)', () => {
+      // A real AskUserQuestion frame: a short `●` lead-in, a blank line above it (stops the walk so the
+      // echoed prompt is not swallowed), a separator below it, then the modal. The old <16 floor
+      // dropped this legitimate 14-char Korean sentence; the <4 sub-word floor keeps it.
+      const rows = [
+        '❯ 선호 색상을 물어봐 줘',
+        '',
+        '● 선호 색상을 여쭙겠습니다.',
+        '────────────────────────',
+        ' ☐ 선호 색상',
+        ' 어떤 색상을 선호하시나요?',
+        ' ❯ 1. 빨강',
+        '   5. Chat about this',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ];
+      expect(parsePrecedingText(rows)).toBe('선호 색상을 여쭙겠습니다.');
+    });
   });
 
   describe('readPermissionMode (Story 37.5 — status-row → Hammoc mode)', () => {

@@ -95,6 +95,8 @@ import {
   extractPromptSentence,
   detectQuestionModal,
   parseQuestionModal,
+  parsePrecedingText,
+  parsePrecedingPermissionText,
   countQuestionTabs,
   parseQuestionTabHeaders,
   parseQuestionTabBody,
@@ -802,6 +804,21 @@ export class CliChatEngine implements ChatEngine {
     // enable resolver reads this key (default true); setting it explicitly makes Hammoc's toggle
     // authoritative for the session without touching the global ~/.claude/settings.json.
     settingsObj.autoCompactEnabled = this.autoCompactEnabled;
+    // Story 37.9 (AC1 — expanded-mode spawn, embedded spike): render claude with thinking / long
+    // output NOT collapsed behind "(ctrl+o to expand)", so the settled grid carries the full screen
+    // (the foundation Story 37.10 streams thinking/tool cards from). Option (a) of the spike's
+    // (a)→(b)→(c) chain: the session-scoped `verbose` settings key — confirmed REAL (not assumed) via
+    // `claude --help`: "--verbose  Override verbose mode setting from config", so `verbose` is the
+    // config key that flag overrides; a boolean, so it cannot corrupt the --settings JSON even if a
+    // future TUI ignores it (a harmless no-op, unlike a guessed key/value). Session-scoped only — the
+    // global ~/.claude/settings.json is untouched. EMPIRICALLY CONFIRMED (2026-06-15, James) by a real
+    // node-pty A/B capture of the bundled v2.1.177 binary on the SAME ultrathink prompt: verbose:false
+    // COLLAPSES a 22s thinking block to "Thought for 22s (ctrl+o to expand)", while verbose:true renders
+    // the same-magnitude (14s) thinking EXPANDED inline with ZERO collapse markers — so option (a)
+    // suffices and the (b) `--verbose` flag / (c) one-shot Ctrl+O fallbacks are NOT needed. (The earlier
+    // "interactive claude PTY cannot be spawned in this headless shell" assumption was wrong — node-pty
+    // drives it fine.) Locked by cliVerboseThinking.realframes.test.ts.
+    settingsObj.verbose = true;
     args.push('--settings', JSON.stringify(settingsObj));
 
     // Experimental CLI debug instrumentation (HAMMOC_CLI_DEBUG=1). Adds claude's own
@@ -964,6 +981,19 @@ export class CliChatEngine implements ChatEngine {
       // tool_use ids whose tool_result was already emitted (the drain re-parses the whole
       // file as it grows; this dedups so a result is mirrored exactly once).
       const resultEmittedToolIds = new Set<string>();
+      // Story 37.9: provisional-body emit (the "[본문, 선택지]" ordering fix). An input-waiting
+      // tool_use (AskUserQuestion / a permission-gated tool) lands in the JSONL only AFTER the
+      // user answers, so at modal time the lead-in prose is on SCREEN but not in the file — the
+      // file-only catchUpJSONL can't recover it and the choice card jumps ahead of its own body.
+      // We scrape that prose off the grid and emit it as a PROVISIONAL live text chunk before the
+      // choice card. This FIFO counts those provisional emits; when the drain later meets the
+      // matching canonical assistant block (the one carrying the modal tool_use), it SUPPRESSES that
+      // block's live text re-emit (arrival-order slot — AC3 primary key) so the provisional isn't
+      // double-rendered. accumulatedText still accrues the canonical text, and the turn-end
+      // stream:complete-messages reload swaps the provisional for the authoritative copy
+      // (completeness). Mirrors the permissionGatedToolsPending suppression pattern above.
+      let provisionalBodyEmitsPending = 0;
+      let provisionalBodyCounter = 0; // synthesizes a messageId for each provisional chunk
       // AskUserQuestion-modal state (Story 32.8 — post-injection only). Story 37.4: detection
       // reads the settled grid; `questionPending` is the per-modal re-fire guard (replacing the
       // old buffer-clear consume), held across the settle timer + the round-trip.
@@ -1377,6 +1407,39 @@ export class CliChatEngine implements ChatEngine {
       };
 
       /**
+       * Story 37.9 (AC3/AC4): emit the assistant prose the TUI painted ABOVE an input-waiting modal
+       * as a PROVISIONAL live text chunk, so the body lands BEFORE the choice card ("[본문, 선택지]").
+       * `prose` is a screen scrape (parsePrecedingText / parsePrecedingPermissionText) with no JSONL
+       * uuid — claude writes the whole message only post-answer — so we ALSO claim one provisional
+       * slot: handleAssistantLine suppresses the matching canonical block's live text re-emit
+       * (arrival-order FIFO) so it isn't double-rendered, and the turn-end reload replaces the
+       * provisional with the canonical copy. No-op (and no slot claimed) when there is no lead-in
+       * prose, so a bare modal behaves exactly as before. The provisional rides the normal text-chunk
+       * path → the client presentation queue keeps arrival order (the choice card is enqueued after).
+       */
+      const emitProvisionalBody = (prose: string | null): void => {
+        if (settled || !prose || !callbacks.onTextChunk || !resolvedSessionId) return;
+        // AC3 dedup (text correlation = SECONDARY signal): the lead-in can reach the JSONL EITHER
+        // as its own assistant line BEFORE the modal — then the drain already emitted it
+        // (accumulatedText holds it; the 5b0e68c6 ordering) and the file is the single source — OR
+        // only post-answer, in which case it is absent here and the scrape is the only pre-answer
+        // source. Emit the provisional ONLY in the latter case so the file path is never duplicated.
+        // Match on a whitespace-normalized prefix so the lossy one-line scrape still recognizes the
+        // canonical (possibly multi-line) copy. Lossy text is a guard here, NOT the primary key — the
+        // primary key stays the arrival-order suppression slot (handleAssistantLine) + turn-end reload.
+        const norm = (s: string): string => s.replace(/\s+/g, '').toLowerCase();
+        const needle = norm(prose).slice(0, 40);
+        if (needle && norm(accumulatedText).includes(needle)) return;
+        provisionalBodyEmitsPending++;
+        callbacks.onTextChunk({
+          sessionId: resolvedSessionId,
+          messageId: `cli-provisional-${++provisionalBodyCounter}`,
+          content: prose,
+          done: false,
+        });
+      };
+
+      /**
        * Permission round-trip (Story 32.6 — *constrained*). The dialog is detected
        * from the PTY screen (no JSONL signal exists pre-approval). We reuse the
        * **already-passed** `canUseTool` (same closure that drives SDK-mode web
@@ -1768,6 +1831,10 @@ export class CliChatEngine implements ChatEngine {
           permissionPending = true;
           const toolName = extractToolName(text);
           const sentence = extractPromptSentence(text);
+          // Story 37.9: emit the lead-in prose (screen scrape) BEFORE the standalone permission card
+          // so "[본문, 선택지]" order holds — claude writes that prose to the JSONL only post-decision,
+          // so the file-only drain can't recover it. The turn-end reload replaces this provisional.
+          emitProvisionalBody(parsePrecedingPermissionText(grid));
           handlePermission(toolName, sentence, `cli-perm-${++permCounter}`);
           // Story 32.9: this tool's tool_use block (written only AFTER the decision — 32.6 Task 1;
           // allow AND deny both record one block — verified) must NOT be live-emitted, or its real-id
@@ -1808,6 +1875,12 @@ export class CliChatEngine implements ChatEngine {
               await catchUpJSONL();
               if (settled || !questionPending) return;
               const freshGrid = screen.readGrid();
+              // Story 37.9: emit the lead-in prose (screen scrape) BEFORE the question card so
+              // "[본문, 선택지]" order holds. catchUpJSONL above drains any blocks ALREADY in the file
+              // (correctly ordered), but the prose that leads into THIS modal lands in the JSONL only
+              // post-answer, so it isn't there yet — the screen is the only pre-answer source. The
+              // turn-end reload replaces this provisional with the authoritative block.
+              emitProvisionalBody(parsePrecedingText(freshGrid));
               // ISSUE-99: branch on the header tab count. A single ballot box ⇒ the single-round-trip
               // path (32.8); more than one ⇒ the tabbed multi-question driver. Either way a
               // non-drivable case ends in a clean Esc-cancel.
@@ -1964,6 +2037,25 @@ export class CliChatEngine implements ChatEngine {
 
         const blockContent = envelope?.content;
         if (Array.isArray(blockContent)) {
+          // Story 37.9: if this block carries the input-waiting tool_use whose lead-in prose was
+          // already emitted provisionally, suppress its live TEXT re-emit so the provisional isn't
+          // double-rendered (the provisional holds the arrival-order slot; the turn-end reload
+          // replaces it). accumulatedText still accrues the canonical text below — only the live wire
+          // emit is skipped. Match: an AskUserQuestion tool_use (question modal) OR any tool_use while
+          // a permission-gated tool is pending (the gated block — same FIFO as
+          // permissionGatedToolsPending, read here BEFORE the loop decrements it).
+          let suppressBlockText = false;
+          if (provisionalBodyEmitsPending > 0) {
+            const carriesModalTool = blockContent.some(
+              (b) =>
+                b.type === 'tool_use' &&
+                ((b as ToolUseContentBlock).name === 'AskUserQuestion' || permissionGatedToolsPending > 0),
+            );
+            if (carriesModalTool) {
+              suppressBlockText = true;
+              provisionalBodyEmitsPending--;
+            }
+          }
           let textIdx = 0;
           for (const block of blockContent) {
             if (block.type === 'thinking') {
@@ -1987,12 +2079,16 @@ export class CliChatEngine implements ChatEngine {
               const text = (block as TextContentBlock).text;
               if (text && text.trim() && text.trim() !== '(no content)') {
                 accumulatedText += text;
-                callbacks.onTextChunk?.({
-                  sessionId: resolvedSessionId ?? '',
-                  messageId: `${raw.uuid}-t${textIdx++}`,
-                  content: text,
-                  done: false,
-                });
+                // Story 37.9: skip the live re-emit when this block's prose was emitted provisionally
+                // (suppressBlockText) — the provisional already occupies the slot and reload replaces it.
+                if (!suppressBlockText) {
+                  callbacks.onTextChunk?.({
+                    sessionId: resolvedSessionId ?? '',
+                    messageId: `${raw.uuid}-t${textIdx++}`,
+                    content: text,
+                    done: false,
+                  });
+                }
               }
             } else if (block.type === 'tool_use') {
               // Story 32.9: live tool-card emission. The envelope is identical to SDK mode

@@ -389,6 +389,9 @@ describe('CliChatEngine', () => {
       expect(settings.hooks.PreToolUse[0].hooks[0].command).toContain('block-background.cjs');
       // thinking summaries ON by default
       expect(settings.showThinkingSummaries).toBe(true);
+      // Story 37.9 (AC1): expanded-mode spawn injects the session-scoped `verbose` key (the config
+      // key `--verbose` overrides — confirmed via `claude --help`) so the screen renders un-collapsed.
+      expect(settings.verbose).toBe(true);
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;
     });
@@ -1120,6 +1123,48 @@ describe('CliChatEngine', () => {
       expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
+      await turn;
+    });
+
+    it('Story 37.9: emits the lead-in prose as a provisional chunk BEFORE the standalone permission card', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      let chunksBeforeCard = -1;
+      const canUseTool = vi.fn().mockImplementation(async () => {
+        chunksBeforeCard = onTextChunk.mock.calls.length;
+        return { behavior: 'allow', updatedInput: {} };
+      });
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onComplete: vi.fn(), onError: vi.fn(), onTextChunk },
+        { sessionId: SID },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+
+      // Permission dialog with lead-in prose ABOVE the gated tool card (`● Write(…)`), none in the
+      // JSONL yet. parsePrecedingPermissionText classifies the region with parseGridCards and takes
+      // the TEXT card before the tool card, so the explanation lands before the standalone card.
+      const prose = '디버그 출력을 캡처하려면 프로브 파일을 먼저 만들어야 합니다.';
+      h.fakePty._onData?.(drawModal([
+        '● ' + prose,
+        '● Write(probe.txt)',
+        ' Create file',
+        ' Do you want to create probe.txt?',
+        ' ❯ 1. Yes',
+        '   2. Yes, allow all edits during this session (shift+tab)',
+        '   3. No',
+        ' Esc to cancel · Tab to amend',
+      ]));
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      expect(onTextChunk).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('프로브 파일') }));
+      expect(chunksBeforeCard).toBeGreaterThanOrEqual(1);
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'created it' })]);
       await turn;
     });
 
@@ -1871,6 +1916,67 @@ describe('CliChatEngine', () => {
       ]);
       await turn;
       const proseEmits = onTextChunk.mock.calls.filter((c) => String((c[0] as { content: string }).content).includes('정리하면'));
+      expect(proseEmits).toHaveLength(1);
+    });
+
+    it('Story 37.9: emits the lead-in prose as a PROVISIONAL chunk before the card when it is NOT yet in the JSONL, then suppresses the canonical re-emit (no duplicate)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      let chunksBeforeCard = -1;
+      const canUseTool = vi.fn().mockImplementation(async () => {
+        chunksBeforeCard = onTextChunk.mock.calls.length; // chunks emitted before the card is raised
+        return { behavior: 'allow', updatedInput: { answers: { 'Which color do you want?': 'Red' } } };
+      });
+      const turn = engine.sendMessageWithCallbacks(
+        'ask me something',
+        { onComplete: vi.fn(), onError: vi.fn(), onTextChunk },
+        { sessionId: SID },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('ask me something'), { timeout: 2000 });
+
+      // The story's scenario: the lead-in prose is on SCREEN above the modal (a `●` body card) but
+      // NOT in the JSONL yet — the whole assistant message (prose + AskUserQuestion tool_use) lands
+      // only AFTER the answer. The file is still empty here, so catchUpJSONL recovers nothing and the
+      // screen scrape is the only pre-answer source.
+      const prose = '두 가지 색상 옵션을 준비했습니다. 어떤 것을 원하시는지 골라주세요.';
+      h.fakePty._onData?.(drawModal([
+        '● ' + prose,
+        ' ☐ Color',
+        ' Which color do you want?',
+        ' ❯ 1. Red',
+        '   2. Green',
+        '   5. Chat about this',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ]));
+
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      // The provisional prose was emitted (● stripped) and it preceded the card.
+      expect(onTextChunk).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('어떤 것을 원하시는지') }));
+      expect(chunksBeforeCard).toBeGreaterThanOrEqual(1);
+
+      // Turn ends: the whole assistant message finally lands — the SAME prose as a text block plus
+      // the AskUserQuestion tool_use — then a closing block. The canonical text re-emit must be
+      // SUPPRESSED (the provisional already holds the slot; reload replaces it).
+      const canonicalModalLine = JSON.stringify({
+        type: 'assistant', uuid: 'a1', parentUuid: 'u1', timestamp: '2026-06-04T00:00:01.000Z', entrypoint: 'cli',
+        message: {
+          role: 'assistant', model: 'claude-opus-4-6',
+          content: [
+            { type: 'text', text: prose },
+            { type: 'tool_use', id: 'toolu_q', name: 'AskUserQuestion', input: { questions: [] } },
+          ],
+          stop_reason: 'tool_use',
+        },
+      });
+      await writeSession(SID, [userLine('u1'), canonicalModalLine, assistantLine('a2', { parentUuid: 'a1', text: 'done' })]);
+      await turn;
+
+      // The prose is emitted EXACTLY once (the provisional) — the canonical block's text was suppressed.
+      const proseEmits = onTextChunk.mock.calls.filter((c) => String((c[0] as { content: string }).content).includes('어떤 것을 원하시는지'));
       expect(proseEmits).toHaveLength(1);
     });
 

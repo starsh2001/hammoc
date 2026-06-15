@@ -38,6 +38,7 @@
 
 import type { PermissionMode } from '@hammoc/shared';
 import { liveFooterRows, liveFooterText } from './cliGridRegion.js';
+import { parseGridCards } from './cliGridCards.js';
 
 /** A single scraped AskUserQuestion choice. Story 32.8 scraped one of these from a single-question
  *  modal; ISSUE-99 reuses the same shape per-tab to reconstruct a **multi-question** (tabbed) modal,
@@ -353,23 +354,29 @@ export function parseConfirmChoiceMenu(rows: string[]): ParsedQuestion | null {
  * excluded). Returns null for a trivial fragment so a bare modal with no lead-in prose never
  * emits scrape noise.
  */
-export function parsePrecedingText(rows: string[]): string | null {
-  const footerIdx = lastRowMatching(rows, /to\s+navigate/i);
-  if (footerIdx < 0) return null;
-  const region = rows.slice(0, footerIdx);
-  // The modal begins at its header ballot-box row (☐/☒), or failing that at the first numbered
-  // option row. Everything above that is the lead-in prose.
-  let modalStart = region.findIndex((r) => /[☐☒]/.test(r));
-  if (modalStart < 0) modalStart = region.findIndex((r) => /^\s*1\.\s/.test(r));
+/**
+ * Shared lead-in prose extractor: the trailing contiguous block of prose rows immediately ABOVE
+ * `modalStart` in `rows` (box chrome AND a leading card bullet `●`/`⎿` stripped; blank / numbered-
+ * option / cursor / footer / affordance rows excluded). Returns null only for an empty/sub-word
+ * fragment (<4 chars) — a bare modal with no lead-in already yields an empty prose block (every row
+ * above it is chrome/blank → filtered), so the floor only drops a stray single glyph, NOT a real
+ * short sentence. (실측 2026-06-15: a 14-char Korean lead-in "선호 색상을 여쭙겠습니다." was wrongly
+ * dropped by an over-aggressive 16-char floor on a real AskUserQuestion frame.) Used by both
+ * `parsePrecedingText` (question modal) and `parsePrecedingPermissionText` (permission dialog) —
+ * they differ only in how they locate `modalStart`.
+ */
+function precedingProseAbove(rows: string[], modalStart: number): string | null {
   if (modalStart <= 0) return null;
   const isNoise = (l: string): boolean =>
     l.length === 0 ||
     /^[\s─-▟]*$/.test(l) || // blank or pure box-drawing chrome
     /^\d{1,2}\.\s/.test(l) || // a numbered option row
     /❯/.test(l) || // cursor / prompt marker
-    /to\s+navigate|Enter\b[^\n]{0,12}\bselect\b|Esc\b[^\n]{0,16}\bcancel\b/i.test(l) ||
+    /to\s+navigate|Enter\b[^\n]{0,12}\b(?:select|confirm)\b|Esc\b[^\n]{0,16}\bcancel\b|Tab\b[^\n]{0,16}\bamend\b/i.test(l) ||
     /Chat about this|Type something/i.test(l);
-  const lines = region.slice(0, modalStart).map((l) => stripBoxChrome(l));
+  // A prose row renders as a `●` body card; strip a leading card bullet so the scrape is clean text
+  // (the canonical reload shows it un-bulleted, so the provisional should match).
+  const lines = rows.slice(0, modalStart).map((l) => stripBoxChrome(l).replace(/^[●⎿]\s*/, '').trim());
   const prose: string[] = [];
   for (let i = lines.length - 1; i >= 0; i--) {
     if (isNoise(lines[i])) {
@@ -379,7 +386,56 @@ export function parsePrecedingText(rows: string[]): string | null {
     prose.unshift(lines[i]);
   }
   const text = prose.join(' ').trim();
-  return text.length < 16 ? null : text.slice(0, 2000);
+  return text.length < 4 ? null : text.slice(0, 2000);
+}
+
+export function parsePrecedingText(rows: string[]): string | null {
+  const footerIdx = lastRowMatching(rows, /to\s+navigate/i);
+  if (footerIdx < 0) return null;
+  const region = rows.slice(0, footerIdx);
+  // The modal begins at its header ballot-box row (☐/☒), or failing that at the first numbered
+  // option row. Everything above that is the lead-in prose.
+  let modalStart = region.findIndex((r) => /[☐☒]/.test(r));
+  if (modalStart < 0) modalStart = region.findIndex((r) => /^\s*1\.\s/.test(r));
+  return precedingProseAbove(region, modalStart);
+}
+
+/**
+ * Scrape the assistant prose rendered ABOVE a *permission* dialog (Story 32.6) — the sibling of
+ * `parsePrecedingText` for the permission path (Story 37.9, the same "[본문, 선택지]" ordering fix:
+ * claude writes the gated tool's whole assistant message — explanatory prose included — to the JSONL
+ * only AFTER the decision, so the screen is the only pre-decision source).
+ *
+ * The permission dialog has no "to navigate" footer; its gated tool renders as a `● Tool(…)` card
+ * with the "Create file / Do you want to… / 1. Yes / 2. … / Esc to cancel" chrome below it, and the
+ * explanatory prose sits ABOVE that tool card. So the region above the dialog footer is classified
+ * with the single-source `parseGridCards`, and the prose = the trailing contiguous run of TEXT cards
+ * immediately before the gated (last) tool card. Returns null when there is no lead-in prose.
+ * Best-effort / lossy like its sibling — the turn-end reload replaces it with the canonical block.
+ */
+export function parsePrecedingPermissionText(rows: string[]): string | null {
+  const footerIdx = lastRowMatching(rows, /Esc\b[^\n]{0,16}\bcancel\b|Tab\b[^\n]{0,16}\bamend\b/i);
+  const region = footerIdx >= 0 ? rows.slice(0, footerIdx) : rows;
+  const cards = parseGridCards(region);
+  // The gated tool is the LAST tool card (the dialog paints it just above the prompt). The prose is
+  // the contiguous TEXT cards right before it; with no tool card at all, consider every card.
+  let lastToolIdx = -1;
+  for (let i = cards.length - 1; i >= 0; i--) {
+    if (cards[i].kind === 'tool') {
+      lastToolIdx = i;
+      break;
+    }
+  }
+  const before = lastToolIdx >= 0 ? cards.slice(0, lastToolIdx) : cards;
+  const prose: string[] = [];
+  for (let i = before.length - 1; i >= 0; i--) {
+    if (before[i].kind === 'text') prose.unshift(before[i].text);
+    else break;
+  }
+  const text = prose.join(' ').trim();
+  // Same sub-word floor as precedingProseAbove (a real short lead-in must survive; only a stray glyph
+  // is dropped). parseGridCards already excludes non-text cards, so an empty block means no prose.
+  return text.length < 4 ? null : text.slice(0, 2000);
 }
 
 /**
