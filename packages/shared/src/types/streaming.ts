@@ -273,11 +273,16 @@ export interface StreamingState {
  */
 export interface StreamCallbacks {
   onSessionInit?: (sessionId: string, metadata: SessionMetadata) => void;
+  // Story 37.11 (AC4): `onTextChunk`/`onToolUse` carry the provisional flag on their struct
+  // (StreamChunk.provisional / TrackedToolCall.provisional); thinking/result have no struct so
+  // it rides an extra optional param. The CLI engine sets it true on the grid-scrape (provisional)
+  // path and leaves it unset on the file-drain / reload (authoritative) path — the two paths share
+  // these callbacks, so the SOURCE must be passed explicitly, not inferred from callback identity.
   onTextChunk?: (chunk: StreamChunk) => void;
-  onThinking?: (content: string) => void;
+  onThinking?: (content: string, provisional?: boolean) => void;
   onToolUse?: (toolCall: TrackedToolCall) => void;
   onToolInputUpdate?: (toolCallId: string, input: Record<string, unknown>) => void;
-  onToolResult?: (toolCallId: string, result: ToolResult) => void;
+  onToolResult?: (toolCallId: string, result: ToolResult, provisional?: boolean) => void;
   onComplete?: (response: ChatResponse) => void;
   onError?: (error: Error) => void;
   onCompact?: (metadata: CompactMetadata) => void;

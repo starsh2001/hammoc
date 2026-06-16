@@ -640,7 +640,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined, // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined // mirrorThrottleMs unset in SDK-mode tests (effectivePrefs.cliMirrorThrottleMs; Story 37.8 mirror — 9th arg)
       );
     });
 
@@ -676,7 +677,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined, // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined // mirrorThrottleMs unset in SDK-mode tests (effectivePrefs.cliMirrorThrottleMs; Story 37.8 mirror — 9th arg)
       );
     });
 
@@ -716,7 +718,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined, // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined // mirrorThrottleMs unset in SDK-mode tests (effectivePrefs.cliMirrorThrottleMs; Story 37.8 mirror — 9th arg)
       );
     });
 
@@ -756,7 +759,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined, // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined // mirrorThrottleMs unset in SDK-mode tests (effectivePrefs.cliMirrorThrottleMs; Story 37.8 mirror — 9th arg)
       );
     });
 
@@ -789,7 +793,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined, // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined // mirrorThrottleMs unset in SDK-mode tests (effectivePrefs.cliMirrorThrottleMs; Story 37.8 mirror — 9th arg)
       );
     });
   });
@@ -1027,7 +1032,8 @@ describe('WebSocket Handler', () => {
         expect.any(Function),
         undefined, // onGenerationProgress gated off in SDK mode (Story 33.3)
         undefined, // onPhase gated off in SDK mode (Story 36.2)
-        undefined // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined, // onScreenFrame gated off in SDK mode (mirror — CLI only)
+        undefined // mirrorThrottleMs unset in SDK-mode tests (effectivePrefs.cliMirrorThrottleMs; Story 37.8 mirror — 9th arg)
       );
     });
 

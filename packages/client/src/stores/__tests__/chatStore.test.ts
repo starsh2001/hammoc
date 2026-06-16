@@ -324,6 +324,51 @@ describe('useChatStore', () => {
     });
   });
 
+  // Story 37.11 (AC4): the provisional flag (CLI grid screen-scrape) propagates onto text/thinking/
+  // tool segments; authoritative emits leave it unset so the renderer dims only the live estimates.
+  describe('provisional flag propagation (Story 37.11 AC4)', () => {
+    it('marks a text segment provisional and leaves authoritative text unset', () => {
+      const { startStreaming, appendStreamingContent } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('live estimate', true);
+      expect(useChatStore.getState().streamingSegments[0]).toEqual({ type: 'text', content: 'live estimate', provisional: true });
+
+      // A following authoritative chunk to a NEW segment is not provisional.
+      const { addStreamingToolCall: addTool } = useChatStore.getState();
+      addTool({ id: 'tx', name: 'Read' });
+      appendStreamingContent('authoritative', false);
+      const segs = useChatStore.getState().streamingSegments;
+      expect(segs[segs.length - 1]).toEqual({ type: 'text', content: 'authoritative' });
+    });
+
+    it('marks a thinking segment provisional', () => {
+      const { startStreaming, addStreamingThinking } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      addStreamingThinking('Thought for 5s', true);
+      expect(useChatStore.getState().streamingSegments[0]).toEqual({ type: 'thinking', content: 'Thought for 5s', provisional: true });
+    });
+
+    it('marks a tool segment provisional from the tool call, and keeps it live after a provisional result flip', () => {
+      const { startStreaming, addStreamingToolCall, updateStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Write', provisional: true });
+      const seg = useChatStore.getState().streamingSegments[0];
+      expect(seg).toMatchObject({ type: 'tool', status: 'pending', provisional: true });
+
+      // A provisional grid result flip completes the tool but keeps it live-badged (not finalized).
+      updateStreamingToolCall('cli-prov-tool-0', 'done', false, true);
+      const flipped = useChatStore.getState().streamingSegments[0];
+      expect(flipped).toMatchObject({ type: 'tool', status: 'completed', provisional: true });
+    });
+
+    it('leaves an SDK (non-provisional) tool segment unmarked', () => {
+      const { startStreaming, addStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      addStreamingToolCall({ id: 'toolu_1', name: 'Read' });
+      expect(useChatStore.getState().streamingSegments[0]).not.toHaveProperty('provisional');
+    });
+  });
+
   describe('addStreamingToolCall', () => {
     it('adds tool segment with pending status and startedAt', () => {
       const { startStreaming, addStreamingToolCall } = useChatStore.getState();
@@ -885,6 +930,13 @@ describe('useChatStore', () => {
       expect(useChatStore.getState().generationProgress).toEqual({ tokens: 246, elapsedSeconds: 6 });
       useChatStore.getState().setGenerationProgress(null);
       expect(useChatStore.getState().generationProgress).toBeNull();
+    });
+
+    it('preserves the thinking-phase flag (Story 37.11 — drives the "Thinking…" progress label)', () => {
+      // verbose-mode claude paints no live thinking content — the spinner phase flag is the only live
+      // "thinking" signal; the store must carry it so MessageArea can switch to streaming.thinkingProgress.
+      useChatStore.getState().setGenerationProgress({ tokens: 143, elapsedSeconds: 18, thinking: true });
+      expect(useChatStore.getState().generationProgress).toEqual({ tokens: 143, elapsedSeconds: 18, thinking: true });
     });
 
     it('startStreaming clears any stale progress', () => {

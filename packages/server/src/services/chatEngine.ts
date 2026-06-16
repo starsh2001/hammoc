@@ -43,7 +43,7 @@ export interface ChatEngine {
     options?: ChatOptions,
     canUseTool?: CanUseTool,
     onRawMessage?: (messageType: string) => void,
-    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
+    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number; thinking?: boolean }) => void,
     /**
      * Story 36.2: CLI pre-generation phase (launching → submitting → waiting → null).
      * Server-side, `@hammoc/shared`-independent (mirrors onGenerationProgress). CLI-only;

@@ -179,6 +179,30 @@ describe('presentationQueue', () => {
     expect(events).toEqual(['card']); // the card still revealed, in order
   });
 
+  it('forwards the per-chunk provisional flag from enqueueText to the append sink (Story 37.11 AC4)', async () => {
+    // The provisional flag rides the default-typer wrapper (`options.typer` is intentionally NOT
+    // injected so the queue builds the wrapper that reads `currentProvisional`). A controllable rAF
+    // schedule lets the test drive the typer deterministically.
+    const appended: Array<{ chunk: string; provisional?: boolean }> = [];
+    const frames: Array<() => void> = [];
+    const q = createPresentationQueue({
+      append: (chunk, provisional) => { appended.push({ chunk, provisional }); },
+      typerOptions: { minStep: 100, schedule: (cb) => { frames.push(cb); return frames.length; } },
+    });
+    const runFrames = async () => { while (frames.length) { const f = frames.shift()!; f(); } await tick(); };
+
+    q.enqueueText('live screen text', true);
+    await tick();
+    await runFrames();
+    expect(appended).toEqual([{ chunk: 'live screen text', provisional: true }]);
+
+    // An authoritative chunk (file-drain backstop) forwards provisional=false — not dimmed.
+    q.enqueueText('authoritative text', false);
+    await tick();
+    await runFrames();
+    expect(appended[appended.length - 1]).toEqual({ chunk: 'authoritative text', provisional: false });
+  });
+
   it('drain() resolves once the queue has fully played out', async () => {
     const fake = makeFakeTyper();
     const sched = makeScheduler();

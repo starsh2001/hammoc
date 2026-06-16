@@ -39,6 +39,8 @@
  * [Source: docs/prd/epic-37-cli-terminal-emulation.md#story-379]
  */
 
+import type { CliBulletColor } from './cliScreenModel.js';
+
 /** The card kinds the parser distinguishes. 37.10 maps each onto a stream callback
  *  (text → onTextChunk, tool → onToolUse, result → onToolResult, thinking → onThinking). */
 export type GridCardKind = 'text' | 'tool' | 'result' | 'thinking';
@@ -49,6 +51,14 @@ export interface GridCard {
   text: string;
   /** For a `tool` card: the tool name parsed from `● Tool(…)` (e.g. "Write", "PowerShell"). */
   toolName?: string;
+  /**
+   * For a card opened on a `●` row: the bullet's foreground-color CLASS (Story 37.10), supplied
+   * by the optional `bulletColors` arg. For a `tool` card this is the STATUS signal — 'green' =
+   * complete, anything else (gray/other) = still running — far more robust than the `⎿ Waiting…`
+   * placeholder text. Undefined when colors weren't passed (pure-row unit tests) or for `result`/
+   * `thinking` cards (no `●` bullet).
+   */
+  bulletColor?: CliBulletColor;
 }
 
 /** The assistant card bullet (U+25CF) — opens a body (text) OR a tool-use card. */
@@ -57,6 +67,16 @@ const CARD_BULLET = '●';
 const RESULT_BULLET = '⎿';
 /** The thinking-summary header claude paints once a thinking block lands ("Thought for 16s"). */
 const THOUGHT_RE = /^Thought for\b/i;
+/**
+ * The verbose/expanded thinking-detail glyph (U+2234 THEREFORE). In verbose mode (Hammoc's spawn —
+ * `showThinkingSummaries` + `verbose`) claude paints the EXPANDED reasoning as a `∴ <reasoning>`
+ * block in the scrollback BODY, NOT a collapsed "Thought for Ns" header (that summary lives in the
+ * footer spinner instead). 실측 2026-06-16 (real production-settings PTY capture): the full multi-line
+ * reasoning lands on screen ~7s BEFORE the JSONL canonical (which is written only at turn end, with
+ * the next block). Recognizing this glyph lets `emitProvisionalCards` scrape the live reasoning so the
+ * thinking card shows during that 7s window instead of waiting for the file.
+ */
+const THINKING_DETAIL_GLYPH = '∴';
 /** A tool-use header body: a tool name immediately followed by `(` — "Write(", "PowerShell(". */
 const TOOL_HEADER_RE = /^([A-Za-z][A-Za-z0-9_]*)\(/;
 /** The collapse affordance claude appends to a truncated card ("(ctrl+o to expand)" / "(ctrl+r …)",
@@ -75,8 +95,12 @@ function clean(s: string): string {
  * (space-joined). Blank rows are spacers (claude pads between cards) and neither open nor
  * close a card. Empty cards are dropped, so a lone glyph row with no body yields nothing.
  * Pure — no I/O, no engine state.
+ *
+ * `bulletColors` (optional, index-aligned with `rows` — from `CliScreenModel.readBulletColors()`)
+ * tags each `●`-opened card with its bullet color CLASS (Story 37.10 tool status). When omitted
+ * the cards carry no `bulletColor` (pure unit tests / colorless callers).
  */
-export function parseGridCards(rows: string[]): GridCard[] {
+export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]): GridCard[] {
   const cards: GridCard[] = [];
   let current: GridCard | null = null;
 
@@ -88,7 +112,8 @@ export function parseGridCards(rows: string[]): GridCard[] {
     current = null;
   };
 
-  for (const raw of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const raw = rows[i];
     const trimmed = raw.trim();
     if (trimmed.length === 0) continue; // spacer row — does not break a card span
 
@@ -96,13 +121,22 @@ export function parseGridCards(rows: string[]): GridCard[] {
       flush();
       const body = clean(trimmed.slice(CARD_BULLET.length).trim());
       const toolMatch = body.match(TOOL_HEADER_RE);
-      current = toolMatch ? { kind: 'tool', text: body, toolName: toolMatch[1] } : { kind: 'text', text: body };
+      const bulletColor = bulletColors?.[i];
+      current = toolMatch
+        ? { kind: 'tool', text: body, toolName: toolMatch[1], ...(bulletColor ? { bulletColor } : {}) }
+        : { kind: 'text', text: body, ...(bulletColor ? { bulletColor } : {}) };
     } else if (trimmed.startsWith(RESULT_BULLET)) {
       flush();
       current = { kind: 'result', text: clean(trimmed.slice(RESULT_BULLET.length).trim()) };
     } else if (THOUGHT_RE.test(trimmed)) {
       flush();
       current = { kind: 'thinking', text: clean(trimmed) };
+    } else if (trimmed.startsWith(THINKING_DETAIL_GLYPH)) {
+      // Story 37.11: a verbose-mode expanded reasoning block opens with `∴`; its wrapped continuation
+      // rows fold into this card (the `else if (current)` arm below), so the FULL on-screen reasoning
+      // is captured as one thinking card — the body counterpart of the footer "Thought for Ns" summary.
+      flush();
+      current = { kind: 'thinking', text: clean(trimmed.slice(THINKING_DETAIL_GLYPH.length).trim()) };
     } else if (current) {
       // Continuation of the open card (wrapped prose / multi-line tool output).
       const extra = clean(trimmed);

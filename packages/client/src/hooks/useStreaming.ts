@@ -154,6 +154,10 @@ export function useStreaming() {
     // inserted, the buffer is flushed so text stays in its correct segment.
     let frameBuffer = '';
     let frameRequestId: number | null = null;
+    // Story 37.11 (AC4): the provisional state of the coalesced frame buffer. CLI streaming text is
+    // provisional (grid screen-scrape) until the authoritative file-drain / reload; SDK text never
+    // is. A frame's chunks share one source, so the latest chunk's flag is the segment's flag.
+    let frameBufferProvisional: boolean | undefined;
 
     // --- Synthetic typing (CLI mode, opt-in `cliSyntheticTyping`) ---
     // CLI mode delivers assistant text one COMPLETED block at a time, so the frame
@@ -172,20 +176,24 @@ export function useStreaming() {
       frameRequestId = null;
       if (frameBuffer.length > 0) {
         const text = frameBuffer;
+        const prov = frameBufferProvisional;
         frameBuffer = '';
-        appendStreamingContent(text);
+        frameBufferProvisional = undefined;
+        appendStreamingContent(text, prov);
       }
     };
 
     /** Enqueue text content for coalesced rendering (one state update per frame) */
-    const enqueueChunk = (content: string) => {
+    const enqueueChunk = (content: string, provisional?: boolean) => {
       // CLI synthetic typing: release this block character-by-character. SDK mode (and CLI
       // with the toggle off) uses the original per-frame coalescing path below.
       if (isSyntheticTyping()) {
-        preso.enqueueText(content);
+        preso.enqueueText(content, provisional);
         return;
       }
       frameBuffer += content;
+      // Story 37.11: a frame's chunks share one source; the latest flag wins for the coalesced segment.
+      frameBufferProvisional = provisional;
       if (frameRequestId === null) {
         frameRequestId = requestAnimationFrame(flushFrameBuffer);
       }
@@ -199,8 +207,10 @@ export function useStreaming() {
       }
       if (frameBuffer.length > 0) {
         const text = frameBuffer;
+        const prov = frameBufferProvisional;
         frameBuffer = '';
-        appendStreamingContent(text);
+        frameBufferProvisional = undefined;
+        appendStreamingContent(text, prov);
       }
       // Commit any in-flight synthetic-typing text too, so a following thinking/tool/
       // permission segment is ordered AFTER the typed text. In synthetic mode the segment
@@ -211,6 +221,7 @@ export function useStreaming() {
     /** Discard all pending text (for abort/error) */
     const clearChunkQueue = () => {
       frameBuffer = '';
+      frameBufferProvisional = undefined;
       if (frameRequestId !== null) {
         cancelAnimationFrame(frameRequestId);
         frameRequestId = null;
@@ -274,7 +285,7 @@ export function useStreaming() {
     };
 
     // Handle incoming thinking chunks
-    const handleThinkingChunk = (data: { content: string }) => {
+    const handleThinkingChunk = (data: { content: string; provisional?: boolean }) => {
       const state = useChatStore.getState();
       // Start streaming if not yet active — covers both first chunk (sessionId null)
       // and passive viewer (another browser set streamingSessionId via session:resumed
@@ -287,8 +298,8 @@ export function useStreaming() {
         useChatStore.setState({ isCompacting: false });
       }
       // Reveal the thinking card: staggered after prior text/cards in synthetic mode,
-      // flush-then-insert immediately otherwise.
-      revealSegment(() => addStreamingThinking(data.content));
+      // flush-then-insert immediately otherwise. Story 37.11: propagate the provisional flag.
+      revealSegment(() => addStreamingThinking(data.content, data.provisional));
     };
 
     // Handle incoming stream chunks
@@ -342,7 +353,8 @@ export function useStreaming() {
       // This is a safety net for reconnect replay scenarios.
       autoResolveStaleInteractiveSegments();
 
-      enqueueChunk(data.content);
+      // Story 37.11 (AC4): propagate the provisional flag (CLI grid screen-scrape) to the segment.
+      enqueueChunk(data.content, data.provisional);
     };
 
     /**
@@ -455,7 +467,7 @@ export function useStreaming() {
     };
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
-    const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown>; startedAt?: number }) => {
+    const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown>; startedAt?: number; provisional?: boolean }) => {
       // Skip AskUserQuestion from stream events — stream-based tool:call has empty input
       // because input_json_delta hasn't been fully received yet. The interactive card is
       // created later via permission:request (from canUseTool) which has the full input.
@@ -466,11 +478,13 @@ export function useStreaming() {
       // Reveal the tool card. Synthetic mode: queue it so it bubbles in AFTER the assistant
       // text finishes typing (staggered). Otherwise: flush buffered text first to prevent the
       // response from splitting, then insert immediately (original behavior).
+      // Story 37.11 (AC4): a CLI grid tool card is provisional (name-only, empty input until reload).
       revealSegment(() => addStreamingToolCall({
         id: data.id,
         name: data.name,
         input: data.input,
         startedAt: data.startedAt,
+        ...(data.provisional ? { provisional: true } : {}),
       }));
     };
 
@@ -608,10 +622,11 @@ export function useStreaming() {
     };
 
     // Handle tool result - update tool segment status
-    const handleToolResult = (data: { toolCallId: string; result: ToolResult }) => {
+    const handleToolResult = (data: { toolCallId: string; result: ToolResult; provisional?: boolean }) => {
       updateSegment(() => {
         const { success, output, error } = data.result;
-        updateStreamingToolCall(data.toolCallId, output ?? error ?? '', !success);
+        // Story 37.11 (AC4): a provisional grid flip keeps the card live-badged (not finalized early).
+        updateStreamingToolCall(data.toolCallId, output ?? error ?? '', !success, data.provisional);
 
         // Auto-resolve interactive segments (e.g., AskUserQuestion) associated
         // with this tool call. During reconnect replay, tool:result arrives for
@@ -666,7 +681,7 @@ export function useStreaming() {
     // Story 32.7: handle generation:progress — store the transient CLI "↓ N tokens · Ns"
     // signal. Live-only (not buffered/replayed); cleared by start/complete/abort.
     // getState() avoids adding to the effect's dependency array (matches handleSessionForked).
-    const handleGenerationProgress = (data: { tokens: number; elapsedSeconds: number }) => {
+    const handleGenerationProgress = (data: { tokens: number; elapsedSeconds: number; thinking?: boolean }) => {
       useChatStore.getState().setGenerationProgress(data);
     };
 
@@ -1055,6 +1070,9 @@ export function useStreaming() {
       let activeModel: string | null = null;
       let isCompacting = false;
       let pendingTextBuffer = '';
+      // Story 37.11 (AC4): carry the provisional flag through the buffered-text accumulator so a
+      // reconnect mid-turn restores the dimmed + live-badged state (until the authoritative reload).
+      let pendingTextProvisional: boolean | undefined;
       const localSeenPermissionIds = new Set<string>();
       // Track completed turns — when message:complete arrives, convert segments to messages
       const completedMessages: HistoryMessage[] = [];
@@ -1075,11 +1093,13 @@ export function useStreaming() {
           // Merge into last text segment if possible
           const lastSeg = segments[segments.length - 1];
           if (lastSeg && lastSeg.type === 'text') {
-            (lastSeg as { type: 'text'; content: string }).content += pendingTextBuffer;
+            (lastSeg as { type: 'text'; content: string; provisional?: boolean }).content += pendingTextBuffer;
+            if (pendingTextProvisional) (lastSeg as { provisional?: boolean }).provisional = true;
           } else {
-            segments.push({ type: 'text', content: pendingTextBuffer });
+            segments.push({ type: 'text', content: pendingTextBuffer, ...(pendingTextProvisional ? { provisional: true } : {}) });
           }
           pendingTextBuffer = '';
+          pendingTextProvisional = undefined;
         }
       };
 
@@ -1215,30 +1235,35 @@ export function useStreaming() {
             if (!sessionId && d.sessionId) sessionId = d.sessionId;
             if (!messageId && d.messageId) messageId = d.messageId;
             isCompacting = false;
+            // Story 37.11: a turn's chunks share one source; the latest flag wins for the merged segment.
+            if (d.provisional && pendingTextBuffer.length === 0) pendingTextProvisional = true;
+            else if (!d.provisional) pendingTextProvisional = undefined;
             pendingTextBuffer += d.content;
             break;
           }
           case 'thinking:chunk': {
-            const d = eventData as { content: string };
+            const d = eventData as { content: string; provisional?: boolean };
             flushText();
             isCompacting = false;
             // Merge into last thinking segment
             const lastSeg = segments[segments.length - 1];
             if (lastSeg && lastSeg.type === 'thinking') {
-              (lastSeg as { type: 'thinking'; content: string }).content += d.content;
+              (lastSeg as { type: 'thinking'; content: string; provisional?: boolean }).content += d.content;
+              if (d.provisional) (lastSeg as { provisional?: boolean }).provisional = true;
             } else {
-              segments.push({ type: 'thinking', content: d.content });
+              segments.push({ type: 'thinking', content: d.content, ...(d.provisional ? { provisional: true } : {}) });
             }
             break;
           }
           case 'tool:call': {
-            const d = eventData as { id: string; name: string; input?: Record<string, unknown>; startedAt?: number };
+            const d = eventData as { id: string; name: string; input?: Record<string, unknown>; startedAt?: number; provisional?: boolean };
             if (d.name === 'AskUserQuestion') break;
             flushText();
             segments.push({
               type: 'tool',
               toolCall: { id: d.id, name: d.name, input: d.input, startedAt: d.startedAt },
               status: 'pending',
+              ...(d.provisional ? { provisional: true } : {}),
             });
             break;
           }
@@ -1251,12 +1276,14 @@ export function useStreaming() {
             break;
           }
           case 'tool:result': {
-            const d = eventData as { toolCallId: string; result: ToolResult };
+            const d = eventData as { toolCallId: string; result: ToolResult; provisional?: boolean };
             const found = findToolSegment(d.toolCallId);
             if (found) {
-              const toolSeg = found.seg as { type: 'tool'; toolCall: StreamingToolCall; status: string };
+              const toolSeg = found.seg as { type: 'tool'; toolCall: StreamingToolCall; status: string; provisional?: boolean };
               toolSeg.toolCall.output = d.result.output ?? d.result.error ?? '';
               toolSeg.status = d.result.success ? 'completed' : 'error';
+              // Story 37.11: a provisional grid flip keeps the card live-badged.
+              if (d.provisional) toolSeg.provisional = true;
             }
             // Auto-resolve interactive segments for this tool call
             for (const seg of segments) {
@@ -1443,7 +1470,7 @@ export function useStreaming() {
             break;
           }
           case 'generation:progress': {
-            lastGenerationProgress = eventData as { tokens: number; elapsedSeconds: number };
+            lastGenerationProgress = eventData as { tokens: number; elapsedSeconds: number; thinking?: boolean };
             break;
           }
           // Skip tool:progress during replay (only elapsed times, final state is in tool:result)

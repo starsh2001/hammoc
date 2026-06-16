@@ -170,7 +170,9 @@
   },
   "streamingMessage": {
     "ariaLabel": "Claude is responding",
-    "assistantName": "Claude"
+    "assistantName": "Claude",
+    "liveBadge": "live",
+    "provisionalAriaLabel": "Live screen estimate — not yet finalized"
   },
   "messageActionBar": {
     "copy": "Copy",
@@ -303,6 +305,7 @@
     "screenStalled": "Claude's screen has been still for a while",
     "screenStallStop": "Stop",
     "generationProgress": "↓ {{tokens}} tokens · {{time}}",
+    "thinkingProgress": "Thinking… ↓ {{tokens}} tokens · {{time}}",
     "cliPhase": {
       "launching": "Launching Claude Code…",
       "submitting": "Sending prompt…",

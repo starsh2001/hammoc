@@ -901,4 +901,47 @@ describe('MessageArea', () => {
       expect(screen.queryByText('After permission')).not.toBeInTheDocument();
     });
   });
+
+  // Story 37.11 (AC4): a PROVISIONAL card (CLI grid screen-scrape) renders dimmed + a color-
+  // INDEPENDENT `live` text badge, with a locale-stable `data-provisional` hook for selectors.
+  // Tests run under the ko locale (setup forces it), so the badge text is '라이브'.
+  describe('provisional (live) card rendering (Story 37.11 AC4)', () => {
+    it('marks a provisional TEXT segment dimmed with a live badge + data-provisional hook', () => {
+      const seg: StreamingSegment = { type: 'text', content: 'Live screen estimate body', provisional: true };
+      const { container } = render(
+        <MessageArea streamingSegments={[seg]} isStreaming={true}>{null}</MessageArea>
+      );
+      const wrapper = container.querySelector('[data-provisional="true"]');
+      expect(wrapper).toBeInTheDocument();
+      expect(wrapper).toContainElement(screen.getByText('Live screen estimate body'));
+      expect(screen.getByText('라이브')).toBeInTheDocument(); // color-independent affordance
+    });
+
+    it('does NOT mark an AUTHORITATIVE (non-provisional) text segment', () => {
+      const seg: StreamingSegment = { type: 'text', content: 'Authoritative answer body' };
+      const { container } = render(
+        <MessageArea streamingSegments={[seg]} isStreaming={true}>{null}</MessageArea>
+      );
+      expect(container.querySelector('[data-provisional="true"]')).not.toBeInTheDocument();
+      expect(screen.queryByText('라이브')).not.toBeInTheDocument();
+    });
+
+    it('marks a provisional TOOL segment (name-only grid card) as live', () => {
+      const seg: StreamingSegment = { type: 'tool', toolCall: { id: 't1', name: 'Write' }, status: 'pending', provisional: true };
+      const { container } = render(
+        <MessageArea streamingSegments={[seg]} isStreaming={true}>{null}</MessageArea>
+      );
+      expect(container.querySelector('[data-provisional="true"]')).toBeInTheDocument();
+      expect(screen.getByText('라이브')).toBeInTheDocument();
+    });
+
+    it('marks a provisional THINKING segment as live', () => {
+      const seg: StreamingSegment = { type: 'thinking', content: 'Thought for 5s', provisional: true };
+      const { container } = render(
+        <MessageArea streamingSegments={[seg]} isStreaming={true}>{null}</MessageArea>
+      );
+      expect(container.querySelector('[data-provisional="true"]')).toBeInTheDocument();
+      expect(screen.getByText('라이브')).toBeInTheDocument();
+    });
+  });
 });

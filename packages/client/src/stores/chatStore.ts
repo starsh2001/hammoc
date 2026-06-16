@@ -51,6 +51,8 @@ export interface StreamingToolCall {
   output?: string;
   startedAt?: number;
   duration?: number;
+  /** Story 37.11 (AC4): true when this is a CLI grid screen-scrape (empty input until reload). */
+  provisional?: boolean;
 }
 
 /** Interactive choice option */
@@ -80,12 +82,20 @@ export interface ResultErrorData {
   result: string;
 }
 
-/** Streaming segment - discriminated union for text, tool, thinking, system, and interactive segments */
+/**
+ * Streaming segment - discriminated union for text, tool, thinking, system, and interactive segments
+ *
+ * Story 37.11 (AC4): `provisional` on text/thinking/tool marks a CLI grid SCREEN-SCRAPE (the live
+ * estimate) vs the file-parsed authoritative copy. The renderer dims a provisional card and shows a
+ * color-independent `live` text badge; the turn-end authoritative reload clears the whole streaming
+ * segment list, so the distinction disappears on completion. Unset everywhere else (SDK mode never
+ * sets it; CLI file-drain / reload leave it unset).
+ */
 export type StreamingSegment =
-  | { type: 'text'; content: string }
-  | { type: 'thinking'; content: string }
+  | { type: 'text'; content: string; provisional?: boolean }
+  | { type: 'thinking'; content: string; provisional?: boolean }
   | { type: 'system'; subtype: 'compact' | 'info' | 'abort'; message: string }
-  | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied' }
+  | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied'; provisional?: boolean }
   | {
       type: 'interactive';
       id: string;
@@ -103,19 +113,17 @@ export type StreamingSegment =
   | { type: 'result_error'; subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string };
 
 /** Type guard for text segments */
-export function isTextSegment(seg: StreamingSegment): seg is { type: 'text'; content: string } {
+export function isTextSegment(seg: StreamingSegment): seg is Extract<StreamingSegment, { type: 'text' }> {
   return seg.type === 'text';
 }
 
 /** Type guard for thinking segments */
-export function isThinkingSegment(seg: StreamingSegment): seg is { type: 'thinking'; content: string } {
+export function isThinkingSegment(seg: StreamingSegment): seg is Extract<StreamingSegment, { type: 'thinking' }> {
   return seg.type === 'thinking';
 }
 
 /** Type guard for tool segments */
-export function isToolSegment(
-  seg: StreamingSegment
-): seg is { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied' } {
+export function isToolSegment(seg: StreamingSegment): seg is Extract<StreamingSegment, { type: 'tool' }> {
   return seg.type === 'tool';
 }
 
@@ -171,7 +179,7 @@ interface ChatState {
    * replay buffer; cleared when streaming starts/completes/aborts. null when no
    * progress signal is active (SDK mode never sets it).
    */
-  generationProgress: { tokens: number; elapsedSeconds: number } | null;
+  generationProgress: { tokens: number; elapsedSeconds: number; thinking?: boolean } | null;
   /**
    * Story 36.2: CLI pre-generation phase (boot/inject window). Live-only, cleared
    * alongside generationProgress; null when no phase is active (SDK mode never sets it).
@@ -260,16 +268,16 @@ interface ChatActions {
   sendMessage: (content: string, options: SendMessageOptions) => void;
   /** Start streaming a new message */
   startStreaming: (sessionId: string, messageId: string) => void;
-  /** Append content to the current streaming text segment */
-  appendStreamingContent: (content: string) => void;
-  /** Append content to the current streaming thinking segment */
-  addStreamingThinking: (content: string) => void;
+  /** Append content to the current streaming text segment. Story 37.11: `provisional` marks a CLI grid screen-scrape (dimmed + live-badged). */
+  appendStreamingContent: (content: string, provisional?: boolean) => void;
+  /** Append content to the current streaming thinking segment. Story 37.11: `provisional` per above. */
+  addStreamingThinking: (content: string, provisional?: boolean) => void;
   /** Add a streaming tool call segment */
   addStreamingToolCall: (toolCall: StreamingToolCall) => void;
   /** Update a streaming tool call's input. Set buffer=true to queue the update if the segment doesn't exist yet. */
   updateStreamingToolCallInput: (toolCallId: string, input: Record<string, unknown>, buffer?: boolean) => void;
-  /** Update a streaming tool call result and status */
-  updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean) => void;
+  /** Update a streaming tool call result and status. Story 37.11: `provisional` keeps the card live-badged (grid flip). */
+  updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean, provisional?: boolean) => void;
   /** Complete streaming: convert segments to HistoryMessages and clear state */
   completeStreaming: () => void;
   /** Abort streaming and clear state */
@@ -343,7 +351,7 @@ interface ChatActions {
   /** Set isRewinding state */
   setIsRewinding: (isRewinding: boolean) => void;
   /** Story 32.7: set/clear the transient CLI generation-progress signal (null clears) */
-  setGenerationProgress: (progress: { tokens: number; elapsedSeconds: number } | null) => void;
+  setGenerationProgress: (progress: { tokens: number; elapsedSeconds: number; thinking?: boolean } | null) => void;
   /** Story 36.2: set/clear the CLI pre-generation phase (null = phase done / hand off to progress) */
   setCliPhase: (phase: 'launching' | 'submitting' | 'waiting' | null) => void;
   /** Set/clear the soft CLI screen-stall flag (from the cli:screen-stall signal). */
@@ -554,7 +562,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
-  appendStreamingContent: (content: string) => {
+  appendStreamingContent: (content: string, provisional?: boolean) => {
     // Ignore empty strings to prevent unnecessary empty segments
     if (!content) return;
 
@@ -562,20 +570,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const lastSegment = segments[segments.length - 1];
 
     if (lastSegment?.type === 'text') {
-      // Append to existing text segment
+      // Append to existing text segment. Story 37.11: the segment's provisional state follows the
+      // latest chunk — a CLI text segment stays provisional while the grid is the live source and
+      // turns authoritative if the file-drain backstop appends (or on reload, which clears segments).
       const updated = [...segments];
       updated[updated.length - 1] = {
         type: 'text',
         content: lastSegment.content + content,
+        ...(provisional ? { provisional: true } : {}),
       };
       set({ streamingSegments: updated });
     } else {
       // Create new text segment (first segment or after tool segment)
-      set({ streamingSegments: [...segments, { type: 'text', content }] });
+      set({ streamingSegments: [...segments, { type: 'text', content, ...(provisional ? { provisional: true } : {}) }] });
     }
   },
 
-  addStreamingThinking: (content: string) => {
+  addStreamingThinking: (content: string, provisional?: boolean) => {
     if (!content) return;
 
     const segments = get().streamingSegments;
@@ -587,11 +598,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       updated[updated.length - 1] = {
         type: 'thinking',
         content: lastSegment.content + content,
+        ...(provisional ? { provisional: true } : {}),
       };
       set({ streamingSegments: updated });
     } else {
       // Create new thinking segment
-      set({ streamingSegments: [...segments, { type: 'thinking', content }] });
+      set({ streamingSegments: [...segments, { type: 'thinking', content, ...(provisional ? { provisional: true } : {}) }] });
     }
   },
 
@@ -634,6 +646,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           toolCall: { ...toolCall, ...(bufferedInput && { input: bufferedInput }), startedAt: toolCall.startedAt ?? Date.now() },
           status: 'pending',
           ...(bufferedPermissionId && { permissionId: bufferedPermissionId, permissionStatus: 'waiting' as const }),
+          // Story 37.11 (AC4): a CLI grid tool card is provisional (name-only, empty input until reload).
+          ...(toolCall.provisional ? { provisional: true } : {}),
         },
       ],
     });
@@ -660,7 +674,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ streamingSegments: updated });
   },
 
-  updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean) => {
+  updateStreamingToolCall: (toolCallId: string, result: string, isError?: boolean, provisional?: boolean) => {
     const segments = get().streamingSegments;
     const updated = segments.map((seg) => {
       if (seg.type !== 'tool' || seg.toolCall.id !== toolCallId) return seg;
@@ -669,6 +683,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         ...seg,
         toolCall: { ...seg.toolCall, output: result, duration },
         status: isError ? 'error' as const : 'completed' as const,
+        // Story 37.11 (AC4): a PROVISIONAL grid result (the screen flip) keeps the card live-badged —
+        // it must not finalize early. An authoritative result (SDK / file-drain) leaves the flag as-is
+        // (SDK was never provisional; the turn-end reload clears the card regardless). Only set true.
+        ...(provisional ? { provisional: true } : {}),
         // Auto-resolve stale permission on reconnect replay: if the tool
         // completed, the permission must have been handled already.
         ...(seg.permissionStatus === 'waiting' && {

@@ -372,6 +372,14 @@ export interface StreamChunk {
   messageId: string;
   content: string;
   done: boolean;
+  /**
+   * Story 37.11 (AC4): true when this chunk is a PROVISIONAL screen-scrape (CLI grid card),
+   * not yet replaced by the file-parsed authoritative copy. The client renders provisional
+   * cards with a reduced opacity + a `live` text badge (color-independent a11y affordance) and
+   * clears the distinction on the turn-end authoritative reload. Additive/optional — unset
+   * (SDK mode, file-drain, reload) keeps the pre-37.11 behavior (authoritative render).
+   */
+  provisional?: boolean;
 }
 
 /**
@@ -383,6 +391,14 @@ export interface ToolCall {
   input: Record<string, unknown>;
   /** Server timestamp (ms) for timer preservation on reconnect */
   startedAt?: number;
+  /**
+   * Story 37.11 (AC4): true when this tool card is a PROVISIONAL screen-scrape (CLI grid).
+   * A provisional tool card carries an EMPTY `input` (the screen truncates the tool input —
+   * the authoritative reload supplies it), so it is the most visibly "not-yet-final" card —
+   * the client renders it dimmed + `live`-badged until the reload replaces it. Additive/
+   * optional — unset (SDK mode, file-drain, reload) keeps the authoritative render.
+   */
+  provisional?: boolean;
 }
 
 /**

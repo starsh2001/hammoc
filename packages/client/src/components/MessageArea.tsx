@@ -515,8 +515,14 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   // mm:ss elapsed clock (700s reads as 11:40); under a minute is 0:SS — one colon format, no
   // per-locale unit text needed.
   const elapsedClock = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
+  // Story 37.11: label the (already-live) progress as "Thinking…" while the spinner reports the
+  // thinking phase. verbose-mode claude paints NO live thinking *content* (실측) — only this spinner
+  // phase advances — so labeling the existing indicator is the achievable "see thinking in progress".
   const generationProgressLabel = generationProgress
-    ? t('streaming.generationProgress', { tokens: generationProgress.tokens, time: elapsedClock })
+    ? t(generationProgress.thinking ? 'streaming.thinkingProgress' : 'streaming.generationProgress', {
+        tokens: generationProgress.tokens,
+        time: elapsedClock,
+      })
     : null;
 
   // Story 36.2: localized phase label, shown in the waiting indicator before the first block.
@@ -787,11 +793,30 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           return null;
           })();
           if (el == null) return null;
+          // Story 37.11 (AC4): a PROVISIONAL card is a CLI grid SCREEN-SCRAPE (live estimate) not yet
+          // replaced by the file-parsed authoritative copy — dim it and attach a color-INDEPENDENT
+          // `live` text badge (a11y: never color-only). Applies uniformly to text/thinking/tool cards.
+          // The turn-end authoritative reload clears streamingSegments, so the distinction disappears
+          // on completion. `data-provisional` is the locale-independent integration-test hook.
+          const isProvisional = (seg as { provisional?: boolean }).provisional === true;
+          const card: ReactNode = isProvisional ? (
+            <div
+              key={`seg-prov-${index}`}
+              className="relative opacity-[0.65] transition-opacity"
+              data-provisional="true"
+              aria-label={t('streamingMessage.provisionalAriaLabel')}
+            >
+              {el}
+              <span className="pointer-events-none absolute left-3 -top-1.5 z-10 select-none rounded-full bg-blue-500/90 px-1.5 py-px text-[10px] font-semibold uppercase leading-tight tracking-wide text-white shadow-sm">
+                {t('streamingMessage.liveBadge')}
+              </span>
+            </div>
+          ) : el;
           // Bubble each streaming card in as it mounts. A new segment mounts fresh → the
           // animation plays once; an existing segment keeps the same wrapper key, so its
           // text can keep growing without replaying. Toggle off → original static render.
-          if (!cardEntranceAnimation) return el;
-          return <div key={`seg-anim-${index}`} className="animate-fadeInUp">{el}</div>;
+          if (!cardEntranceAnimation) return card;
+          return <div key={`seg-anim-${index}`} className="animate-fadeInUp">{card}</div>;
         })}
 
         {/* Last result error (persisted after streaming completes) */}

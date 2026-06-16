@@ -164,7 +164,9 @@
   },
   "streamingMessage": {
     "ariaLabel": "Claude está respondiendo",
-    "assistantName": "Claude"
+    "assistantName": "Claude",
+    "liveBadge": "en vivo",
+    "provisionalAriaLabel": "Estimación de pantalla en vivo — aún no finalizada"
   },
   "messageActionBar": {
     "copy": "Copiar",
@@ -294,6 +296,7 @@
     "restoring": "Restaurando conversación...",
     "compactionHint": "es posible que se esté compactando el contexto",
     "generationProgress": "↓ {{tokens}} tokens · {{time}}",
+    "thinkingProgress": "Pensando… ↓ {{tokens}} tokens · {{time}}",
     "cliPhase": {
       "launching": "Iniciando Claude Code…",
       "submitting": "Enviando prompt…",

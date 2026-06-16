@@ -48,6 +48,26 @@ const GRID_COUNTER_RE = /[↑↓]\s*([\d.,]+k?)\s*tokens/i;
 const GRID_ELAPSED_RE = /\((?:(\d+)m\s*)?(?:(\d+)s\b)?/;
 
 /**
+ * The THINKING-phase status segment claude renders INSIDE the spinner's paren group, AFTER the
+ * token counter: "↓ 143 tokens · thinking with high effort)" / "· still thinking with high effort)"
+ * (실측 2026-06-16, verbose:on AND verbose:off real PTY — `cli-verbose-on/off-long-thinking` fixtures).
+ *
+ * Why a *phase* flag and not a body thinking card: in verbose:true mode (Hammoc's spawn) claude paints
+ * NO live thinking *content* into the screen body — only this bottom spinner advances (elapsed clock +
+ * token counter + this phrase); the reasoning block lands WHOLE at completion. So the only live
+ * "Claude is thinking" signal is this spinner segment. Surfacing it lets the client LABEL the
+ * already-live generation-progress indicator as "Thinking…" (vs generic generation) WITHOUT inventing
+ * a card from the version-fragile, region-EXCLUDED footer spinner (which `scrollbackBodyRows` drops to
+ * avoid resume-repaint poisoning).
+ *
+ * Anchored `tokens … thinking` WITHIN the paren (`[^)]*`, no `)` crossing) so a rotating gerund word
+ * BEFORE the counter (a hypothetical "Thinking…" spinner glyph) can't false-positive — only the
+ * post-counter phase label counts. Effort-suffix agnostic ("with high effort" optional). A
+ * response-phase row ("↓ 1.3k tokens)") carries no such segment → not thinking.
+ */
+const THINKING_PHASE_RE = /\btokens\b[^)]*\bthinking\b/i;
+
+/**
  * Sum the paren-anchored elapsed clock on a spinner row to integer seconds. Pure — input
  * is the rendered row, output is `minutes * 60 + seconds`. A minute form "(1m 36s ·" → 96,
  * bare seconds "(9s ·" → 9 (minutes default to 0), and a row with no clock segment → 0
@@ -67,6 +87,14 @@ function sumElapsedSeconds(row: string): number {
 export interface SpinnerProgress {
   tokens: number;
   elapsedSeconds: number;
+  /**
+   * True only when this spinner frame is in the THINKING phase (status segment reads
+   * "… · [still ]thinking …" after the token counter). Additive/optional — ABSENT means
+   * "not a recognized thinking phase" (generic generation), so existing callers/tests that
+   * read just `{ tokens, elapsedSeconds }` are unaffected. The client uses it to label the
+   * live progress indicator "Thinking…" (Story 37.11 AC1, achievable tier). See THINKING_PHASE_RE.
+   */
+  thinking?: boolean;
 }
 
 /**
@@ -93,7 +121,10 @@ export function readSpinnerProgress(grid: string[]): SpinnerProgress | null {
       ? Math.round(parseFloat(raw.slice(0, -1).replace(/,/g, '')) * 1000)
       : parseInt(raw.replace(/,/g, ''), 10);
     if (!Number.isFinite(tokens)) return null;
-    return { tokens, elapsedSeconds: sumElapsedSeconds(region[y]) };
+    // Phase label rides the SAME counter row we already matched (no extra scan, same region —
+    // so no new resume-poisoning surface). Set only when true to keep the shape additive.
+    const thinking = THINKING_PHASE_RE.test(region[y]);
+    return { tokens, elapsedSeconds: sumElapsedSeconds(region[y]), ...(thinking ? { thinking: true } : {}) };
   }
   return null;
 }

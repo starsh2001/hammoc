@@ -29,8 +29,12 @@ import {
 } from './syntheticTyper';
 
 export interface PresentationQueue {
-  /** Queue assistant text to be typed out (ordered after prior steps). No-op for empty input. */
-  enqueueText(content: string): void;
+  /**
+   * Queue assistant text to be typed out (ordered after prior steps). No-op for empty input.
+   * Story 37.11 (AC4): `provisional` (CLI grid screen-scrape) is forwarded to the `append` sink so
+   * the resulting text segment is rendered dimmed + live-badged until the authoritative reload.
+   */
+  enqueueText(content: string, provisional?: boolean): void;
   /** Queue a non-text card reveal: wait `delayMs` after the prior step, then run `reveal`. */
   enqueueReveal(reveal: () => void, delayMs: number): void;
   /** Resolve once the whole queued effect has finished (completion path). */
@@ -48,8 +52,9 @@ export interface PresentationQueue {
 }
 
 export interface PresentationQueueOptions {
-  /** Sink for typed text — same callback the SyntheticTyper appends through. */
-  append: (chunk: string) => void;
+  /** Sink for typed text — same callback the SyntheticTyper appends through. Story 37.11: receives
+   *  the per-chunk `provisional` flag (set by the most recent `enqueueText`). */
+  append: (chunk: string, provisional?: boolean) => void;
   /** Injectable typer (tests). Default: a SyntheticTyper over `append`. */
   typer?: SyntheticTyper;
   /** Options forwarded to the default SyntheticTyper (e.g. a test frame scheduler). */
@@ -59,7 +64,12 @@ export interface PresentationQueueOptions {
 }
 
 export function createPresentationQueue(options: PresentationQueueOptions): PresentationQueue {
-  const typer = options.typer ?? createSyntheticTyper(options.append, options.typerOptions);
+  // Story 37.11 (AC4): the synthetic typer's `append` is a plain `(chunk) => void`, so the per-chunk
+  // provisional flag rides this closure. Each `enqueueText` step sets it just before it enqueues, and
+  // the step fully drains the typer before the next runs (one promise chain), so the flag is correct
+  // per chunk without changing the typer's signature.
+  let currentProvisional: boolean | undefined;
+  const typer = options.typer ?? createSyntheticTyper((chunk) => options.append(chunk, currentProvisional), options.typerOptions);
   const schedule = options.schedule ?? ((cb, ms) => { setTimeout(cb, ms); });
 
   let chain: Promise<void> = Promise.resolve();
@@ -90,11 +100,12 @@ export function createPresentationQueue(options: PresentationQueueOptions): Pres
   };
 
   return {
-    enqueueText(content: string) {
+    enqueueText(content: string, provisional?: boolean) {
       if (!content) return;
       const my = token;
       append(async () => {
         if (my.cancelled) return;
+        currentProvisional = provisional; // forwarded to options.append via the typer wrapper
         typer.enqueue(content);
         if (flushing) { typer.flush(); return; }
         await typer.drain();

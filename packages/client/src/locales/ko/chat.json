@@ -170,7 +170,9 @@
   },
   "streamingMessage": {
     "ariaLabel": "Claude 응답 중",
-    "assistantName": "Claude"
+    "assistantName": "Claude",
+    "liveBadge": "라이브",
+    "provisionalAriaLabel": "실시간 화면 추정치 — 아직 확정 전"
   },
   "messageActionBar": {
     "copy": "복사",
@@ -303,6 +305,7 @@
     "screenStalled": "claude 화면이 한동안 멈춰 있어요",
     "screenStallStop": "중단",
     "generationProgress": "↓ {{tokens}} 토큰 · {{time}}",
+    "thinkingProgress": "생각 중… ↓ {{tokens}} 토큰 · {{time}}",
     "cliPhase": {
       "launching": "Claude Code 실행 중",
       "submitting": "프롬프트 전송 중",

@@ -123,12 +123,15 @@ export function buildStreamCallbacks(
         messageId: chunk.messageId,
         content: chunk.content,
         done: chunk.done,
+        // Story 37.11 (AC4): forward the provisional flag (CLI grid scrape) so the client can
+        // render the live screen estimate dimmed + `live`-badged until the reload replaces it.
+        ...(chunk.provisional ? { provisional: true } : {}),
       });
     },
 
-    onThinking: (content: string) => {
+    onThinking: (content: string, provisional?: boolean) => {
       activity?.('onThinking');
-      emit('thinking:chunk', { content });
+      emit('thinking:chunk', { content, ...(provisional ? { provisional: true } : {}) });
     },
 
     onToolUse: (toolCall: TrackedToolCall) => {
@@ -139,6 +142,8 @@ export function buildStreamCallbacks(
         name: toolCall.name,
         input: toolCall.input,
         startedAt: Date.now(),
+        // Story 37.11 (AC4): a provisional grid tool card carries an empty input until reload.
+        ...(toolCall.provisional ? { provisional: true } : {}),
       });
       // Story 31.3 — buffer start info (size only, body discarded).
       deps.mcpRecorder?.onToolUse(toolCall.id, toolCall.name, toolCall.input);
@@ -149,10 +154,12 @@ export function buildStreamCallbacks(
       emit('tool:input-update', { toolCallId, input });
     },
 
-    onToolResult: (toolCallId: string, result: ToolResult) => {
+    onToolResult: (toolCallId: string, result: ToolResult, provisional?: boolean) => {
       activity?.('onToolResult');
       log.debug(`onToolResult: id=${toolCallId}, success=${result.success}`);
-      emit('tool:result', { toolCallId, result });
+      // Story 37.11 (AC4): a provisional result keeps the tool card live-badged (it must not
+      // finalize the card early); the authoritative reload clears the distinction.
+      emit('tool:result', { toolCallId, result, ...(provisional ? { provisional: true } : {}) });
       // Story 31.3 — append the completed record (size only, body discarded).
       deps.mcpRecorder?.onToolResult(toolCallId, result, sessionIdRef.current);
     },

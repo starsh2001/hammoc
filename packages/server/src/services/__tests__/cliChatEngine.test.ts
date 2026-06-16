@@ -993,14 +993,14 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
-    it('does NOT touch a non-confirm selection menu — no Esc, no Enter — and errors at the ceiling', async () => {
-      // Esc-cancel rule REMOVED (오너 지시 2026-06-12). A selection menu that is NOT a drivable
-      // confirm menu (e.g. an "Enter to select" action list) gets NO blind key — not Esc, not Enter —
-      // and is escalated to an explicit error at the decisive ceiling, just like an unknown screen.
-      // (Before: it Esc-cancelled, which closed claude's resume confirm menu out from under its card.)
+    it('does NOT touch a non-confirm selection menu (no Esc/Enter) and WAITS — recovers when the box appears (no hard abort)', async () => {
+      // Esc-cancel rule REMOVED (오너 2026-06-12) AND hard-abort REMOVED (오너 2026-06-15). A selection
+      // menu that is NOT a drivable confirm menu gets NO blind key — not Esc, not Enter — and the turn
+      // is NOT aborted: the boot poll keeps waiting, so once the menu closes and the real input box
+      // appears the prompt injects normally. (Before: it aborted at the ceiling, surfaced as "timeout".)
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onError = vi.fn();
-      const promise = engine.sendMessageWithCallbacks(
+      const turn = engine.sendMessageWithCallbacks(
         'my real prompt',
         { onComplete: vi.fn(), onError },
         { sessionId: SID },
@@ -1010,21 +1010,36 @@ describe('CliChatEngine', () => {
       await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
       h.fakePty._onData?.(SELECTION_MENU);
 
-      await expect(promise).rejects.toThrow(/CLI boot aborted/i);
-      expect(onError).toHaveBeenCalledTimes(1);
-      // No key ever pressed into the menu — crucially NO Esc (the removed rule), no Enter, no prompt.
+      // Past the settle window: NO blind key, and crucially NO abort/error (the turn waits).
+      await wait(700);
+      expect(onError).not.toHaveBeenCalled();
       expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
       expect(h.fakePty.write).not.toHaveBeenCalledWith('\r');
       expect(h.fakePty.write).not.toHaveBeenCalledWith('my real prompt');
-    }, 10000);
 
-    it('on an UNKNOWN screen presses no key and ends the turn with an explicit error (AC3)', async () => {
+      // Menu closes → real input box → the prompt injects (recovery without a destructive abort).
+      h.fakePty._onData?.(INPUT_BOX);
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('my real prompt'), { timeout: 2000 });
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    }, 8000);
+
+    it('does NOT abort when a resume repaint QUOTES `❯`/footer markers in scrollback before the box paints — waits, then injects (boot-poison regression)', async () => {
+      // The exact owner-reported failure (2026-06-15): resuming a LARGE transcript, claude repaints
+      // prior content that QUOTES the input-box glyph `❯` and footer phrases ("esc to interrupt") up in
+      // the scrollback while the real input box has NOT yet painted at the bottom. The raw-stream `❯`
+      // used to flip `bootMarkerSeen` and promote the 4s checkpoint to a DECISIVE abort — surfaced to
+      // the user as a misleading "응답 시간 초과". Now: the footer-scoped classifier reads the bottom as
+      // not-an-input-box → 'unknown' → the boot poll WAITS (no abort); when the real box paints, inject.
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onError = vi.fn();
-      // A ❯ is in the linear buffer (cheap marker trips), but the settled grid is a mid-generation
-      // spinner — neither an idle input box nor a recognized menu → `unknown`. No blind key allowed.
-      const UNKNOWN = drawModal([' ❯ ', '✢ Forging…  esc to interrupt']);
-      const promise = engine.sendMessageWithCallbacks(
+      // A tall repaint: a quoted `❯`/"esc to interrupt" line at the TOP (scrollback), then many diff
+      // rows so the live-footer region (bottom 8) carries NO real input box.
+      const POISONED_REPAINT = drawModal([
+        ' ● Earlier I explained the `❯` input box and the "esc to interrupt" footer in detail:',
+        ...Array.from({ length: 14 }, (_, i) => `   diff line ${i + 1} — gate YAML being repainted on resume …`),
+      ]);
+      const turn = engine.sendMessageWithCallbacks(
         'prompt that must not be lost',
         { onComplete: vi.fn(), onError },
         { sessionId: SID },
@@ -1032,18 +1047,23 @@ describe('CliChatEngine', () => {
         vi.fn(),
       );
       await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
-      h.fakePty._onData?.(UNKNOWN);
+      h.fakePty._onData?.(POISONED_REPAINT);
 
-      // The decisive (ceiling) checkpoint reclassifies and fails explicitly rather than blind-injecting.
-      await expect(promise).rejects.toThrow(/CLI boot aborted/i);
-      expect(onError).toHaveBeenCalledTimes(1);
-      // No key was ever pressed into the unknown screen (no prompt, no Enter, no Esc).
+      // Past the settle window (where the OLD code aborted via the poisoned marker): NO abort, NO key.
+      await wait(700);
+      expect(onError).not.toHaveBeenCalled();
       expect(h.fakePty.write).not.toHaveBeenCalledWith('prompt that must not be lost');
       expect(h.fakePty.write).not.toHaveBeenCalledWith('\r');
       expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b');
-    }, 10000);
 
-    it('still injects a normal input box (regression 0) and rescues a noisy box via the ceiling (AC5)', async () => {
+      // The repaint finishes → real footer input box → the prompt injects (recovery).
+      h.fakePty._onData?.(INPUT_BOX);
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('prompt that must not be lost'), { timeout: 2000 });
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    }, 8000);
+
+    it('still injects a normal input box (regression 0) and rescues a noisy box via the boot poll (AC5)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks(
         'hi there',
@@ -1054,7 +1074,8 @@ describe('CliChatEngine', () => {
       );
       await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
       // Keep repainting the SAME normal input box faster than the settle window, so the settle timer
-      // never fires and the 4s ceiling checkpoint must reclassify it as input-box and inject (not hang).
+      // never fires and the steady boot poll (CLI_MAX_BOOT_WAIT_MS) must reclassify it as input-box and
+      // inject (not hang). The poll re-runs indefinitely and never aborts — it only injects when ready.
       const noise = setInterval(() => h.fakePty._onData?.(INPUT_BOX), 150);
       try {
         await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('hi there'), { timeout: 6000 });
@@ -2344,7 +2365,8 @@ describe('CliChatEngine', () => {
 
       // Task 1 literal: "<glyph> Verb… (Es · ↓ N tokens [· thinking with <effort> effort])".
       h.fakePty._onData?.(drawSpinner('✢ Moseying… (6s · ↓ 246 tokens · thinking with high effort)'));
-      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 246, elapsedSeconds: 6 }));
+      // Story 37.11: the thinking-phase segment is forwarded as `thinking: true` (drives the client "Thinking…" label).
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 246, elapsedSeconds: 6, thinking: true }));
 
       // Same value re-render (spinner glyph cycles but counter unchanged) → no re-emit.
       const callsAfterFirst = onProgress.mock.calls.length;
@@ -2404,7 +2426,8 @@ describe('CliChatEngine', () => {
       // The linear CLI_PROGRESS_RE used `[\d,]+`, which broke at `.`/`k` and dropped the
       // whole frame. Reading the rendered grid captures the abbreviated form.
       h.fakePty._onData?.(drawSpinner('Flowing… (9s · ↓ 1.4k tokens · thinking with high effort)'));
-      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 1400, elapsedSeconds: 9 }));
+      // Story 37.11: thinking-phase frame → thinking:true forwarded alongside the (abbreviated) counter.
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 1400, elapsedSeconds: 9, thinking: true }));
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await turn;
@@ -2438,7 +2461,8 @@ describe('CliChatEngine', () => {
       await wait(20);
       expect(onProgress).not.toHaveBeenCalled(); // "↓ 36" with no "tokens" yet → no counter row
       h.fakePty._onData?.('5 tokens · thinking with high effort)');
-      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 365, elapsedSeconds: 9 }));
+      // Story 37.11: once the full row settles, the thinking-phase flag rides the assembled counter value.
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 365, elapsedSeconds: 9, thinking: true }));
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await turn;
@@ -2507,6 +2531,354 @@ describe('CliChatEngine', () => {
       h.fakePty._onData?.(drawSpinner('Moseying… (9s · ↓ 400 tokens)'));
       await wait(20);
       expect(onProgress.mock.calls.length).toBe(callsAtAbort);
+    });
+  });
+
+  describe('live grid cards — thinking + tool (Story 37.10 — provisional emit + arrival-order reconciliation)', () => {
+    // A generating frame: claude redraws the whole screen (clear + absolute-addressed rows). The
+    // scrollback CARDS sit above a live spinner footer carrying "esc to interrupt" — the positive
+    // generation signal `isGeneratingGrid` reads (and `scrollbackBodyRows` cuts at). Cards below that
+    // footer don't exist; the footer is the anchor.
+    const genFrame = (cardRows: string[]): string =>
+      drawModal([...cardRows, '✶ Flowing… (5s · ↓ 1.2k tokens · esc to interrupt)']);
+
+    // Story 37.10: claude paints the card bullet in a TRUECOLOR encoding tool status (verified
+    // against cli-real-pty-dump): green (78,186,101) = done, gray (153,153,153) = running. The
+    // status now comes from the bullet COLOR, not from `⎿` presence, so test frames must color
+    // the bullet. A plain `●` (no SGR) classifies as 'other' = treated as running (safe default).
+    const greenTool = (body: string): string => `\x1b[38;2;78;186;101m●\x1b[m ${body}`; // done
+    const grayTool = (body: string): string => `\x1b[38;2;153;153;153m●\x1b[m ${body}`; // running
+
+    // An assistant line carrying a thinking block (possibly EMPTY = signature only) + an optional
+    // tool_use block — the canonical shape claude writes to the JSONL once the block completes.
+    function thinkingToolLine(
+      uuid: string,
+      opts: { thinking?: string; tool?: { id: string; name: string; input?: Record<string, unknown> }; parentUuid?: string; stopReason?: string },
+    ): string {
+      const content: Array<Record<string, unknown>> = [{ type: 'thinking', thinking: opts.thinking ?? '', signature: 'sig' }];
+      if (opts.tool) content.push({ type: 'tool_use', id: opts.tool.id, name: opts.tool.name, input: opts.tool.input ?? {} });
+      return JSON.stringify({
+        type: 'assistant', uuid, parentUuid: opts.parentUuid ?? 'u1', timestamp: '2026-06-04T00:00:01.000Z', entrypoint: 'cli',
+        message: { role: 'assistant', model: 'claude-opus-4-6', content, stop_reason: opts.stopReason ?? 'tool_use' },
+      });
+    }
+    function toolResultLine(uuid: string, results: Array<{ tool_use_id: string; content: string; is_error?: boolean }>, parentUuid = 'a1'): string {
+      return JSON.stringify({
+        type: 'user', uuid, parentUuid, timestamp: '2026-06-04T00:00:02.000Z',
+        message: { role: 'user', content: results.map((r) => ({ type: 'tool_result', tool_use_id: r.tool_use_id, content: r.content, ...(r.is_error !== undefined ? { is_error: r.is_error } : {}) })) },
+      });
+    }
+
+    // Drive to post-injection ready with caller-supplied callbacks (the grid card consumers run only
+    // AFTER injection). No canUseTool — these are general-streaming / auto-approved frames. The turn is
+    // returned WRAPPED in an object: an async fn auto-flattens a returned promise, so returning `turn`
+    // bare would make the caller `await` the whole turn (deadlock — it only completes post-writeSession).
+    async function injectThenReady(engine: CliChatEngine, callbacks: StreamCallbacks): Promise<{ turn: Promise<unknown> }> {
+      const turn = engine.sendMessageWithCallbacks('do the thing', callbacks, { sessionId: SID }, undefined, vi.fn());
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+      return { turn };
+    }
+
+    it('emits a thinking card off the screen, then SUPPRESSES the populated canonical re-emit (no double)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onThinking = vi.fn();
+      const { turn } = await injectThenReady(engine, { onThinking, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // The TUI paints the thinking summary on screen the moment thinking completes — before the JSONL.
+      h.fakePty._onData?.(genFrame(['  Thought for 5s']));
+      // Story 37.11 (AC4): the grid scrape is PROVISIONAL — onThinking carries the provisional flag.
+      await vi.waitFor(() => expect(onThinking).toHaveBeenCalledWith('Thought for 5s', true));
+      expect(onThinking).toHaveBeenCalledTimes(1); // grid provisional only
+
+      // The canonical (populated) thinking block lands later. The drain must SUPPRESS its re-emit —
+      // the provisional already holds the slot and the turn-end reload swaps in the raw thinking.
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: 'raw reasoning text', stopReason: 'end_turn' })]);
+      await turn;
+      expect(onThinking).toHaveBeenCalledTimes(1); // STILL once — canonical suppressed, no double-render
+    });
+
+    it('emits the verbose-mode `∴` reasoning block as a PROVISIONAL thinking card (Story 37.11 — invisible until the late JSONL before)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onThinking = vi.fn();
+      const { turn } = await injectThenReady(engine, { onThinking, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // 실측 2026-06-16 (real production-settings PTY capture): in verbose mode the expanded reasoning
+      // paints as a multi-line `∴ <reasoning>` BODY block ~7s BEFORE the JSONL canonical. The parser
+      // folds it into ONE thinking card and the engine emits it PROVISIONALLY, so the user sees the
+      // actual reasoning during that window instead of waiting for the file. (Before: parser ignored
+      // `∴` → 0 cards → thinking arrived only via the late drain.)
+      h.fakePty._onData?.(genFrame(['∴ I need to compute 11! first,', '  then sum the alternating series to get D₁₁.']));
+      await vi.waitFor(() =>
+        expect(onThinking).toHaveBeenCalledWith('I need to compute 11! first, then sum the alternating series to get D₁₁.', true),
+      );
+      expect(onThinking).toHaveBeenCalledTimes(1); // grid provisional only
+
+      // The canonical thinking lands at turn end — suppressed (no double); the reload swaps in the raw.
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: 'raw reasoning', stopReason: 'end_turn' })]);
+      await turn;
+      expect(onThinking).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves the provisional thinking when the canonical block arrives EMPTY (signature-only — AC1)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onThinking = vi.fn();
+      const { turn } = await injectThenReady(engine, { onThinking, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      h.fakePty._onData?.(genFrame(['  Thought for 7s']));
+      await vi.waitFor(() => expect(onThinking).toHaveBeenCalledWith('Thought for 7s', true));
+
+      // Opus 4.7+ often emit the thinking block EMPTY (signature only). The empty canonical must NOT
+      // re-emit and must NOT erase — the grid provisional stands as the sole live copy.
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: '', stopReason: 'end_turn' })]);
+      await turn;
+      expect(onThinking).toHaveBeenCalledTimes(1);
+      expect(onThinking).toHaveBeenCalledWith('Thought for 7s', true);
+    });
+
+    it('emits a tool card live (synthetic id, pending) and flips it complete on the `⎿` result frame (AC3 transition)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // Frame 1 — tool card with a GRAY bullet = RUNNING. Emit pending; do NOT flip yet.
+      h.fakePty._onData?.(genFrame([grayTool('Write(probe.txt)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      const toolCall = onToolUse.mock.calls[0][0] as { id: string; name: string; status: string };
+      expect(toolCall.name).toBe('Write');
+      expect(toolCall.status).toBe('pending');
+      expect(toolCall.id).toMatch(/^cli-prov-tool-/); // synthetic — the screen has no toolu_ id
+      expect(onToolResult).not.toHaveBeenCalled(); // still running
+
+      // Frame 2 — the bullet turns GREEN (=done) and the `⎿` carries the real result. Flip the SAME
+      // card via onToolResult on its id. (Status comes from the bullet color, not `⎿` presence.)
+      h.fakePty._onData?.(genFrame([greenTool('Write(probe.txt)'), '  ⎿  Wrote 5 lines to probe.txt']));
+      await vi.waitFor(() => expect(onToolResult).toHaveBeenCalledTimes(1));
+      // Story 37.11 (AC4): grid result flip is PROVISIONAL (the 3rd arg) — the card stays live-badged.
+      expect(onToolResult).toHaveBeenCalledWith(toolCall.id, { success: true, output: expect.stringContaining('Wrote 5 lines') }, true);
+      expect(onToolUse).toHaveBeenCalledTimes(1); // not re-emitted across frames (slot dedup)
+
+      // Canonical tool_use + result land in the JSONL. Both must be SUPPRESSED (the synthetic-id card
+      // holds the slot; the reload supplies the full input) — no second card, no orphan real-id result.
+      await writeSession(SID, [
+        userLine('u1'),
+        thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_1', name: 'Write', input: { file_path: 'probe.txt', content: 'x' } } }),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_1', content: 'Wrote 5 lines to probe.txt', is_error: false }]),
+        assistantLine('a2', { parentUuid: 'a1', text: 'done' }),
+      ]);
+      await turn;
+      expect(onToolUse).toHaveBeenCalledTimes(1); // canonical tool_use suppressed
+      expect(onToolResult).toHaveBeenCalledTimes(1); // canonical result skipped (synthetic id owns it)
+    });
+
+    it('does NOT flip on ⎿ Waiting…/Running… while the bullet is GRAY (running) — flips only when GREEN (TOOL-RUNNING-PLACEHOLDER-FLIP)', async () => {
+      // Regression for the QA-found bug: real claude paints a slow tool as ● Tool(gray) → ⎿ Waiting…
+      // → ⎿ Running… → ● Tool(green) + ⎿ <real result>. The old code flipped on the FIRST non-empty
+      // `⎿`, so the tool showed "complete: Waiting…" the whole run. Status now comes from the bullet
+      // COLOR: gray stays pending, only green flips (with the real result).
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      h.fakePty._onData?.(genFrame([grayTool('PowerShell("sleep 5; ls")'), '  ⎿  Waiting…']));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      const id = (onToolUse.mock.calls[0][0] as { id: string }).id;
+      await wait(40);
+      h.fakePty._onData?.(genFrame([grayTool('PowerShell("sleep 5; ls")'), '  ⎿  Running…']));
+      await wait(40);
+      expect(onToolResult).not.toHaveBeenCalled(); // gray → no premature "complete: Waiting…/Running…"
+
+      // Bullet turns GREEN + the real result appears → flip once with the REAL output (not "Waiting…").
+      h.fakePty._onData?.(genFrame([greenTool('PowerShell("sleep 5; ls")'), '  ⎿  Process : [1]', '     file.txt']));
+      await vi.waitFor(() => expect(onToolResult).toHaveBeenCalledTimes(1));
+      expect(onToolResult).toHaveBeenCalledWith(id, { success: true, output: expect.stringContaining('Process : [1]') }, true);
+      expect((onToolResult.mock.calls[0][1] as { output: string }).output).not.toContain('Waiting');
+
+      await writeSession(SID, [
+        userLine('u1'),
+        thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_1', name: 'PowerShell', input: { command: 'sleep 5; ls' } } }),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_1', content: 'file.txt' }]),
+        assistantLine('a2', { parentUuid: 'a1', text: 'done' }),
+      ]);
+      await turn;
+      expect(onToolResult).toHaveBeenCalledTimes(1); // canonical suppressed; the single green flip stands
+    });
+
+    it('does NOT scrape cards from a non-generating (paused / modal) frame', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onThinking = vi.fn();
+      const onToolUse = vi.fn();
+      const { turn } = await injectThenReady(engine, { onThinking, onToolUse, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // A frame with cards but NO generation footer (spinner gone — claude paused). isGeneratingGrid is
+      // false, so the scraper stays off: a paused frame is where modals live, and a permission-gated tool
+      // card must be left to its own path, never double-emitted here.
+      h.fakePty._onData?.(drawModal(['  Thought for 9s', '● Write(probe.txt)', ' Do you want to create probe.txt?', ' Esc to cancel · Tab to amend']));
+      await wait(60);
+      expect(onThinking).not.toHaveBeenCalled();
+      expect(onToolUse).not.toHaveBeenCalled();
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
+    it('does NOT re-provision a permission-gated tool card when generation resumes post-approval (TOOL-PERM-RESCRAPE)', async () => {
+      // Regression for the QA-flagged grid/drain slot ASYMMETRY: the permission path advances the
+      // drain-side suppression counter (permissionGatedToolsPending) but historically NOT the grid-side
+      // slot (liveToolSlots). After the user approves, generation resumes (isGeneratingGrid true) and
+      // claude can keep the gated `● Tool(…)` card in the scrollback while the spinner runs AGAIN — the
+      // scraper would then see the slot as free and re-emit it as a synthetic cli-prov-tool card, double-
+      // rendering against the 32.6 standalone permission card (and leaking a provisionalToolEmitsPending
+      // that wrongly suppresses a LATER tool's live emit). The fix reserves the slot at permission time.
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const canUseTool = vi.fn().mockResolvedValue({ behavior: 'allow', updatedInput: {} });
+      const turn = engine.sendMessageWithCallbacks(
+        'do the thing',
+        { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() },
+        { sessionId: SID },
+        canUseTool as never,
+        vi.fn(),
+      );
+      await vi.waitFor(() => expect(typeof h.fakePty._onData).toBe('function'));
+      h.fakePty._onData?.('Claude Code v2.1.162\n❯ ready');
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('do the thing'), { timeout: 2000 });
+
+      // (1) Permission dialog — generation PAUSED (no footer), the gated `● Write` card on screen. The
+      // card scraper stays OFF here (isGeneratingGrid false); the permission path fires + reserves the slot.
+      h.fakePty._onData?.(drawModal([
+        ' ● Write(probe.txt)',
+        ' Do you want to create probe.txt?',
+        ' ❯ 1. Yes',
+        '   2. Yes, allow all edits during this session (shift+tab)',
+        '   3. No',
+        ' Esc to cancel · Tab to amend',
+      ]));
+      await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\r')); // approved
+
+      // (2) Generation RESUMES (footer back) with the SAME gated card still in the scrollback. With the
+      // slot reserved, the scraper must NOT re-provision it as a cli-prov-tool card.
+      h.fakePty._onData?.(genFrame(['● Write(probe.txt)']));
+      await wait(60);
+      expect(onToolUse).not.toHaveBeenCalled(); // no synthetic re-provision of the gated tool
+
+      // (3) The canonical gated tool_use + its result land in the JSONL. The drain SUPPRESSES the live
+      // re-emit (permissionGatedToolsPending) — the tool renders via the permission card + reload, never a
+      // duplicate live card; no leaked counter to wrongly suppress a following tool.
+      await writeSession(SID, [
+        userLine('u1'),
+        thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_1', name: 'Write', input: { file_path: 'probe.txt', content: 'x' } } }),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_1', content: 'Wrote 5 lines to probe.txt' }]),
+        assistantLine('a2', { parentUuid: 'a1', text: 'done' }),
+      ]);
+      await turn;
+      expect(onToolUse).not.toHaveBeenCalled();
+      expect(onToolResult).not.toHaveBeenCalled();
+    });
+
+    // ===== Story 37.11 (Tier 1) =====
+
+    it('catches a NEW tool card live AFTER an old one scrolled off the viewport top (AC2 — accumulation dedup)', async () => {
+      // Regression for the 37.10 viewport-index dedup: it compared the ON-SCREEN tool index against
+      // the logical high-water, so once Bash(a) scrolled off the indices diverged and the genuinely
+      // new Bash(c) (logical slot 2, on-screen index 1) was wrongly seen as already-spoken-for and
+      // missed live. The accumulation (held-transcript) dedup derives the LOGICAL index from the
+      // scroll-stable transcript, so Bash(c) is caught.
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult: vi.fn(), onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      h.fakePty._onData?.(genFrame([greenTool('Bash(a)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      h.fakePty._onData?.(genFrame([greenTool('Bash(a)'), greenTool('Bash(b)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(2));
+      // Bash(a) scrolls OFF the top; only the last two cards are in the viewport now.
+      h.fakePty._onData?.(genFrame([greenTool('Bash(b)'), greenTool('Bash(c)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(3));
+      const third = onToolUse.mock.calls[2][0] as { id: string; name: string };
+      expect(third.name).toBe('Bash');
+      expect(third.id).toBe('cli-prov-tool-2'); // logical slot 2 — NOT lost to the scroll-off
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
+      await turn;
+    });
+
+    it('emits a general prose card as PROVISIONAL text off the screen, then SUPPRESSES the canonical re-emit (AC1)', async () => {
+      // The 4th card kind 37.10 skipped: streaming prose is now ALSO a live grid card, so ALL live
+      // content comes from one source (no grid↔file race). The drain suppresses the canonical copy.
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      const { turn } = await injectThenReady(engine, { onTextChunk, onComplete: vi.fn(), onError: vi.fn() });
+
+      h.fakePty._onData?.(genFrame(['● Here is the explanation you asked for.']));
+      await vi.waitFor(() => expect(onTextChunk).toHaveBeenCalledTimes(1));
+      const chunk = onTextChunk.mock.calls[0][0] as { content: string; provisional?: boolean };
+      expect(chunk.content).toContain('Here is the explanation');
+      expect(chunk.provisional).toBe(true); // AC4: screen estimate, dimmed + live-badged until reload
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Here is the explanation you asked for.' })]);
+      await turn;
+      expect(onTextChunk).toHaveBeenCalledTimes(1); // canonical suppressed — no grid↔file double
+    });
+
+    it('emits canonical text AUTHORITATIVELY (not provisional) when no grid frame scraped it — file backstop (AC1)', async () => {
+      // When no generating frame carried the prose (scrolled past / never polled) the drain is the
+      // completeness backstop: it emits the file copy LIVE and NOT provisional (no live badge).
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      const { turn } = await injectThenReady(engine, { onTextChunk, onComplete: vi.fn(), onError: vi.fn() });
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Answer from the file only.' })]);
+      await turn;
+      expect(onTextChunk).toHaveBeenCalledTimes(1);
+      const chunk = onTextChunk.mock.calls[0][0] as { content: string; provisional?: boolean };
+      expect(chunk.content).toContain('Answer from the file only.');
+      expect(chunk.provisional).toBeFalsy(); // authoritative
+    });
+
+    it('does NOT fold the live footer (spinner / "esc to interrupt") into a provisional text card (AC6 — footer/body split)', async () => {
+      // The new text branch runs inside `scrollbackBodyRows` (cut at the footer anchor), so the
+      // spinner / "esc to interrupt" / token-counter footer must never be scraped as a text card.
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      const { turn } = await injectThenReady(engine, { onTextChunk, onComplete: vi.fn(), onError: vi.fn() });
+
+      h.fakePty._onData?.(genFrame(['● The real answer body.']));
+      await vi.waitFor(() => expect(onTextChunk).toHaveBeenCalledTimes(1));
+      const c = onTextChunk.mock.calls[0][0] as { content: string };
+      expect(c.content).toContain('The real answer body');
+      expect(c.content).not.toContain('esc to interrupt'); // footer not folded into the body card
+      expect(c.content).not.toContain('Flowing');
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'The real answer body.' })]);
+      await turn;
+    });
+
+    it('the AUTHORITATIVE file text — not the truncated provisional scrape — is the completion content (AC5 Tier 1 backstop)', async () => {
+      // A single block bigger than the viewport can leave the provisional scrape PARTIAL, but the
+      // file copy is complete: the drain accrues the canonical text so finishTurn carries the full
+      // version even though only a truncated provisional was shown live.
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      const onComplete = vi.fn();
+      const { turn } = await injectThenReady(engine, { onTextChunk, onComplete, onError: vi.fn() });
+
+      h.fakePty._onData?.(genFrame(['● The answer is partially shown']));
+      await vi.waitFor(() => expect(onTextChunk).toHaveBeenCalledTimes(1));
+      expect((onTextChunk.mock.calls[0][0] as { provisional?: boolean }).provisional).toBe(true);
+
+      await writeSession(SID, [
+        userLine('u1'),
+        assistantLine('a1', { text: 'The answer is partially shown on screen but complete in the file.' }),
+      ]);
+      await turn;
+      const completion = onComplete.mock.calls[0][0] as { content: string };
+      expect(completion.content).toContain('complete in the file'); // file is the completeness backstop
     });
   });
 

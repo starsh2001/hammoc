@@ -33,3 +33,26 @@ export function liveFooterRows(grid: string[]): string[] {
 export function liveFooterText(grid: string[]): string {
   return liveFooterRows(grid).join('\n');
 }
+
+/**
+ * The bottommost live-footer anchor: claude's generation spinner ("… esc to interrupt" / a
+ * "↓/↑ N tokens" counter) or the idle input-box prompt glyph (`❯`). The footer always renders flush
+ * at the BOTTOM, so the BOTTOMMOST match is the live footer (a scrollback line that merely *quotes*
+ * one of these markers sits above it — the same ISSUE-99 anti-poisoning discipline as the readers).
+ */
+const LIVE_FOOTER_ANCHOR_RE = /esc to interrupt|[↑↓]\s*[\d.,]+\s*k?\s*tokens|❯/i;
+
+/**
+ * The SCROLLBACK BODY — the grid rows strictly ABOVE the live footer (the inverse of `liveFooterRows`).
+ * Story 37.9/37.10: the card parser (`parseGridCards`) folds a trailing non-glyph row into the open
+ * card, so feeding it the spinner / input-box / mode-status footer would pollute the last card's text
+ * (and, worse, fold the spinner into a thinking card). Callers therefore pass ONLY this region — the
+ * "anchor to the region, not the whole screen" discipline. Cut at the bottommost live-footer anchor;
+ * with no anchor at all (a pure scrollback frame) the whole grid is body.
+ */
+export function scrollbackBodyRows(grid: string[]): string[] {
+  for (let i = grid.length - 1; i >= 0; i--) {
+    if (LIVE_FOOTER_ANCHOR_RE.test(grid[i])) return grid.slice(0, i);
+  }
+  return grid;
+}

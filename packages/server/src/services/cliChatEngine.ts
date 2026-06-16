@@ -110,7 +110,8 @@ import {
   type ParsedQuestion,
   type PreInjectScreen,
 } from './cliModalDetect.js';
-import { liveFooterText } from './cliGridRegion.js';
+import { liveFooterText, scrollbackBodyRows } from './cliGridRegion.js';
+import { parseGridCards, type GridCardKind } from './cliGridCards.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
@@ -190,12 +191,10 @@ const BACKGROUND_HOOK_SCRIPT = path
  */
 const CLI_PROMPT_MARKER = '❯'; // Claude Code interactive input-box prompt glyph
 const CLI_BOOT_SETTLE_MS = 400; // quiet after the box marker before typing
-const CLI_MAX_BOOT_WAIT_MS = 4000; // first fallback checkpoint: inject if the ❯ marker has settled
-// Hard ceiling when the ❯ marker has NOT appeared by the first checkpoint. A heavy startup
-// (e.g. an MCP-laden project whose input box took ~6s to render) pushes the box past 4s, and
-// injecting blind before it exists loses the prompt and hangs the turn forever. So past the
-// first checkpoint we keep waiting for the marker up to this ceiling before a last-resort inject.
-const CLI_MAX_BOOT_WAIT_NO_MARKER_MS = 20000;
+const CLI_MAX_BOOT_WAIT_MS = 4000; // boot readiness re-poll interval (inject as soon as the grid is a
+// ready input box). No hard ceiling/abort: a large resume repaint can take a while and "unknown" means
+// "still painting"; injection is grid-gated so we keep polling. A genuine boot freeze is covered by the
+// soft screen-stall affordance (boot is now mirrored), pty.onExit (crash), and the user's Stop.
 const CLI_SUBMIT_GAP_MS = 1000; // Enter sent this long after the prompt text
 
 /**
@@ -282,6 +281,13 @@ const CLI_QUESTION_SETTLE_MS = 400;
 // spinner repaints many times a second, so coalescing keeps the mirror calm while bounding
 // bandwidth (the whole screen is re-sent each frame). Trailing edge keeps the latest frame.
 const CLI_SCREEN_FRAME_THROTTLE_DEFAULT_MS = 200;
+/**
+ * Story 37.11 AC5: how many scrolled-off rows ABOVE the viewport the live card scraper reads (via
+ * `screen.readGrid(N)`), so a block taller than the viewport is parsed from its HEAD (opening glyph),
+ * not the glyph-less tail. Bounds the per-frame parse cost; a single block taller than this still
+ * falls back to the turn-end file reload (rare — 500 rows is far beyond any normal diff/reasoning).
+ */
+const CLI_CARD_SCROLLBACK_ROWS = 500;
 /**
  * Gap between injected menu keys. Arrow/Space/Enter are *discrete* key events — not the
  * typed-text-then-Enter pair that bracketed-paste coalesces (§32.4) — and Task 1 drove
@@ -712,7 +718,7 @@ export class CliChatEngine implements ChatEngine {
     options: ChatOptions = {},
     canUseTool?: CanUseTool,
     onRawMessage?: (messageType: string) => void,
-    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number }) => void,
+    onGenerationProgress?: (progress: { tokens: number; elapsedSeconds: number; thinking?: boolean }) => void,
     onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
     onScreenFrame?: (frame: string) => void,
     screenFrameThrottleMs?: number,
@@ -955,7 +961,6 @@ export class CliChatEngine implements ChatEngine {
       // Prompt-injection state (see CLI_* constants).
       let injected = false;
       let bootBuffer = ''; // accumulated boot output, scanned for the box marker (pre-injection only)
-      let bootMarkerSeen = false; // ❯ input box has rendered — gates the blind fallback inject (never inject before the box exists)
       let bootSettleTimer: ReturnType<typeof setTimeout> | null = null;
       let bootFallbackTimer: ReturnType<typeof setTimeout> | null = null;
       let bootRecoverTimer: ReturnType<typeof setTimeout> | null = null; // Story 37.6: post-Esc re-classify timer
@@ -994,6 +999,57 @@ export class CliChatEngine implements ChatEngine {
       // (completeness). Mirrors the permissionGatedToolsPending suppression pattern above.
       let provisionalBodyEmitsPending = 0;
       let provisionalBodyCounter = 0; // synthesizes a messageId for each provisional chunk
+      // Story 37.10: live grid-card emit (thinking + tool cards, NO modal trigger). The interactive
+      // claude TUI paints thinking (`Thought for Ns`) and tool (`● Tool(…)` / `⎿ result`) cards on
+      // screen the moment they happen, while the session JSONL only gains the matching block later (and
+      // for thinking, often EMPTY — signature only). We scrape those cards off the settled grid and
+      // emit them PROVISIONALLY through the same onThinking / onToolUse / onToolResult callbacks the
+      // JSONL drain uses, then reconcile by ARRIVAL-ORDER SLOT so neither source double-renders.
+      //
+      // thinking: `liveThinkingSlots` = thinking cards already emitted live this turn (grid OR drain);
+      // the grid only emits a slot it hasn't reached. `provisionalThinkingEmitsPending` is the FIFO of
+      // grid thinkings awaiting their canonical block — the drain decrements it per thinking block
+      // (empty OR not) so an EMPTY canonical (AC1) just CONSUMES the slot (provisional stands as the
+      // sole live copy — nothing to replace) while a populated one SUPPRESSES the drain's re-emit (the
+      // turn-end reload replaces the provisional with the raw thinking).
+      let liveThinkingSlots = 0;
+      let provisionalThinkingEmitsPending = 0;
+      // tool: `liveToolSlots` = tool cards already emitted live (grid OR drain). A grid tool card has no
+      // canonical `toolu_…` id (the screen truncates the input too), so it rides a SLOT-STABLE synthetic
+      // id (`cli-prov-tool-N`, a namespace the real `toolu_…` can never collide with — same trick as the
+      // permission card's `cli-perm-N`). `provToolSlotIds[slot]` holds that id so a later `⎿` result card
+      // can flip the SAME card running→complete via onToolResult (the 32.9 onToolUse(pending)→onToolResult
+      // contract). `provisionalToolEmitsPending` is the FIFO the drain decrements to SUPPRESS the matching
+      // canonical tool_use's live re-emit (checked AFTER permissionGatedToolsPending; reload replaces).
+      let liveToolSlots = 0;
+      let provisionalToolEmitsPending = 0;
+      const provToolSlotIds: string[] = [];
+      const gridResultFlippedSlots = new Set<number>();
+      // Story 37.11 (AC1): general streaming TEXT is now also a live grid card (the 4th kind 37.10
+      // skipped). It rides the SAME provisional/suppress contract as thinking/tool: the grid emits
+      // the text card provisionally and `handleAssistantLine` SUPPRESSES the matching canonical text
+      // re-emit (the turn-end reload replaces). `liveTextSlots` is the cross-source high-water (grid
+      // OR drain), `provisionalTextEmitsPending` the FIFO the drain decrements. This unifies the
+      // 37.9 modal lead-in (`emitProvisionalBody`) onto one text counter — its provisional prose now
+      // rides the same FIFO, so a bare-modal still behaves as before. → the drain stops UNCONDITIONAL
+      // live text emit (race source); the screen is the single live source, the file the backstop.
+      let liveTextSlots = 0;
+      let provisionalTextEmitsPending = 0;
+      let provisionalCardCounter = 0; // synthesizes a messageId for each provisional grid text chunk
+      // Story 37.11 (AC2): the held transcript — the GRID's scroll-STABLE record of the cards it has
+      // positionally accounted for this turn, in arrival order. Replaces 37.10's viewport-index dedup
+      // (toolIdx/thIdx ≥ liveSlots), which miscounts the moment an old card scrolls off the viewport
+      // top (the viewport index then diverges from the logical count). Each frame we suffix-align the
+      // visible cards against this list (arrival-order is the PRIMARY key; content is only the
+      // alignment signal — the screen scrape is lossy, so content is NEVER a standalone key) to derive
+      // each card's LOGICAL per-kind index, then feed THAT into the unchanged cross-source slot checks.
+      // → an old block scrolling off no longer hides a genuinely new block below it. Holds STABLE
+      // kinds only (text/thinking/tool) — `⎿` result cards mutate frame-to-frame so they are excluded.
+      const heldCards: Array<{ kind: GridCardKind; sig: string }> = [];
+      // A scroll-stable signature: kind + whitespace-normalized text. Arrival ORDER (position in
+      // `heldCards`) is the real key; this sig only aligns the visible window against the held tail.
+      const cardSig = (c: { kind: GridCardKind; text: string }): string =>
+        `${c.kind}:${c.text.replace(/\s+/g, ' ').trim().toLowerCase()}`;
       // AskUserQuestion-modal state (Story 32.8 — post-injection only). Story 37.4: detection
       // reads the settled grid; `questionPending` is the per-modal re-fire guard (replacing the
       // old buffer-clear consume), held across the settle timer + the round-trip.
@@ -1265,11 +1321,16 @@ export class CliChatEngine implements ChatEngine {
 
       /**
        * Decide from the SETTLED grid (flush first — absence-based signals must not read a half-drawn
-       * frame, 37.5 weak-signal discipline). `isFinal` marks the decisive ceiling checkpoint: a
-       * non-input-box that cannot be recovered ends the turn; a non-final settle simply waits for the
-       * ceiling fallback. Async (`flush().then`), so `injected`/`settled` are re-checked at read time.
+       * frame, 37.5 weak-signal discipline). Injection is GRID-GATED: only a verified idle input box
+       * injects; a confirm menu is driven; anything else (a still-painting resume repaint = 'unknown',
+       * or a non-drivable menu) simply WAITS — this is re-run by the settle timer + the boot poll until
+       * the box appears. It NEVER hard-aborts the turn: a resume repaint of a large transcript can take
+       * a while and "unknown" almost always means "not painted yet", so aborting was a false positive
+       * (surfaced to the user as a misleading "timeout"). A genuine freeze is covered by the soft
+       * screen-stall affordance (now fed during boot) + the user's Stop; a crashed REPL by pty.onExit.
+       * Async (`flush().then`), so `injected`/`settled` are re-checked at read time.
        */
-      const attemptInjectFromGrid = (isFinal: boolean) => {
+      const attemptInjectFromGrid = () => {
         if (injected || settled) return;
         void screen.flush().then(() => {
           if (injected || settled) return;
@@ -1297,15 +1358,13 @@ export class CliChatEngine implements ChatEngine {
             // card was showing — the "flash" the user saw; originally it also hung the turn outright).
             // Once a confirm menu is handed to the card (choiceMenuHandled), the boot stage must NOT
             // touch the screen — driveBootChoiceMenu owns it through to injection. A selection that is
-            // NOT a drivable confirm menu is exposed as an explicit error at the ceiling — never a key.
-            if (choiceMenuHandled) return;
-            if (isFinal) failUnready('selection menu is not a drivable confirm menu', grid, classification);
+            // NOT a drivable confirm menu presses no blind key and simply WAITS (the boot poll re-runs;
+            // the box appears once it closes, or the user Stops) — no hard abort.
             return;
           }
-          // classification === 'unknown' — blind keys forbidden (AC3). Expose only; the ceiling
-          // checkpoint escalates to an explicit error.
-          if (isFinal)
-            failUnready('pre-injection screen is neither an input box nor a recognized selection menu', grid, classification);
+          // classification === 'unknown' — blind keys forbidden, and we do NOT abort: on a resume this
+          // is almost always a still-painting repaint. Wait (the boot poll + settle timer re-run until
+          // the input box appears); a true freeze surfaces via the soft screen-stall affordance.
         });
       };
 
@@ -1416,6 +1475,13 @@ export class CliChatEngine implements ChatEngine {
        * provisional with the canonical copy. No-op (and no slot claimed) when there is no lead-in
        * prose, so a bare modal behaves exactly as before. The provisional rides the normal text-chunk
        * path → the client presentation queue keeps arrival order (the choice card is enqueued after).
+       *
+       * Story 37.11: this now COEXISTS with the general grid text branch (`emitProvisionalCards`),
+       * which runs WHILE generating; this one runs once generation PAUSES for the modal. To avoid a
+       * double-emit when a generating-frame poll already scraped this same lead-in: (a) dedup also
+       * against the held transcript's text cards (the grid may have emitted it), and (b) advance
+       * `liveTextSlots` so the POST-answer grid re-scrape of this same card falls below the slot
+       * high-water and is skipped (the cross-source guard, parser-agnostic — no held push needed).
        */
       const emitProvisionalBody = (prose: string | null): void => {
         if (settled || !prose || !callbacks.onTextChunk || !resolvedSessionId) return;
@@ -1430,13 +1496,175 @@ export class CliChatEngine implements ChatEngine {
         const norm = (s: string): string => s.replace(/\s+/g, '').toLowerCase();
         const needle = norm(prose).slice(0, 40);
         if (needle && norm(accumulatedText).includes(needle)) return;
+        // Story 37.11: also skip if the general grid text branch already emitted this same lead-in
+        // (its card sits in the held transcript). Prefix-match (normalized) is robust to the two
+        // scrapers (parsePrecedingText vs parseGridCards) wording slightly differently.
+        if (needle && heldCards.some((h) => h.kind === 'text' && norm(h.sig).includes(needle))) return;
         provisionalBodyEmitsPending++;
+        liveTextSlots++; // cross-source guard: the post-answer grid re-scrape of this card is skipped
         callbacks.onTextChunk({
           sessionId: resolvedSessionId,
           messageId: `cli-provisional-${++provisionalBodyCounter}`,
           content: prose,
           done: false,
+          provisional: true,
         });
+      };
+
+      /**
+       * Story 37.10 (AC1/AC2/AC3/AC4): emit the thinking + tool cards the TUI paints on screen LIVE,
+       * with no modal trigger — the general-streaming counterpart of `emitProvisionalBody`. Runs only
+       * mid-GENERATION (`isGeneratingGrid`): that gate keeps it OFF a paused modal frame, so a
+       * permission-gated tool card (which appears only once generation halts for approval) is never
+       * double-emitted against its 32.6 standalone card. Scrapes the SCROLLBACK BODY (above the live
+       * footer) with the single-source `parseGridCards`, then walks the cards in arrival order:
+       *   - thinking → onThinking (a NEW slot only). The drain reconciles by FIFO: a populated
+       *     canonical SUPPRESSES the re-emit (reload replaces it); an EMPTY canonical (Opus 4.7+
+       *     signature-only) just consumes the slot so the provisional stands as the sole live copy (AC1).
+       *   - tool → onToolUse(status:'pending') under a slot-stable synthetic id `cli-prov-tool-N`
+       *     (AC4 — the screen has no `toolu_…`); the drain SUPPRESSES the matching canonical tool_use's
+       *     live re-emit (FIFO, after the permission-gated check) and the reload replaces it.
+       *   - result (`⎿`) → onToolResult on the preceding tool slot's synthetic id, flipping it
+       *     running→complete (32.9 onToolUse(pending)→onToolResult contract, reused) — but ONLY when
+       *     that tool's `●` bullet is GREEN. AC3 status comes from the bullet COLOR, not from `⎿`
+       *     presence: claude paints `⎿ Waiting…`/`⎿ Running…` under a still-running (gray-bullet) tool,
+       *     so "any `⎿` = done" would flip prematurely to "complete: Waiting…". Gray/unreadable stays
+       *     pending → reload supplies the result (safe degrade). `●` cards never carry text input on
+       *     screen, so the provisional tool card is name-only; the reload supplies the full input.
+       *   - text (Story 37.11/AC1) → onTextChunk(provisional) under a synthesized messageId. The 4th
+       *     kind 37.10 skipped: general streaming prose is now ALSO a live grid card, so ALL live
+       *     content comes from this ONE source (the drain no longer races it). The drain SUPPRESSES the
+       *     matching canonical text re-emit (FIFO) and the reload replaces it.
+       * Dedup (Story 37.11/AC2): the LOGICAL per-kind index of each visible card is derived from the
+       * scroll-stable `heldCards` transcript (suffix alignment), NOT the viewport position — so an old
+       * card scrolling off the viewport top no longer hides a new card below it. That logical index then
+       * feeds the unchanged cross-source slot checks (`liveThinkingSlots`/`liveToolSlots`/`liveTextSlots`,
+       * advanced by BOTH this scraper and the drain), so re-running every frame stays idempotent and the
+       * 37.10 invariants (perm-slot reservation, synthetic-id transition, green-only flip, empty-thinking
+       * preservation) are preserved. All grid emits are tagged PROVISIONAL (AC4). Viewport-bounded
+       * (real-time); the turn-end reload backfills anything that scrolled off (37.9 AC3 completeness).
+       */
+      // Story 37.11 AC3: mark the current-turn boundary ONCE, at the first generation frame (below).
+      let turnStartMarked = false;
+      const emitProvisionalCards = (): void => {
+        if (settled || !resolvedSessionId) return;
+        // Story 37.11 AC5: read the body from the VIEWPORT + SCROLLBACK so a block taller than the
+        // viewport is parsed from its HEAD (the opening glyph) — not the glyph-less tail the viewport
+        // alone shows once it scrolls. Keeps the SCREEN the single primary card source (no file-defer
+        // race). `scrollbackBodyRows` cuts at the bottom-most live-footer anchor (still in the viewport
+        // portion), so the body = scrolled-off head + visible rows. Story 37.10: pair each row with its
+        // leading-`●` color class for tool status — read with the SAME window so colors index-align.
+        const bodyGrid = screen.readGrid(CLI_CARD_SCROLLBACK_ROWS);
+        const bodyRows = scrollbackBodyRows(bodyGrid);
+        const bodyColors = screen.readBulletColors(CLI_CARD_SCROLLBACK_ROWS).slice(0, bodyRows.length);
+        const cards = parseGridCards(bodyRows, bodyColors);
+
+        // Story 37.11 (AC2): suffix-align the visible cards against the held transcript. The visible
+        // cards are a contiguous SUFFIX of all cards this turn (older ones scrolled off the viewport
+        // top), so the largest `overlap` for which the held TAIL equals the visible HEAD identifies
+        // the already-accounted cards; the rest are genuinely new and get appended. Arrival order is
+        // the key; the sig only aligns the window (lossy-scrape safe).
+        //
+        // CRITICAL — align only STABLE cards (text/thinking/tool). A `⎿` result card's text MUTATES
+        // across frames (`Waiting…` → `Running…` → the real result), so including results in the sig
+        // alignment breaks the suffix match the moment a placeholder changes, which re-emits the tool
+        // above it under a runaway logical index. Result cards carry no per-kind slot anyway (they
+        // flip the PRECEDING tool via `lastToolSlot`), so they are excluded from the held transcript
+        // entirely; the main loop below still walks them for the flip.
+        const stable = cards.filter((c) => c.kind !== 'result');
+        const stableSigs = stable.map((c) => cardSig(c));
+        let overlap = 0;
+        const maxK = Math.min(heldCards.length, stable.length);
+        for (let k = maxK; k >= 0; k--) {
+          let ok = true;
+          for (let j = 0; j < k; j++) {
+            if (heldCards[heldCards.length - k + j].sig !== stableSigs[j]) { ok = false; break; }
+          }
+          if (ok) { overlap = k; break; }
+        }
+        for (let i = overlap; i < stable.length; i++) heldCards.push({ kind: stable[i].kind, sig: stableSigs[i] });
+
+        // Each visible STABLE card maps to held position `baseAbs + j`. Pre-count the per-kind cards
+        // BEFORE the visible window so each card's LOGICAL per-kind index = running count at its
+        // position (stable across scroll — unlike the old viewport `thIdx`/`toolIdx`). Result cards
+        // advance no count; the main loop walks the FULL `cards` list and increments only on stable
+        // kinds, so the running counts stay aligned with `heldCards` positions.
+        const baseAbs = heldCards.length - stable.length;
+        let runTh = 0, runTool = 0, runText = 0;
+        for (let p = 0; p < baseAbs; p++) {
+          const k = heldCards[p].kind;
+          if (k === 'thinking') runTh++; else if (k === 'tool') runTool++; else if (k === 'text') runText++;
+        }
+
+        let lastToolSlot = -1; // the tool slot a following `⎿` result card belongs to
+        let lastToolColor: string | null | undefined; // bullet color of the tool the result belongs to
+        for (const card of cards) {
+          if (card.kind === 'thinking') {
+            const thLogical = runTh++;
+            if (thLogical >= liveThinkingSlots && card.text.trim()) {
+              liveThinkingSlots = thLogical + 1;
+              provisionalThinkingEmitsPending++;
+              callbacks.onThinking?.(card.text, true);
+            }
+          } else if (card.kind === 'tool') {
+            // NOTE (known bound): `parseGridCards` classifies any `● Word(…)` body as a tool (the 37.9
+            // single-source rule). A code-heavy prose card that literally STARTS with `identifier(`
+            // (un-backticked — rare; assistant text blocks almost always open with a capitalized
+            // sentence) could be misread as a tool here. Worst case the FIFO suppresses a real tool's
+            // live re-emit, so it renders on RELOAD instead of live — a graceful degrade to the pre-37.10
+            // baseline, never a wrong final state (the reload is authoritative). Not name-filtered on
+            // purpose: real tools include lowercase MCP names (`mcp__server__tool`), so a PascalCase
+            // gate would wrongly drop them.
+            const toolLogical = runTool++;
+            if (toolLogical >= liveToolSlots) {
+              const synthId = `cli-prov-tool-${toolLogical}`;
+              provToolSlotIds[toolLogical] = synthId;
+              liveToolSlots = toolLogical + 1;
+              provisionalToolEmitsPending++;
+              const toolCall: TrackedToolCall = {
+                id: synthId,
+                name: card.toolName ?? 'Tool',
+                input: {}, // the screen truncates the tool input — the reload supplies the full input
+                status: 'pending',
+                provisional: true, // Story 37.11 (AC4): name-only screen estimate, dimmed until reload
+              };
+              callbacks.onToolUse?.(toolCall);
+            }
+            lastToolSlot = toolLogical;
+            lastToolColor = card.bulletColor;
+          } else if (card.kind === 'result') {
+            // A `⎿` result card flips its tool (the immediately preceding tool slot) running→complete
+            // — but ONLY when the tool's `●` bullet is GREEN (=done). claude paints `⎿ Waiting…` /
+            // `⎿ Running…` placeholders under a STILL-RUNNING tool (bullet gray), and those are NOT the
+            // result — flipping on them would show a premature "complete: Waiting…" (the pre-fix bug).
+            // So gate the flip on the green bullet; gray/other stays pending and the turn-end reload
+            // supplies the canonical result. (If color is unreadable — 'other'/undefined — we also stay
+            // pending → reload completes it: a safe degrade, never a wrong completion.) Only a GRID-
+            // provisioned slot (synthetic id present) that hasn't flipped yet; a drain-owned slot is left
+            // to emitToolResults. The result stays PROVISIONAL so the tool card is not finalized early.
+            const sid = lastToolSlot >= 0 ? provToolSlotIds[lastToolSlot] : undefined;
+            if (sid && !gridResultFlippedSlots.has(lastToolSlot) && lastToolColor === 'green' && card.text.trim()) {
+              gridResultFlippedSlots.add(lastToolSlot);
+              callbacks.onToolResult?.(sid, { success: true, output: card.text }, true);
+            }
+          } else if (card.kind === 'text') {
+            // Story 37.11 (AC1): the general streaming prose card. Emit it as a PROVISIONAL live text
+            // chunk (the screen is the single live text source now). The drain suppresses the matching
+            // canonical text via `provisionalTextEmitsPending`; the turn-end reload replaces it.
+            const textLogical = runText++;
+            if (textLogical >= liveTextSlots && card.text.trim()) {
+              liveTextSlots = textLogical + 1;
+              provisionalTextEmitsPending++;
+              callbacks.onTextChunk?.({
+                sessionId: resolvedSessionId,
+                messageId: `cli-prov-text-${++provisionalCardCounter}`,
+                content: card.text,
+                done: false,
+                provisional: true,
+              });
+            }
+          }
+        }
       };
 
       /**
@@ -1761,7 +1989,31 @@ export class CliChatEngine implements ChatEngine {
         if (progress.tokens === lastProgressTokens) return; // change-only throttle
         lastProgressTokens = progress.tokens;
         clearPhase(); // spinner counter appeared → generation started; end the phase indicator
-        onGenerationProgress({ tokens: progress.tokens, elapsedSeconds: progress.elapsedSeconds });
+        onGenerationProgress({
+          tokens: progress.tokens,
+          elapsedSeconds: progress.elapsedSeconds,
+          ...(progress.thinking ? { thinking: true } : {}),
+        });
+      };
+
+      /**
+       * Story 37.8 + boot coverage: serialize the CURRENT screen (color intact) and pace it to the
+       * client through the trailing throttle, skipping an unchanged screen. Factored out of the
+       * post-injection consumer so the BOOT/resume phase can mirror its repaint too — which also feeds
+       * the soft screen-stall watchdog (driven by these frames), giving boot the same non-destructive
+       * "looks stuck?" coverage as generation. Best-effort; a serialize failure never breaks a turn.
+       */
+      const emitScreenFrame = (): void => {
+        if (!onScreenFrame) return;
+        try {
+          const frame = screen.serialize();
+          if (frame !== lastSentFrame) {
+            lastSentFrame = frame;
+            frameThrottle.schedule(frame);
+          }
+        } catch {
+          /* serialize best-effort — never break a turn */
+        }
       };
 
       /**
@@ -1785,6 +2037,20 @@ export class CliChatEngine implements ChatEngine {
         // (1) Generation progress (Story 32.7 / 37.2 token source / 37.3 elapsed). Gated on the
         // callback (queue path omits it). The grid overwrites the spinner cell in place → no fusion.
         if (onGenerationProgress) emitProgressFromGrid(grid);
+
+        // (1.5) Live thinking + tool cards (Story 37.10). ONLY mid-generation: `isGeneratingGrid` is the
+        // POSITIVE active-generation signal (spinner / "esc to interrupt"), which is absent the instant
+        // claude pauses to paint a permission/question modal — so this scraper never fires on a modal
+        // frame, and a permission-gated tool card (which only appears once generation halts) is left to
+        // its 32.6 standalone card. Auto-approved tools and thinking run WHILE the spinner spins, so they
+        // are scraped and emitted live; the JSONL drain reconciles by arrival-order slot (no double-render).
+        if (isGeneratingGrid(grid)) {
+          // Story 37.11 AC3: mark the current-turn boundary at the FIRST generation frame, so the card
+          // scrollback read (emitProvisionalCards) is floored ABOVE a resume boot-repaint of the prior
+          // conversation — 실측: a 130-line turn-2 that scrolled the repaint into scrollback leaked it 0×.
+          if (!turnStartMarked) { screen.markTurnStart(); turnStartMarked = true; }
+          emitProvisionalCards();
+        }
 
         // (2) Usage-limit exhaustion (POST-INJECTION ONLY — this runs only because consumeSettledGrid
         // is scheduled after injection). The "You've hit your weekly limit · resets …" notice lives
@@ -1842,6 +2108,21 @@ export class CliChatEngine implements ChatEngine {
           // the dialog always precedes the block (claude blocks on the prompt), so the counter is set
           // before the drain sees it.
           permissionGatedToolsPending++;
+          // Story 37.10 (TOOL-PERM-RESCRAPE): also reserve this gated tool's GRID-side slot. The
+          // drain-side suppression above keeps the canonical `toolu_…` from re-emitting, but the live
+          // grid scraper (`emitProvisionalCards`) dedups on its OWN counter (`liveToolSlots`), which the
+          // permission path never advanced. Once the user approves and generation resumes
+          // (`isGeneratingGrid` true), claude can keep the gated `● Tool(…)` card in the scrollback while
+          // the spinner runs again — the scraper would then see this slot as free (`toolIdx >= liveToolSlots`)
+          // and re-provision it as a `cli-prov-tool-N` card, double-rendering against the 32.6 `cli-perm-N`
+          // card AND leaking a `provisionalToolEmitsPending` that wrongly suppresses a LATER tool's live
+          // emit. Advancing the slot makes the scraper treat it as already-spoken-for. The slot id is left
+          // UNSET (no `provToolSlotIds` entry) so the gated tool's `⎿` result stays on the reload path —
+          // its existing honest fallback; we do NOT flip the permission card via onToolResult (unverified
+          // client contract, minimal change). Correct whether or not claude re-exposes the card: if it does
+          // the double-render is prevented; if it doesn't, a following tool simply renders via the drain
+          // instead of the grid (still live, reload authoritative) — no loss, no double render either way.
+          liveToolSlots++;
         }
 
         // (4) AskUserQuestion modal (Story 32.8). Mutually exclusive with the permission path above
@@ -1894,21 +2175,10 @@ export class CliChatEngine implements ChatEngine {
           }, CLI_QUESTION_SETTLE_MS);
         }
 
-        // (5) Story 37.8: full-screen mirror frame. We are inside the post-flush settled
-        // consumer, so the screen is current — serialize it WITH color and pace it to the
-        // client (trailing throttle). Skip an unchanged screen (spinner idle) to spare
-        // bandwidth. No extra flush: reuse this settled read so detection timing is unchanged.
-        if (onScreenFrame) {
-          try {
-            const frame = screen.serialize();
-            if (frame !== lastSentFrame) {
-              lastSentFrame = frame;
-              frameThrottle.schedule(frame);
-            }
-          } catch {
-            /* serialize best-effort — never break a turn */
-          }
-        }
+        // (5) Story 37.8: full-screen mirror frame. We are inside the post-flush settled consumer, so
+        // the screen is current — serialize + pace it (no extra flush; reuse this settled read so
+        // detection timing is unchanged). Factored into emitScreenFrame so boot mirrors too.
+        emitScreenFrame();
       };
 
       // S-1 heartbeat: during generation the session JSONL is silent until a block
@@ -1960,6 +2230,11 @@ export class CliChatEngine implements ChatEngine {
         // `unknown`) is made by attemptInjectFromGrid on the flushed grid. The POST-injection grid
         // detectors (consumeSettledGrid) still run only after injection.
         if (!injected) {
+          // Mirror the boot/resume repaint to the client AND feed the soft screen-stall watchdog (both
+          // are driven by these serialized frames) so the BOOT phase has the same non-destructive
+          // "looks stuck? — Stop" coverage as generation — that is what lets us drop the old hard boot
+          // timeout (see armBootPoll) without leaving a silent boot hang.
+          void screen.flush().then(emitScreenFrame);
           // While the card is driving a confirm menu (choiceMenuHandled), suppress the boot settle
           // timer — re-entering attemptInjectFromGrid would re-classify the still-open menu and
           // (pre-2026-06-12) Esc it out from under the card. driveBootChoiceMenu owns the screen
@@ -1967,9 +2242,12 @@ export class CliChatEngine implements ChatEngine {
           if (choiceMenuHandled) return;
           bootBuffer += data;
           if (bootBuffer.includes(CLI_PROMPT_MARKER)) {
-            bootMarkerSeen = true;
+            // The raw `❯` is a CHEAP trigger to flush+classify — NOT proof of the real input box (a
+            // resume repaint QUOTES `❯` from scrollback). Injection stays grid-gated in
+            // attemptInjectFromGrid (only a real footer input box injects), so a quoted `❯` merely
+            // schedules a harmless re-classify — never a blind inject, and (post-fix) never an abort.
             if (bootSettleTimer) clearTimeout(bootSettleTimer);
-            bootSettleTimer = setTimeout(() => attemptInjectFromGrid(false), CLI_BOOT_SETTLE_MS);
+            bootSettleTimer = setTimeout(() => attemptInjectFromGrid(), CLI_BOOT_SETTLE_MS);
           }
           return;
         }
@@ -1989,26 +2267,25 @@ export class CliChatEngine implements ChatEngine {
         fail(new Error(`claude CLI exited (code ${exitCode}) before completing the turn`));
       });
 
-      // Fallback for when the ❯ marker never settles. CRITICAL: never inject before the box marker
-      // has rendered — injecting before the input box exists loses the prompt and hangs the turn in
-      // "waiting" forever (reproduced on an MCP-heavy project whose box took ~6s, past the 4s
-      // checkpoint; the snippet-chain's near-instant next turn hit it cold). The `bootMarkerSeen`
-      // gate + ceiling timing skeleton are preserved; Story 37.6 changes only the FINAL decision:
-      // the firing of this fallback is the DECISIVE checkpoint, so it routes through
-      // attemptInjectFromGrid(isFinal=true) — `input-box` injects (rescues a normal box whose settle
-      // merely lagged behind noise, AC5 hang prevention); `selection`/`unknown` no longer blind-inject
-      // but end the turn with an explicit error (AC3) instead.
-      const armBootFallback = (delay: number, isFinal: boolean) => {
+      // Boot readiness POLL (replaces the old decisive ceiling). Every CLI_MAX_BOOT_WAIT_MS we re-run
+      // the grid classifier and inject AS SOON AS a real input box appears (or drive a resume confirm
+      // menu). We do NOT hard-abort on a not-yet-ready screen: a resume repaint of a large transcript
+      // can take a while, and "unknown" almost always means "still painting", not "broken" — aborting
+      // there was a false positive (surfaced as a misleading "timeout"; the old `bootMarkerSeen` gate
+      // made it worse, since a resume repaint QUOTES `❯` in scrollback and prematurely promoted the
+      // checkpoint to decisive). Injection stays grid-gated (only a verified footer input box injects),
+      // so polling is safe. Genuine stuck cases are covered without a destructive timeout: a frozen
+      // boot screen trips the soft screen-stall affordance (now fed during boot — see onData), a
+      // crashed REPL fires pty.onExit, and the user's Stop always works. The settle timer (onData)
+      // gives the fast path; this poll is the steady backstop.
+      const armBootPoll = () => {
         bootFallbackTimer = setTimeout(() => {
           if (injected || settled || choiceMenuHandled) return;
-          if (bootMarkerSeen || isFinal) {
-            attemptInjectFromGrid(true); // decisive: grid-verified inject or explicit-error fail
-          } else {
-            armBootFallback(CLI_MAX_BOOT_WAIT_NO_MARKER_MS - CLI_MAX_BOOT_WAIT_MS, true);
-          }
-        }, delay);
+          attemptInjectFromGrid(); // inject if ready / drive a confirm menu; otherwise keep waiting
+          armBootPoll();
+        }, CLI_MAX_BOOT_WAIT_MS);
       };
-      armBootFallback(CLI_MAX_BOOT_WAIT_MS, false);
+      armBootPoll();
 
       const emitSessionInitOnce = (model?: string) => {
         if (sessionInitEmitted || !resolvedSessionId) return;
@@ -2073,15 +2350,46 @@ export class CliChatEngine implements ChatEngine {
               // session here contradicted that — so we wire it and let a live CLI chat
               // confirm. Note: `-p`/print runs as entrypoint:sdk-ts, a DIFFERENT path,
               // so a `-p` test does NOT represent interactive CLI mode.)
+              //
+              // Story 37.10 (AC1): reconcile with the live grid scraper. `emitProvisionalCards` may
+              // have already emitted this thinking off the screen (the summary paints before the JSONL
+              // block lands). Match by arrival-order FIFO (`provisionalThinkingEmitsPending`): consume
+              // the slot whether the canonical is POPULATED or EMPTY. Populated → SUPPRESS the re-emit
+              // (the turn-end reload swaps the provisional for the raw thinking). Empty (Opus 4.7+
+              // signature-only) → there is nothing to emit anyway, so the grid provisional simply stands
+              // as the sole live copy (AC1 empty-canonical: preserve, don't erase). With no provisional
+              // pending the drain is first to this slot (grid slower / scrolled) → emit canonical and
+              // advance the shared slot counter so the scraper won't re-emit it.
               const thinking = (block as ThinkingContentBlock).thinking;
-              if (thinking && thinking.trim()) callbacks.onThinking?.(thinking);
+              if (provisionalThinkingEmitsPending > 0) {
+                provisionalThinkingEmitsPending--;
+              } else if (thinking && thinking.trim()) {
+                liveThinkingSlots++;
+                callbacks.onThinking?.(thinking);
+              }
             } else if (block.type === 'text') {
               const text = (block as TextContentBlock).text;
               if (text && text.trim() && text.trim() !== '(no content)') {
                 accumulatedText += text;
-                // Story 37.9: skip the live re-emit when this block's prose was emitted provisionally
-                // (suppressBlockText) — the provisional already occupies the slot and reload replaces it.
-                if (!suppressBlockText) {
+                // Story 37.11 (AC1): the screen grid is the single LIVE text source — the drain no
+                // longer UNCONDITIONALLY re-emits text live (that was the source of the grid↔file
+                // race). It SUPPRESSES the live re-emit when a provisional already holds this slot,
+                // and emits authoritatively ONLY when the grid hasn't reached this block (no
+                // generating frame caught it / it scrolled past) — the file as completeness backstop.
+                //   (a) modal lead-in (37.9 `suppressBlockText`) — the provisional prose above an
+                //       input-waiting modal; reload replaces.
+                //   (b) general grid text (`provisionalTextEmitsPending`, arrival-order FIFO) — the
+                //       `emitProvisionalCards` text card already emitted it; reload replaces.
+                //   (c) neither pending → authoritative emit; advance `liveTextSlots` so a later grid
+                //       scrape of this same card falls below the high-water and is skipped.
+                if (suppressBlockText) {
+                  // (a) 37.9 modal lead-in — already counted via provisionalBodyEmitsPending above.
+                } else if (provisionalTextEmitsPending > 0) {
+                  // (b) general grid provisional holds this slot.
+                  provisionalTextEmitsPending--;
+                } else {
+                  // (c) authoritative (grid behind / no grid frame).
+                  liveTextSlots++;
                   callbacks.onTextChunk?.({
                     sessionId: resolvedSessionId ?? '',
                     messageId: `${raw.uuid}-t${textIdx++}`,
@@ -2104,9 +2412,19 @@ export class CliChatEngine implements ChatEngine {
                 // the live emit (a real-id card here would split from that permission card).
                 // This is the honest reload fallback for the permission path (Task 1 decision).
                 permissionGatedToolsPending--;
+              } else if (provisionalToolEmitsPending > 0) {
+                // Story 37.10 (AC4): a grid provisional tool card already occupies this slot
+                // (synthetic `cli-prov-tool-N`, arrival-order FIFO — checked AFTER the permission
+                // gate so an interleaved gated tool consumes its own counter first). Suppress the
+                // canonical live re-emit; a real-`toolu_…` card here would split from the provisional.
+                // Left OUT of liveEmittedToolIds so emitToolResults also leaves this tool's result to
+                // the grid flip (synthetic id) — no orphan real-id result against a synthetic-id card.
+                // The turn-end reload replaces the name-only provisional with the full-input canonical.
+                provisionalToolEmitsPending--;
               } else {
-                // Auto-approved / safe tool (AC2): no dialog, no standalone card → a live card
-                // is clean. Track the id so the matching tool_result is mirrored live (AC3).
+                // Auto-approved / safe tool the grid scraper didn't reach (32.9 path). Track the id so
+                // the matching tool_result is mirrored live, and advance the shared slot counter so the
+                // scraper won't re-provision this slot.
                 const toolCall: TrackedToolCall = {
                   id: toolBlock.id,
                   name: toolBlock.name,
@@ -2114,6 +2432,7 @@ export class CliChatEngine implements ChatEngine {
                   status: 'pending',
                 };
                 liveEmittedToolIds.add(toolBlock.id);
+                liveToolSlots++;
                 callbacks.onToolUse?.(toolCall);
               }
             }
@@ -2122,12 +2441,20 @@ export class CliChatEngine implements ChatEngine {
           const text = blockContent;
           if (text.trim() && text.trim() !== '(no content)') {
             accumulatedText += text;
-            callbacks.onTextChunk?.({
-              sessionId: resolvedSessionId ?? '',
-              messageId: raw.uuid,
-              content: text,
-              done: false,
-            });
+            // Story 37.11 (AC1): same single-live-source contract as the block-array text path —
+            // suppress the live re-emit when the grid already provisioned this slot; otherwise emit
+            // authoritatively and advance the high-water.
+            if (provisionalTextEmitsPending > 0) {
+              provisionalTextEmitsPending--;
+            } else {
+              liveTextSlots++;
+              callbacks.onTextChunk?.({
+                sessionId: resolvedSessionId ?? '',
+                messageId: raw.uuid,
+                content: text,
+                done: false,
+              });
+            }
           }
         }
 

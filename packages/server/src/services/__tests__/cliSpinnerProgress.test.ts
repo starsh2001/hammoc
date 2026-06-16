@@ -18,6 +18,7 @@
  * server runs with `globals: false`, so vitest primitives are imported explicitly.
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { createCliScreenModel } from '../cliScreenModel.js';
 import { readSpinnerProgress } from '../cliSpinnerProgress.js';
@@ -57,7 +58,7 @@ describe('readSpinnerProgress (Story 37.2 — grid token reader)', () => {
 
   it('expands the abbreviated "k" form (1.4k → 1400) the linear regex missed', async () => {
     const p = await read([drawSpinner('Flowing… (9s · ↓ 1.4k tokens · thinking with high effort)')]);
-    expect(p).toEqual({ tokens: 1400, elapsedSeconds: 9 });
+    expect(p).toEqual({ tokens: 1400, elapsedSeconds: 9, thinking: true });
   });
 
   it('strips a thousands separator (12,345 → 12345)', async () => {
@@ -135,7 +136,7 @@ describe('readSpinnerProgress (Story 37.2 — grid token reader)', () => {
       `${ESC}[20;1H${ESC}[2KMoseying… (9s · ↓ 36`,
       `5 tokens · thinking with high effort)`,
     ]);
-    expect(p).toEqual({ tokens: 365, elapsedSeconds: 9 });
+    expect(p).toEqual({ tokens: 365, elapsedSeconds: 9, thinking: true });
   });
 
   // Resume-repaint poisoning class (실측 2026-06-13): a quoted "↓ N tokens" in the scrollback body must
@@ -166,5 +167,53 @@ describe('readSpinnerProgress (Story 37.2 — grid token reader)', () => {
     // ↑-phase emitted no progress and the user could not tell "frozen" from "slow". Both arrows now read.
     const p = await read([drawSpinner('✶ Adding unit + flow tests… (22m 22s · ↑ 95.6k tokens · esc to interrupt)')]);
     expect(p).toEqual({ tokens: 95600, elapsedSeconds: 1342 }); // 22m 22s = 1342s; 95.6k → 95600
+  });
+});
+
+describe('readSpinnerProgress — THINKING-phase label (Story 37.11 AC1, achievable tier — no quota)', () => {
+  it('flags the thinking phase ("· thinking with high effort)") as thinking:true', async () => {
+    const p = await read([drawSpinner('✻ Whirring… (5s · ↓ 53 tokens · thinking with high effort)')]);
+    expect(p).toEqual({ tokens: 53, elapsedSeconds: 5, thinking: true });
+  });
+
+  it('flags the "still thinking" continuation too', async () => {
+    const p = await read([drawSpinner('✶ Sublimating… (15s · ↓ 91 tokens · still thinking with high effort)')]);
+    expect(p?.thinking).toBe(true);
+  });
+
+  it('does NOT flag a response-phase row (no post-counter thinking segment → key absent)', async () => {
+    const p = await read([drawSpinner('· Whirring… (31s · ↓ 1.3k tokens)')]);
+    expect(p).toEqual({ tokens: 1300, elapsedSeconds: 31 }); // additive: thinking key absent, not false
+    expect(p?.thinking).toBeUndefined();
+  });
+
+  it('does NOT flag a rotating "Thinking…" gerund BEFORE the counter (anchoring: only the post-counter phase counts)', async () => {
+    // The spinner WORD itself is a whimsical gerund (Whirring/Sublimating/…); a hypothetical
+    // "Thinking…" glyph must not be mistaken for the phase — only "tokens · … thinking" inside the paren does.
+    const p = await read([drawSpinner('✶ Thinking… (↓ 366 tokens · 18s)')]);
+    expect(p?.tokens).toBe(366);
+    expect(p?.thinking).toBeUndefined();
+  });
+
+  it('reads thinking:true from a REAL verbose:on PTY capture (실측 — existing 37.9 fixture, no new quota)', async () => {
+    // Replay the committed real capture through the PRODUCTION screen model and assert that during the
+    // thinking phase at least one settled frame reads thinking:true WITH a live counter. This pins the
+    // empirical truth (실측 2026-06-16): in verbose mode claude paints NO body thinking content — the
+    // spinner phase segment is the ONLY live "thinking" signal, and it reconstructs faithfully.
+    const STREAM = Buffer.from(
+      readFileSync(new URL('./fixtures/cli-verbose-on-long-thinking.b64.txt', import.meta.url), 'utf8').trim(),
+      'base64',
+    ).toString('utf8');
+    const screen = createCliScreenModel();
+    let sawThinkingWithCounter = false;
+    const STEP = 800;
+    for (let i = 0; i < STREAM.length && !sawThinkingWithCounter; i += STEP) {
+      screen.write(STREAM.slice(i, i + STEP));
+      await screen.flush();
+      const p = readSpinnerProgress(screen.readGrid());
+      if (p?.thinking && p.tokens > 0) sawThinkingWithCounter = true;
+    }
+    screen.dispose();
+    expect(sawThinkingWithCounter).toBe(true);
   });
 });

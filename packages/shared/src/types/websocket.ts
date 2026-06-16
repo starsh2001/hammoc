@@ -135,7 +135,7 @@ export interface ServerToClientEvents {
   'message:complete': (data: Message) => void;
   'tool:call': (data: ToolCall) => void;
   'tool:input-update': (data: { toolCallId: string; input: Record<string, unknown> }) => void;
-  'tool:result': (data: { toolCallId: string; result: ToolResult }) => void;
+  'tool:result': (data: { toolCallId: string; result: ToolResult; provisional?: boolean }) => void;
   'permission:request': (data: PermissionRequest) => void;
   'error': (data: { code: string; message: string }) => void;
   'session:created': (data: { sessionId: string; model?: string }) => void;
@@ -144,12 +144,14 @@ export interface ServerToClientEvents {
   'context:usage': (data: ChatUsage) => void;
   'assistant:usage': (data: { inputTokens: number; outputTokens: number; cacheCreationInputTokens: number; cacheReadInputTokens: number }) => void;
   'context:estimate': (data: { estimatedTokens: number; contextWindow: number }) => void;
-  'thinking:chunk': (data: { content: string }) => void;
+  'thinking:chunk': (data: { content: string; provisional?: boolean }) => void;
   'system:compact': (data: CompactMetadata) => void;
   'tool:progress': (data: { toolUseId: string; elapsedTimeSeconds: number; toolName: string }) => void;
   // Story 32.7: CLI-engine generation progress — transient "↓ N tokens · Ns" signal
-  // parsed from the claude TUI spinner (live-only; skipped on buffer replay).
-  'generation:progress': (data: { tokens: number; elapsedSeconds: number }) => void;
+  // parsed from the claude TUI spinner (live-only; skipped on buffer replay). Story 37.11:
+  // `thinking?` flags the THINKING phase (spinner reads "· [still ]thinking …") so the client
+  // labels the indicator "Thinking…" — additive optional, absent = generic generation (shape unchanged).
+  'generation:progress': (data: { tokens: number; elapsedSeconds: number; thinking?: boolean }) => void;
   // Story 36.2: CLI-engine pre-generation phase (boot/inject window). Transient,
   // live-only (skipped on buffer replay); a null phase hands off to generation:progress.
   'cli:phase': (data: { phase: 'launching' | 'submitting' | 'waiting' | null }) => void;

@@ -2948,7 +2948,7 @@ async function handleChatSend(
     // calls this (real token streaming makes it unnecessary). Defined once and passed
     // as the 6th arg to every sendMessageWithCallbacks below; the queue path omits it
     // (no live progress UI there — the same asymmetry as onRawMessage).
-    const onGenerationProgress = (progress: { tokens: number; elapsedSeconds: number }) => {
+    const onGenerationProgress = (progress: { tokens: number; elapsedSeconds: number; thinking?: boolean }) => {
       emit('generation:progress', progress);
     };
     // Story 36.2: CLI pre-generation phase (launching/submitting/waiting/null). Same

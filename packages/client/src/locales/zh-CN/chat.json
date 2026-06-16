@@ -164,7 +164,9 @@
   },
   "streamingMessage": {
     "ariaLabel": "Claude 正在回复",
-    "assistantName": "Claude"
+    "assistantName": "Claude",
+    "liveBadge": "实时",
+    "provisionalAriaLabel": "实时屏幕估计 — 尚未确定"
   },
   "messageActionBar": {
     "copy": "复制",
@@ -294,6 +296,7 @@
     "restoring": "正在恢复对话...",
     "compactionHint": "可能正在进行上下文压缩",
     "generationProgress": "↓ {{tokens}} 个令牌 · {{time}}",
+    "thinkingProgress": "思考中… ↓ {{tokens}} 个令牌 · {{time}}",
     "cliPhase": {
       "launching": "正在启动 Claude Code…",
       "submitting": "正在发送提示…",
