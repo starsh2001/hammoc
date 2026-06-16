@@ -1244,9 +1244,14 @@ describe('WebSocket Handler', () => {
       const { AbortedError } = await import('../../utils/errors.js');
 
 
-      // Simulate timeout by throwing AbortedError
-      mockState.sendImpl =vi.fn().mockRejectedValue(
-        new AbortedError()
+      // Simulate a GENUINE inactivity timeout: the handler's timer aborts the controller with reason
+      // 'timeout', then the SDK throws AbortedError. (Only reason==='timeout' maps to the timeout
+      // message now — a bare AbortedError with no reason surfaces its real message, not "timeout".)
+      mockState.sendImpl = vi.fn().mockImplementation(
+        async (_content: string, _callbacks: unknown, options: { abortController?: AbortController }) => {
+          options.abortController?.abort('timeout');
+          throw new AbortedError();
+        },
       );
 
       clientSocket = ioc(`http://localhost:${TEST_PORT}`, {

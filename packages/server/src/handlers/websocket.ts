@@ -3217,13 +3217,19 @@ async function handleChatSend(
     log.info(`[CHAIN-DRAIN] handleChatSend catch: sessionId=${stream.sessionId}, aborted=${abortController.signal.aborted}, reason=${abortController.signal.reason}, error=${sdkError.message.slice(0, 120)}`);
 
     if (sdkError instanceof AbortedError || abortController.signal.aborted) {
-      if (abortController.signal.reason === 'user-abort' || abortController.signal.reason === 'another-client') {
+      const abortReason = abortController.signal.reason;
+      if (abortReason === 'user-abort' || abortReason === 'another-client') {
         return false;
       }
-      emit('error', {
-        code: ERROR_CODES.TIMEOUT_ERROR,
-        message: t('ws.error.timeout'),
-      });
+      // Only a genuine inactivity timeout (abortController.abort('timeout'), SDK mode) is a "timeout".
+      // Any OTHER abort/interruption surfaces its real message instead of a misleading "응답 시간 초과"
+      // — that catch-all previously masked e.g. a CLI boot-readiness failure across several debugging
+      // cycles (the user saw "timeout" for what was actually a resume-classify abort).
+      if (abortReason === 'timeout') {
+        emit('error', { code: ERROR_CODES.TIMEOUT_ERROR, message: t('ws.error.timeout') });
+      } else {
+        emit('error', { code: ERROR_CODES.CHAT_ERROR, message: sdkError.message });
+      }
       return false;
     }
 

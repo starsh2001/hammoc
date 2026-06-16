@@ -30,8 +30,21 @@ const log = createLogger('cliSessionPool');
  * "I am running inside claude" environment signals. Stripped before spawning a
  * fresh interactive claude so it starts a clean session rather than trying to
  * attach to the host Hammoc process (spike §2).
+ *
+ * CHILD_SESSION / SESSION_ID matter when Hammoc itself is launched FROM INSIDE a claude session:
+ * the spawned CLI claude would inherit "I am a child session" and then NOT write its own session
+ * JSONL transcript — which the engine drains for chat content, so every turn would look empty
+ * (verified 2026-06-15: a probe that spawned claude under these inherited vars produced no
+ * transcript until they were stripped). Production Hammoc is not nested so it never hits this, but
+ * stripping them is the correct defensive posture for in-session launches.
  */
-const CLAUDE_ENV_SIGNALS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SSE_PORT'] as const;
+const CLAUDE_ENV_SIGNALS = [
+  'CLAUDECODE',
+  'CLAUDE_CODE_ENTRYPOINT',
+  'CLAUDE_CODE_SSE_PORT',
+  'CLAUDE_CODE_CHILD_SESSION',
+  'CLAUDE_CODE_SESSION_ID',
+] as const;
 
 /** Handle returned to the engine for a spawned CLI PTY. */
 export interface CliPtyHandle {
