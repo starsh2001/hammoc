@@ -14,6 +14,7 @@ import { useTheme, type Theme } from '../../hooks/useTheme';
 import { MODEL_GROUPS } from '../ModelSelector';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
 import { DeviceLocalBadge } from '../DeviceLocalBadge';
+import { EngineModeBadge } from './EngineModeBadge';
 import type { EngineMode, PermissionMode, PermissionSyncPolicy, SupportedLanguage, ThinkingEffort } from '@hammoc/shared';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
@@ -93,8 +94,8 @@ export function GlobalSettingsSection() {
         {/* Side-by-side cards (two prominent choices read better than a tall stack of wide buttons). */}
         <div className="grid grid-cols-2 gap-3">
           {([
-            { value: 'sdk' as const, labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk' },
-            { value: 'cli' as const, labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli' },
+            { value: 'sdk' as const, labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk', badgeTone: 'recommended' as const },
+            { value: 'cli' as const, labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli', badgeTone: 'beta' as const },
           ]).map((opt) => (
             <label
               key={opt.value}
@@ -115,7 +116,7 @@ export function GlobalSettingsSection() {
                 className="sr-only"
                 aria-describedby={`engine-desc-${opt.value}`}
               />
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
                   engineModePref === opt.value
                     ? 'border-blue-500'
@@ -128,6 +129,7 @@ export function GlobalSettingsSection() {
                 <span className={`text-base font-semibold ${engineModePref === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
                   {t(opt.labelKey)}
                 </span>
+                <EngineModeBadge tone={opt.badgeTone} />
               </div>
               <p
                 id={`engine-desc-${opt.value}`}

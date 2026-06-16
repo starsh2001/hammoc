@@ -12,6 +12,7 @@ import { usePreferencesStore } from '../../stores/preferencesStore';
 import { projectsApi } from '../../services/api/projects';
 import { getSocket } from '../../services/socket';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
+import { EngineModeBadge } from './EngineModeBadge';
 import { MODEL_GROUPS } from '../ModelSelector';
 import type {
   EngineMode,
@@ -26,9 +27,9 @@ const PERMISSION_OPTIONS: { value: PermissionMode; labelKey: string; descKey: st
   { value: 'acceptEdits', labelKey: 'global.permissionModeLabel.acceptEdits', descKey: 'global.permissionDesc.acceptEdits' },
 ];
 
-const ENGINE_OPTIONS: { value: EngineMode; labelKey: string; descKey: string }[] = [
-  { value: 'sdk', labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk' },
-  { value: 'cli', labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli' },
+const ENGINE_OPTIONS: { value: EngineMode; labelKey: string; descKey: string; badgeTone: 'recommended' | 'beta' }[] = [
+  { value: 'sdk', labelKey: 'global.engineModeOption.sdk', descKey: 'global.engineModeDesc.sdk', badgeTone: 'recommended' },
+  { value: 'cli', labelKey: 'global.engineModeOption.cli', descKey: 'global.engineModeDesc.cli', badgeTone: 'beta' },
 ];
 
 /** Sentinel value for "use global default" option */
@@ -428,8 +429,11 @@ export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionPr
                     )}
                   </div>
                   <div>
-                    <span className={`text-sm font-medium ${engineValue === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                      {t(opt.labelKey)}
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-sm font-medium ${engineValue === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                        {t(opt.labelKey)}
+                      </span>
+                      <EngineModeBadge tone={opt.badgeTone} />
                     </span>
                     <p
                       id={`project-engine-desc-${opt.value}`}

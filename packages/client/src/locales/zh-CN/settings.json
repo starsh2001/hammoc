@@ -31,9 +31,13 @@
             "sdk": "SDK",
             "cli": "CLI"
         },
+        "engineModeBadge": {
+            "recommended": "推荐",
+            "beta": "测试版"
+        },
         "engineModeDesc": {
-            "sdk": "逐令牌实时流式传输 · （6/15 之后）按额度计费",
-            "cli": "按块传输（无逐字打字） · 订阅计费"
+            "sdk": "推荐引擎，响应实时流式呈现并支持更丰富的功能。",
+            "cli": "在与终端中交互式 Claude Code 相同的环境中运行，因此不受计费政策变更的影响。"
         },
         "autoApproveSafetyChecks": "在Bypass模式下自动批准安全检查",
         "autoApproveSafetyChecksDesc": "启用后，在Bypass模式下CLI安全检查提示将自动批准，无需用户确认。",

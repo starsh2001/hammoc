@@ -31,9 +31,13 @@
             "sdk": "SDK",
             "cli": "CLI"
         },
+        "engineModeBadge": {
+            "recommended": "Recomendado",
+            "beta": "Beta"
+        },
         "engineModeDesc": {
-            "sdk": "Transmisión en vivo token a token · facturación por créditos (después del 15/6)",
-            "cli": "Entrega por bloques (sin escritura token a token) · facturación por suscripción"
+            "sdk": "El motor recomendado: las respuestas se transmiten en tiempo real y admite la mayor variedad de funciones.",
+            "cli": "Se ejecuta en el mismo entorno que el Claude Code interactivo de la terminal, por lo que no le afectan los cambios en la política de facturación."
         },
         "autoApproveSafetyChecks": "Aprobar automáticamente verificaciones de seguridad en modo Bypass",
         "autoApproveSafetyChecksDesc": "Cuando está habilitado, las solicitudes de verificación de seguridad del CLI se aprueban automáticamente sin confirmación del usuario en modo Bypass.",

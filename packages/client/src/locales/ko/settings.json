@@ -32,9 +32,13 @@
             "sdk": "SDK",
             "cli": "CLI"
         },
+        "engineModeBadge": {
+            "recommended": "추천",
+            "beta": "베타"
+        },
         "engineModeDesc": {
-            "sdk": "토큰 단위 실시간 스트리밍 · (6/15 이후) 크레딧 빌링",
-            "cli": "블록 단위 전달(토큰 타이핑 없음) · 구독 빌링"
+            "sdk": "응답이 실시간으로 이어지고 다양한 기능을 지원하는 권장 엔진입니다.",
+            "cli": "터미널의 Claude Code와 동일한 환경에서 실행되어, 빌링 정책 변경의 영향을 받지 않는 모드입니다."
         },
         "autoApproveSafetyChecks": "Bypass 모드에서 안전 검사 자동 승인",
         "autoApproveSafetyChecksDesc": "활성화하면 Bypass 모드에서 CLI 안전 검사 프롬프트를 사용자 확인 없이 자동 승인합니다.",

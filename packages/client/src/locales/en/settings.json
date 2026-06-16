@@ -32,9 +32,13 @@
             "sdk": "SDK",
             "cli": "CLI"
         },
+        "engineModeBadge": {
+            "recommended": "Recommended",
+            "beta": "Beta"
+        },
         "engineModeDesc": {
-            "sdk": "Token-by-token live streaming · credit billing (after Jun 15)",
-            "cli": "Block-by-block delivery (no token typing) · subscription billing"
+            "sdk": "The recommended engine — responses stream in real time and it supports the widest range of features.",
+            "cli": "Runs in the same environment as the interactive Claude Code in your terminal, so it stays unaffected by billing-policy changes."
         },
         "autoApproveSafetyChecks": "Auto-approve safety checks in Bypass mode",
         "autoApproveSafetyChecksDesc": "When enabled, CLI safety check prompts are automatically approved without user confirmation in Bypass mode.",

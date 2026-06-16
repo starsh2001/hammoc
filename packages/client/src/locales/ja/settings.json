@@ -31,9 +31,13 @@
             "sdk": "SDK",
             "cli": "CLI"
         },
+        "engineModeBadge": {
+            "recommended": "推奨",
+            "beta": "ベータ"
+        },
         "engineModeDesc": {
-            "sdk": "トークン単位のリアルタイムストリーミング · 6/15以降はクレジット課金",
-            "cli": "ブロック単位の配信（トークンタイピングなし） · サブスクリプション課金"
+            "sdk": "応答がリアルタイムで流れ、幅広い機能に対応した推奨エンジンです。",
+            "cli": "ターミナルのインタラクティブな Claude Code と同じ環境で実行されるため、課金ポリシーの変更の影響を受けないモードです。"
         },
         "autoApproveSafetyChecks": "Bypassモードで安全チェックを自動承認",
         "autoApproveSafetyChecksDesc": "有効にすると、Bypassモードで安全チェックプロンプトをユーザー確認なしで自動承認します。",
