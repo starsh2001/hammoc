@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useChatStore } from '../chatStore';
 import { useMessageStore } from '../messageStore';
 import { usePreferencesStore } from '../preferencesStore';
+import { createPresentationQueue } from '../../utils/presentationQueue';
 
 // Mock socket
 const mockEmit = vi.fn();
@@ -327,16 +328,26 @@ describe('useChatStore', () => {
   // Story 37.11 (AC4): the provisional flag (CLI grid screen-scrape) propagates onto text/thinking/
   // tool segments; authoritative emits leave it unset so the renderer dims only the live estimates.
   describe('provisional flag propagation (Story 37.11 AC4)', () => {
-    it('marks a text segment provisional and leaves authoritative text unset', () => {
+    it('marks a text segment provisional, then FINALIZES it in place when the canonical arrives (provisional=false)', () => {
       const { startStreaming, appendStreamingContent } = useChatStore.getState();
       startStreaming('session-1', 'msg-1');
       appendStreamingContent('live estimate', true);
       expect(useChatStore.getState().streamingSegments[0]).toEqual({ type: 'text', content: 'live estimate', provisional: true });
 
-      // A following authoritative chunk to a NEW segment is not provisional.
-      const { addStreamingToolCall: addTool } = useChatStore.getState();
-      addTool({ id: 'tx', name: 'Read' });
-      appendStreamingContent('authoritative', false);
+      // Story 37.11 (progressive finalize): provisional === false REPLACES the oldest still-provisional text
+      // segment in place with the canonical content and DROPS the badge (a replace, not an append).
+      appendStreamingContent('canonical markdown', false);
+      expect(useChatStore.getState().streamingSegments).toEqual([{ type: 'text', content: 'canonical markdown' }]);
+    });
+
+    it('appends an authoritative (undefined-provisional) chunk as a NEW unmarked segment (grid-behind backstop)', () => {
+      const { startStreaming, appendStreamingContent, addStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('live estimate', true);
+      addStreamingToolCall({ id: 'tx', name: 'Read' });
+      // `undefined` (NOT false) = a fresh authoritative block the grid never scraped → append as a new
+      // segment, leaving the existing provisional untouched (only `false` finalizes).
+      appendStreamingContent('authoritative');
       const segs = useChatStore.getState().streamingSegments;
       expect(segs[segs.length - 1]).toEqual({ type: 'text', content: 'authoritative' });
     });
@@ -366,6 +377,33 @@ describe('useChatStore', () => {
       startStreaming('session-1', 'msg-1');
       addStreamingToolCall({ id: 'toolu_1', name: 'Read' });
       expect(useChatStore.getState().streamingSegments[0]).not.toHaveProperty('provisional');
+    });
+
+    it('FINALIZES the oldest provisional thinking segment in place when the canonical arrives (provisional=false)', () => {
+      const { startStreaming, addStreamingThinking } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      addStreamingThinking('Thought for 5s', true);
+      addStreamingThinking('raw reasoning', false); // canonical → replace the live scrape, drop the badge
+      expect(useChatStore.getState().streamingSegments).toEqual([{ type: 'thinking', content: 'raw reasoning' }]);
+    });
+
+    it('FINALIZES the oldest provisional tool card in place on a non-provisional call (id-independent — real name+input, badge dropped)', () => {
+      const { startStreaming, addStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      // The friendly, name-only provisional card (the screen showed `Update` with no input).
+      addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Update', input: {}, provisional: true });
+      // The file-parsed canonical arrives under a DIFFERENT (real `toolu_…`) id + provisional=false — the
+      // client binds it to the OLDEST provisional tool (by order, NOT by id), keeping that card's id.
+      addStreamingToolCall({ id: 'toolu_real', name: 'Edit', input: { file_path: 'x.ts' }, provisional: false });
+      const segs = useChatStore.getState().streamingSegments;
+      expect(segs).toHaveLength(1); // finalized in place — NOT a second card
+      const seg = segs[0];
+      expect(seg.type).toBe('tool');
+      if (seg.type === 'tool') {
+        expect(seg.toolCall.name).toBe('Edit'); // canonical name replaced the friendly `Update`
+        expect(seg.toolCall.input).toEqual({ file_path: 'x.ts' }); // real input filled in (was empty)
+      }
+      expect(seg).not.toHaveProperty('provisional'); // badge dropped
     });
   });
 
@@ -712,6 +750,73 @@ describe('useChatStore', () => {
     });
   });
 
+  describe('provisional→canonical text replace race (Story 37.11 duplicate)', () => {
+    const setup = () => {
+      useChatStore.setState({ streamingSegments: [], messages: [], isStreaming: true });
+      const rafQ: Array<() => void> = [];
+      const sched = (cb: () => void) => { rafQ.push(cb); return rafQ.length; };
+      const preso = createPresentationQueue({
+        append: (c: string, p?: boolean) => useChatStore.getState().appendStreamingContent(c, p),
+        typerOptions: { schedule: sched },
+      });
+      // Drive the preso promise chain (microtasks) and the synthetic typer's frames (captured
+      // rAF callbacks) in lock-step: a microtask first so the next chain step can schedule its
+      // frame, then pump one frame. Runs long enough for the whole chain to settle.
+      const flushRaf = async () => {
+        for (let i = 0; i < 100; i++) {
+          await Promise.resolve();
+          if (rafQ.length) {
+            const cb = rafQ.shift();
+            if (cb) cb();
+          }
+        }
+      };
+      return { preso, flushRaf };
+    };
+
+    it('REPRO: canonical applied immediately (current text path) cannot find the still-queued provisional → duplicate', async () => {
+      const { preso, flushRaf } = setup();
+      // handleChunk(363): a provisional text block enters the synthetic typer queue.
+      preso.enqueueText('the final answer', true);
+      await Promise.resolve();
+      await Promise.resolve();
+      // The typer hasn't pumped its first char yet (rAF not run) → nothing in segments.
+      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
+
+      // handleChunk(361) CURRENT path: canonical applied immediately, bypassing the queue.
+      useChatStore.getState().appendStreamingContent('the final answer', false);
+
+      await flushRaf(); // now the provisional finally types in
+
+      const texts = useChatStore
+        .getState()
+        .streamingSegments.filter((s) => s.type === 'text')
+        .map((s) => (s as { content: string }).content);
+      // Bug signature: the answer is NOT a single clean 'the final answer' — it duplicated/fused.
+      expect(texts.join('')).not.toBe('the final answer');
+    });
+
+    it('FIX: canonical routed through the queue (chain-ordered) finalizes the provisional in place', async () => {
+      const { preso, flushRaf } = setup();
+      preso.enqueueText('the final answer', true);
+      // handleChunk(361) FIXED path: revealSegment → enqueueReveal, ordered AFTER the provisional.
+      preso.enqueueReveal(
+        () => useChatStore.getState().appendStreamingContent('the final answer', false),
+        0,
+      );
+
+      await flushRaf();
+
+      const texts = useChatStore
+        .getState()
+        .streamingSegments.filter((s) => s.type === 'text');
+      expect(texts).toHaveLength(1);
+      expect((texts[0] as { content: string }).content).toBe('the final answer');
+      // The surviving segment is canonical (not dimmed/badged) anymore.
+      expect((texts[0] as { provisional?: boolean }).provisional).not.toBe(true);
+    });
+  });
+
   describe('selectedEffort (Story 26.2)', () => {
     it('has initial selectedEffort set to undefined', () => {
       const { selectedEffort } = useChatStore.getState();
@@ -958,7 +1063,7 @@ describe('useChatStore', () => {
 
     it('preserves the thinking-phase flag (Story 37.11 — drives the "Thinking…" progress label)', () => {
       // verbose-mode claude paints no live thinking content — the spinner phase flag is the only live
-      // "thinking" signal; the store must carry it so MessageArea can switch to streaming.thinkingProgress.
+      // "thinking" signal; the store must carry it so MessageArea can label the live indicator streaming.thinking.
       useChatStore.getState().setGenerationProgress({ tokens: 143, elapsedSeconds: 18, thinking: true });
       expect(useChatStore.getState().generationProgress).toEqual({ tokens: 143, elapsedSeconds: 18, thinking: true });
     });

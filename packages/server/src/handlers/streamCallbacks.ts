@@ -123,15 +123,17 @@ export function buildStreamCallbacks(
         messageId: chunk.messageId,
         content: chunk.content,
         done: chunk.done,
-        // Story 37.11 (AC4): forward the provisional flag (CLI grid scrape) so the client can
-        // render the live screen estimate dimmed + `live`-badged until the reload replaces it.
-        ...(chunk.provisional ? { provisional: true } : {}),
+        // Story 37.11: forward the provisional flag TRI-STATE so the client can render the live screen
+        // estimate dimmed + `live`-badged (`true`), or FINALIZE it in place when the file-parsed canonical
+        // arrives (`false` — progressive replace), or append a fresh authoritative block (`undefined`).
+        // Must forward `false` explicitly (a truthy-only spread would drop it → no finalize).
+        ...(chunk.provisional !== undefined ? { provisional: chunk.provisional } : {}),
       });
     },
 
     onThinking: (content: string, provisional?: boolean) => {
       activity?.('onThinking');
-      emit('thinking:chunk', { content, ...(provisional ? { provisional: true } : {}) });
+      emit('thinking:chunk', { content, ...(provisional !== undefined ? { provisional } : {}) });
     },
 
     onToolUse: (toolCall: TrackedToolCall) => {
@@ -142,8 +144,10 @@ export function buildStreamCallbacks(
         name: toolCall.name,
         input: toolCall.input,
         startedAt: Date.now(),
-        // Story 37.11 (AC4): a provisional grid tool card carries an empty input until reload.
-        ...(toolCall.provisional ? { provisional: true } : {}),
+        // Story 37.11: a provisional grid tool card carries an empty input (`true`); the file-parsed
+        // canonical re-sends the SAME id with the real name+input and `false` to FINALIZE it. Forward the
+        // tri-state explicitly (`false` must survive — a truthy-only spread would drop the finalize).
+        ...(toolCall.provisional !== undefined ? { provisional: toolCall.provisional } : {}),
       });
       // Story 31.3 — buffer start info (size only, body discarded).
       deps.mcpRecorder?.onToolUse(toolCall.id, toolCall.name, toolCall.input);

@@ -2586,6 +2586,7 @@ describe('CliChatEngine', () => {
     // the bullet. A plain `●` (no SGR) classifies as 'other' = treated as running (safe default).
     const greenTool = (body: string): string => `\x1b[38;2;78;186;101m●\x1b[m ${body}`; // done
     const grayTool = (body: string): string => `\x1b[38;2;153;153;153m●\x1b[m ${body}`; // running
+    const whiteText = (body: string): string => `\x1b[38;2;255;255;255m●\x1b[m ${body}`; // assistant text body (white)
 
     // An assistant line carrying a thinking block (possibly EMPTY = signature only) + an optional
     // tool_use block — the canonical shape claude writes to the JSONL once the block completes.
@@ -2619,7 +2620,7 @@ describe('CliChatEngine', () => {
       return { turn };
     }
 
-    it('emits a thinking card off the screen, then SUPPRESSES the populated canonical re-emit (no double)', async () => {
+    it('FINALIZES the live provisional thinking with the populated canonical (progressive replace, not double)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onThinking = vi.fn();
       const { turn } = await injectThenReady(engine, { onThinking, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
@@ -2630,11 +2631,14 @@ describe('CliChatEngine', () => {
       await vi.waitFor(() => expect(onThinking).toHaveBeenCalledWith('Thought for 5s', true));
       expect(onThinking).toHaveBeenCalledTimes(1); // grid provisional only
 
-      // The canonical (populated) thinking block lands later. The drain must SUPPRESS its re-emit —
-      // the provisional already holds the slot and the turn-end reload swaps in the raw thinking.
+      // Story 37.11 (progressive finalize): the canonical (populated) thinking lands later — the drain now
+      // FINALIZES the live provisional with it (re-emit with provisional=false). The client REPLACES the
+      // oldest provisional thinking segment in place (the canonical text, badge dropped) — a replace, not a
+      // double-render. (The kind-sequence cursor matched: held[0] is the thinking it scraped.)
       await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: 'raw reasoning text', stopReason: 'end_turn' })]);
       await turn;
-      expect(onThinking).toHaveBeenCalledTimes(1); // STILL once — canonical suppressed, no double-render
+      expect(onThinking).toHaveBeenCalledTimes(2); // provisional (true) + canonical finalize (false)
+      expect(onThinking).toHaveBeenLastCalledWith('raw reasoning text', false);
     });
 
     it('emits the verbose-mode `∴` reasoning block as a PROVISIONAL thinking card (Story 37.11 — invisible until the late JSONL before)', async () => {
@@ -2653,10 +2657,198 @@ describe('CliChatEngine', () => {
       );
       expect(onThinking).toHaveBeenCalledTimes(1); // grid provisional only
 
-      // The canonical thinking lands at turn end — suppressed (no double); the reload swaps in the raw.
+      // The canonical thinking lands — the drain FINALIZES the live provisional with it (replace in place).
       await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: 'raw reasoning', stopReason: 'end_turn' })]);
       await turn;
+      expect(onThinking).toHaveBeenCalledTimes(2); // provisional + canonical finalize
+      expect(onThinking).toHaveBeenLastCalledWith('raw reasoning', false);
+    });
+
+    it('streams a GROWING `∴` block as DELTAS (not a full re-emit every frame — the live re-emit-storm fix)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onThinking = vi.fn();
+      const { turn } = await injectThenReady(engine, { onThinking, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // 실측 2026-06-16: the verbose `∴` reasoning block GROWS frame by frame as claude streams. The
+      // earlier code re-classified the whole growing card as brand-new each frame → it re-emitted the
+      // FULL text ~48× (the "infinite cards" the owner saw live). The fix aligns the growing card to its
+      // held copy and emits only the appended DELTA — exactly like a real stream chunk.
+      // Frame 1: the opening fragment.
+      h.fakePty._onData?.(genFrame(['∴ I need to compute 11! first,']));
+      await vi.waitFor(() => expect(onThinking).toHaveBeenCalledWith('I need to compute 11! first,', true));
       expect(onThinking).toHaveBeenCalledTimes(1);
+
+      // Frame 2: the SAME card, grown by a wrapped continuation row → only the new tail must be emitted.
+      h.fakePty._onData?.(genFrame(['∴ I need to compute 11! first,', '  then sum the alternating series to get D₁₁.']));
+      await vi.waitFor(() => expect(onThinking).toHaveBeenCalledTimes(2));
+      expect(onThinking.mock.calls[1]).toEqual([' then sum the alternating series to get D₁₁.', true]); // DELTA, not the full text
+
+      // Frame 3: the SAME grown frame repainted (claude redraws every tick) must NOT churn — held now
+      // matches exactly, so no further emit. This is the guard that kills the re-emit storm.
+      h.fakePty._onData?.(genFrame(['∴ I need to compute 11! first,', '  then sum the alternating series to get D₁₁.']));
+      await wait(50);
+      expect(onThinking).toHaveBeenCalledTimes(2);
+
+      // The provisional chunks concatenate (client `addStreamingThinking` APPENDS) to the full reasoning.
+      const reconstructed = onThinking.mock.calls.map((c) => c[0]).join('');
+      expect(reconstructed).toBe('I need to compute 11! first, then sum the alternating series to get D₁₁.');
+
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: 'raw', stopReason: 'end_turn' })]);
+      await turn;
+      // Story 37.11 (progressive finalize): the canonical 'raw' lands → one finalize call (provisional=false)
+      // that REPLACES the live-reconstructed thinking. So 2 growth deltas + 1 finalize = 3 (not a re-emit storm).
+      expect(onThinking).toHaveBeenCalledTimes(3);
+      expect(onThinking).toHaveBeenLastCalledWith('raw', false);
+    });
+
+    it('Story 37.12: a tool header caught with its bullet flickered off is NOT fused into the prose (cross-frame stickiness)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onTextChunk = vi.fn();
+      const onToolUse = vi.fn();
+      const { turn } = await injectThenReady(engine, { onTextChunk, onToolUse, onThinking: vi.fn(), onComplete: vi.fn(), onError: vi.fn() });
+
+      // Frame 1: a prose card + a RUNNING tool header (bullet PRESENT) → both emitted; the header is
+      // remembered WITH its `●` glyph for the next frame's flicker recovery.
+      h.fakePty._onData?.(genFrame([whiteText('이전 답변.'), '', grayTool('Search(completeStreaming)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      expect(onTextChunk).toHaveBeenCalledTimes(1); // the prose card only
+      const textCalls = onTextChunk.mock.calls.length;
+
+      // Frame 2: the tool's bullet FLICKERED off (the 60ms poll caught claude mid-repaint), now painted
+      // directly under the prose. WITHOUT stickiness the bullet-less `Search(…)` folds into the prose card
+      // and re-emits as a text DELTA (the fusion the user reported); WITH it, the `●` is restored so the
+      // tool stays its own card — no fused delta, and the tool is neither re-emitted nor lost.
+      h.fakePty._onData?.(genFrame([whiteText('이전 답변.'), 'Search(completeStreaming)']));
+      await wait(80);
+      expect(onTextChunk).toHaveBeenCalledTimes(textCalls); // prose untouched — the tool text did not fuse in
+      expect(onToolUse).toHaveBeenCalledTimes(1); // tool not re-emitted, not lost
+
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: 'raw', stopReason: 'end_turn' })]);
+      await turn;
+    });
+
+    it('Story 37.13: a same-content tool run again after the 1st scrolled off is its OWN card and completes (color-transition split)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // Tool #1 — Read(config.ts) runs (gray), then completes (green + `⎿` result).
+      h.fakePty._onData?.(genFrame([grayTool('Read(config.ts)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      h.fakePty._onData?.(genFrame([greenTool('Read(config.ts)'), '  ⎿  Read 10 lines']));
+      await vi.waitFor(() => expect(onToolResult).toHaveBeenCalledTimes(1));
+
+      // Tool #2 — the SAME content (Read(config.ts) again), with #1 scrolled off (only #2 on screen, and
+      // not within scroll-up range — `drawModal` clears so nothing is in scrollback). The screen scrape
+      // can't tell #2 from #1 by content and the order tiebreak is gone (no #1 in view) — WITHOUT the fix
+      // #2 would fuse into the still-held, already-completed #1. The fix splits them by the color transition
+      // (a completed/green held tool can't be a now-running/non-green card of the same content).
+      h.fakePty._onData?.(genFrame([grayTool('Read(config.ts)')]));
+      await wait(80);
+      h.fakePty._onData?.(genFrame([greenTool('Read(config.ts)'), '  ⎿  Read 20 lines']));
+      await wait(80);
+
+      // #2 is its OWN running→completed tool (the completed #1 is retired once #2 opens, so it can't reclaim
+      // #2's later green frame) → onToolUse twice, onToolResult twice.
+      expect(onToolUse).toHaveBeenCalledTimes(2);
+      expect(onToolResult).toHaveBeenCalledTimes(2);
+
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: '', stopReason: 'end_turn' })]);
+      await turn;
+    });
+
+    it('Story 37.13: a GREEN tool completes even with NO `⎿` result row (color = done, not the ⎿ row)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // Frame 1 — tool running (gray) → pending, not complete.
+      h.fakePty._onData?.(genFrame([grayTool('Read(big.ts)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      expect(onToolResult).not.toHaveBeenCalled();
+
+      // Frame 2 — the tool went GREEN but its `⎿` result row is NOT on screen (scrolled off in a long turn).
+      // Pre-fix this stayed a spinner forever (completion waited for the `⎿` row); now the green color ALONE
+      // completes it. Output empty — the turn-end reload supplies the canonical output.
+      h.fakePty._onData?.(genFrame([greenTool('Read(big.ts)')]));
+      await vi.waitFor(() => expect(onToolResult).toHaveBeenCalledTimes(1));
+      expect(onToolResult).toHaveBeenCalledWith(expect.stringMatching(/^cli-prov-tool-/), { success: true, output: '' }, true);
+
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: '', stopReason: 'end_turn' })]);
+      await turn;
+    });
+
+    it('Story 37.16: a provisional tool that scrolls off while gray (never seen green) completes from its JSONL tool_result (scroll-off backstop)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // The grid scrapes a RUNNING (gray) tool → provisional pending card (cli-prov-tool-0). A long answer
+      // then pushes it ABOVE the viewport while it is still gray, so the grid NEVER sees its green completion
+      // frame (the scroll-up read stops at the first known block below it) — flipDoneIfGreen can't fire.
+      h.fakePty._onData?.(genFrame([grayTool('Grep(pattern)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      expect(onToolResult).not.toHaveBeenCalled();
+
+      // The tool really finished — JSONL records its tool_use + tool_result. That file record is the ONLY
+      // remaining completion signal, so it must complete the live card (the backstop). Pre-fix the result
+      // mirror is gated to `liveEmittedToolIds`, which the provisional (maybeFinalize) path leaves OUT →
+      // onToolResult never fires → the spinner runs until the turn-end reload (the user's bug).
+      await writeSession(SID, [
+        userLine('u1'),
+        thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_grep', name: 'Grep', input: { pattern: 'x' } } }),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_grep', content: 'matches', is_error: false }]),
+        thinkingToolLine('a2', { thinking: '', parentUuid: 'a1', stopReason: 'end_turn' }),
+      ]);
+      await turn;
+
+      // Completed via the SYNTHETIC id (the client card kept it) with the provisional/flip flag — the same
+      // shape flipDoneIfGreen uses — because the file tool_result is the backstop for the off-screen green.
+      expect(onToolResult).toHaveBeenCalledWith('cli-prov-tool-0', { success: true, output: 'matches', error: undefined }, true);
+    });
+
+    it('Story 37.16: a provisional tool seen GREEN on-screen is NOT double-completed by its JSONL tool_result (backstop dedup)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // The tool runs (gray) then completes ON-SCREEN (green) → the grid flips it (onToolResult once).
+      h.fakePty._onData?.(genFrame([grayTool('Read(x.ts)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      h.fakePty._onData?.(genFrame([greenTool('Read(x.ts)'), '  ⎿  Read 5 lines']));
+      await vi.waitFor(() => expect(onToolResult).toHaveBeenCalledTimes(1));
+
+      // JSONL then records the same tool's tool_use + tool_result. The backstop must NOT fire again — the grid
+      // already flipped this slot (gridResultFlippedSlots), so the file result is deduped, not doubled.
+      await writeSession(SID, [
+        userLine('u1'),
+        thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_read', name: 'Read', input: { file_path: 'x.ts' } } }),
+        toolResultLine('tr1', [{ tool_use_id: 'toolu_read', content: 'data', is_error: false }]),
+        thinkingToolLine('a2', { thinking: '', parentUuid: 'a1', stopReason: 'end_turn' }),
+      ]);
+      await turn;
+
+      expect(onToolResult).toHaveBeenCalledTimes(1); // deduped — NOT 2
+    });
+
+    it('Story 37.18: the SAME gray tool repainted on two scrollback rows in one frame is ONE card, not two', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult: vi.fn(), onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // claude repaints a still-running tool, leaving the SAME gray `● Bash(git diff)` on TWO rows of the one
+      // settled frame (실측 ba310cea dump: rows 231 & 242 both gray, identical content). It is ONE invocation
+      // (a repaint echo), so it must yield ONE provisional card — not two (the user's duplicate-cards report).
+      h.fakePty._onData?.(genFrame([grayTool('Bash(git diff)'), grayTool('Bash(git diff)')]));
+      await wait(80);
+      expect(onToolUse).toHaveBeenCalledTimes(1);
+
+      await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: '', stopReason: 'end_turn' })]);
+      await turn;
     });
 
     it('preserves the provisional thinking when the canonical block arrives EMPTY (signature-only — AC1)', async () => {
@@ -2698,8 +2890,10 @@ describe('CliChatEngine', () => {
       expect(onToolResult).toHaveBeenCalledWith(toolCall.id, { success: true, output: expect.stringContaining('Wrote 5 lines') }, true);
       expect(onToolUse).toHaveBeenCalledTimes(1); // not re-emitted across frames (slot dedup)
 
-      // Canonical tool_use + result land in the JSONL. Both must be SUPPRESSED (the synthetic-id card
-      // holds the slot; the reload supplies the full input) — no second card, no orphan real-id result.
+      // Canonical tool_use + result land in the JSONL. Story 37.11 (progressive finalize): the canonical
+      // tool_use now FINALIZES the synthetic-id card — re-sends its SAME `cli-prov-tool-*` id with the real
+      // name + full input and provisional=false (the client fills the input + drops the badge IN PLACE, no
+      // second card). The result stays owned by the synthetic-id grid flip (canonical result not re-emitted).
       await writeSession(SID, [
         userLine('u1'),
         thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_1', name: 'Write', input: { file_path: 'probe.txt', content: 'x' } } }),
@@ -2707,8 +2901,15 @@ describe('CliChatEngine', () => {
         assistantLine('a2', { parentUuid: 'a1', text: 'done' }),
       ]);
       await turn;
-      expect(onToolUse).toHaveBeenCalledTimes(1); // canonical tool_use suppressed
-      expect(onToolResult).toHaveBeenCalledTimes(1); // canonical result skipped (synthetic id owns it)
+      expect(onToolUse).toHaveBeenCalledTimes(2); // provisional (empty input) + canonical finalize (full input)
+      const finalizeCall = onToolUse.mock.calls[1][0] as { id: string; name: string; input: Record<string, unknown>; provisional?: boolean };
+      // Per-kind finalize: the canonical carries the real name + full input + provisional=false. The CLIENT
+      // binds it to the OLDEST provisional tool (keeping that card's id) — the server-emitted id is the
+      // canonical `toolu_…`, not the synthetic one (id-independent binding; see the chatStore unit test).
+      expect(finalizeCall.name).toBe('Write');
+      expect(finalizeCall.input).toEqual({ file_path: 'probe.txt', content: 'x' }); // real input filled in
+      expect(finalizeCall.provisional).toBe(false); // badge dropped
+      expect(onToolResult).toHaveBeenCalledTimes(1); // canonical result skipped (synthetic id owns the flip)
     });
 
     it('does NOT flip on ⎿ Waiting…/Running… while the bullet is GRAY (running) — flips only when GREEN (TOOL-RUNNING-PLACEHOLDER-FLIP)', async () => {
@@ -2846,9 +3047,11 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
-    it('emits a general prose card as PROVISIONAL text off the screen, then SUPPRESSES the canonical re-emit (AC1)', async () => {
+    it('emits a general prose card as PROVISIONAL text off the screen, then FINALIZES it with the canonical (AC1)', async () => {
       // The 4th card kind 37.10 skipped: streaming prose is now ALSO a live grid card, so ALL live
-      // content comes from one source (no grid↔file race). The drain suppresses the canonical copy.
+      // content comes from one source (no grid↔file race). Story 37.11 (progressive finalize): when the
+      // canonical text lands the drain re-emits it with provisional=false — the client swaps the live
+      // screen literal for the canonical markdown in place (replace, not a grid↔file double).
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onTextChunk = vi.fn();
       const { turn } = await injectThenReady(engine, { onTextChunk, onComplete: vi.fn(), onError: vi.fn() });
@@ -2857,11 +3060,56 @@ describe('CliChatEngine', () => {
       await vi.waitFor(() => expect(onTextChunk).toHaveBeenCalledTimes(1));
       const chunk = onTextChunk.mock.calls[0][0] as { content: string; provisional?: boolean };
       expect(chunk.content).toContain('Here is the explanation');
-      expect(chunk.provisional).toBe(true); // AC4: screen estimate, dimmed + live-badged until reload
+      expect(chunk.provisional).toBe(true); // AC4: screen estimate, dimmed + live-badged until finalize
 
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'Here is the explanation you asked for.' })]);
       await turn;
-      expect(onTextChunk).toHaveBeenCalledTimes(1); // canonical suppressed — no grid↔file double
+      expect(onTextChunk).toHaveBeenCalledTimes(2); // provisional (true) + canonical finalize (false)
+      const finalizeChunk = onTextChunk.mock.calls[1][0] as { content: string; provisional?: boolean };
+      expect(finalizeChunk.content).toBe('Here is the explanation you asked for.');
+      expect(finalizeChunk.provisional).toBe(false); // canonical replaces the live literal, badge dropped
+    });
+
+    it('FINALIZES a tool SANDWICHED between thinking and text when the screen↔file kind-sequence matches (block-queue)', async () => {
+      // The user's case: bind by kind-POSITION, not name/content. The screen shows [∴ thinking, ● Update(…),
+      // ● prose]; the file's canonical is [thinking, tool(Edit), text] — kinds line up at every position, so
+      // ALL THREE finalize in order, INCLUDING the tool between them (friendly `Update` → canonical `Edit`).
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onThinking = vi.fn();
+      const onTextChunk = vi.fn();
+      const onToolUse = vi.fn();
+      const { turn } = await injectThenReady(engine, { onThinking, onTextChunk, onToolUse, onComplete: vi.fn(), onError: vi.fn() });
+
+      h.fakePty._onData?.(genFrame(['∴ live reasoning', greenTool('Update(x.ts)'), '● live answer prose']));
+      await vi.waitFor(() => {
+        expect(onThinking).toHaveBeenCalledWith('live reasoning', true);
+        expect(onToolUse).toHaveBeenCalledTimes(1);
+        expect(onTextChunk).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('live answer prose'), provisional: true }));
+      });
+      const provTool = onToolUse.mock.calls[0][0] as { id: string; name: string };
+      expect(provTool.name).toBe('Update'); // the screen's friendly name
+      expect(provTool.id).toMatch(/^cli-prov-tool-/);
+
+      // The canonical message carries [thinking, tool_use(Edit), text] IN THAT ORDER.
+      const canonicalLine = JSON.stringify({
+        type: 'assistant', uuid: 'a1', parentUuid: 'u1', timestamp: '2026-06-04T00:00:01.000Z', entrypoint: 'cli',
+        message: { role: 'assistant', model: 'claude-opus-4-6', stop_reason: 'end_turn', content: [
+          { type: 'thinking', thinking: 'canonical reasoning', signature: 'sig' },
+          { type: 'tool_use', id: 'toolu_1', name: 'Edit', input: { file_path: 'x.ts' } },
+          { type: 'text', text: 'canonical answer prose' },
+        ] },
+      });
+      await writeSession(SID, [userLine('u1'), canonicalLine]);
+      await turn;
+
+      // All three finalized (provisional=false) — per-kind binding (Nth thinking↔Nth thinking, etc.).
+      expect(onThinking).toHaveBeenLastCalledWith('canonical reasoning', false);
+      expect(onTextChunk).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'canonical answer prose', provisional: false }));
+      expect(onToolUse).toHaveBeenCalledTimes(2);
+      const finTool = onToolUse.mock.calls[1][0] as { id: string; name: string; input: Record<string, unknown>; provisional?: boolean };
+      expect(finTool.name).toBe('Edit'); // canonical name overwrites the friendly `Update` (bound by order, not name)
+      expect(finTool.input).toEqual({ file_path: 'x.ts' });
+      expect(finTool.provisional).toBe(false); // the client binds this to the oldest provisional tool, badge dropped
     });
 
     it('emits canonical text AUTHORITATIVELY (not provisional) when no grid frame scraped it — file backstop (AC1)', async () => {

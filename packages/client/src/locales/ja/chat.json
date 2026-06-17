@@ -165,8 +165,8 @@
   "streamingMessage": {
     "ariaLabel": "Claudeが応答中です",
     "assistantName": "Claude",
-    "liveBadge": "ライブ",
-    "provisionalAriaLabel": "リアルタイム画面推定 — 未確定"
+    "liveBadge": "プレビュー",
+    "provisionalAriaLabel": "画面推定のプレビュー — まもなく確定版に置き換わります"
   },
   "messageActionBar": {
     "copy": "コピー",
@@ -295,8 +295,8 @@
     "generating": "生成中...",
     "restoring": "会話を復元中...",
     "compactionHint": "コンテキスト圧縮中の可能性があります",
-    "generationProgress": "↓ {{tokens}} トークン · {{time}}",
-    "thinkingProgress": "考え中… ↓ {{tokens}} トークン · {{time}}",
+    "generationProgress": "{{time}} · ↓ {{tokens}} トークン",
+    "thinking": "考え中",
     "cliPhase": {
       "launching": "Claude Code を起動中…",
       "submitting": "プロンプトを送信中…",

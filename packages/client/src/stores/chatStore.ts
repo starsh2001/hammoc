@@ -573,8 +573,24 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (!content) return;
 
     const segments = get().streamingSegments;
-    const lastSegment = segments[segments.length - 1];
 
+    // Story 37.11 (progressive finalize): `provisional` is TRI-STATE — `true` = a live screen-scraped
+    // chunk (grow + live badge), `false` = the FILE-parsed CANONICAL for this block has arrived → REPLACE
+    // the oldest still-provisional text segment (swap the live literal for the canonical markdown and drop
+    // the badge — the user's "정본으로 교체"), `undefined` = a fresh authoritative block (grid never caught
+    // it) → append as before. The server only sends `false` when the kind-sequence confirms this canonical
+    // lines up with that provisional, so a mis-binding can't swap the wrong block (the reload backstops).
+    if (provisional === false) {
+      const idx = segments.findIndex((s) => s.type === 'text' && (s as { provisional?: boolean }).provisional === true);
+      if (idx >= 0) {
+        const updated = [...segments];
+        updated[idx] = { type: 'text', content }; // canonical md replaces the literal; badge dropped
+        set({ streamingSegments: updated });
+        return;
+      }
+    }
+
+    const lastSegment = segments[segments.length - 1];
     if (lastSegment?.type === 'text') {
       // Append to existing text segment. Story 37.11: the segment's provisional state follows the
       // latest chunk — a CLI text segment stays provisional while the grid is the live source and
@@ -596,8 +612,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (!content) return;
 
     const segments = get().streamingSegments;
-    const lastSegment = segments[segments.length - 1];
 
+    // Story 37.11 (progressive finalize): `provisional === false` = the canonical thinking for this block
+    // arrived → REPLACE the oldest still-provisional thinking segment (drop the live badge). `true` = live
+    // grow, `undefined` = fresh authoritative block. See `appendStreamingContent` for the full contract.
+    if (provisional === false) {
+      const idx = segments.findIndex((s) => s.type === 'thinking' && (s as { provisional?: boolean }).provisional === true);
+      if (idx >= 0) {
+        const updated = [...segments];
+        updated[idx] = { type: 'thinking', content };
+        set({ streamingSegments: updated });
+        return;
+      }
+    }
+
+    const lastSegment = segments[segments.length - 1];
     if (lastSegment?.type === 'thinking') {
       // Append to existing thinking segment
       const updated = [...segments];
@@ -626,7 +655,25 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // queue, so the check lands at execution time, after completeStreaming has flipped the flag.)
     if (!get().isStreaming) return;
     const segments = get().streamingSegments;
-    // Avoid duplicates
+    // Story 37.11 (progressive finalize): a NON-provisional tool call FINALIZES the OLDEST still-provisional
+    // tool card in place — swap the friendly/name-only screen card for the real name + input and drop the
+    // live badge, KEEPING its id (the screen result-flip rode the provisional id). Bound by ORDER per kind
+    // (the server sends the Nth canonical tool to finalize the Nth provisional), robust to the screen↔file
+    // block-order difference. No provisional tool waiting ⇒ fall through and create it (grid-behind backstop).
+    if (!toolCall.provisional) {
+      const idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true);
+      if (idx >= 0) {
+        const seg = segments[idx];
+        if (seg.type === 'tool') {
+          const updated = [...segments];
+          updated[idx] = { ...seg, toolCall: { ...seg.toolCall, name: toolCall.name, input: toolCall.input } };
+          delete (updated[idx] as { provisional?: boolean }).provisional; // badge dropped
+          set({ streamingSegments: updated });
+        }
+        return;
+      }
+    }
+    // Avoid duplicate provisional cards (defensive — the scraper emits each tool once via content-set dedup).
     if (segments.some((seg) => seg.type === 'tool' && seg.toolCall.id === toolCall.id)) return;
     // Check if a permission request arrived before this tool segment
     const bufferedPermissionId = pendingPermissionBuffer.get(toolCall.id);

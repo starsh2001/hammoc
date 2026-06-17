@@ -84,7 +84,7 @@ import fs from 'fs/promises';
 import { watch, mkdirSync, writeFileSync, createWriteStream, type FSWatcher, type WriteStream } from 'fs';
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
-import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS } from './cliScreenModel.js';
+import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS, type CliBulletColor } from './cliScreenModel.js';
 import { setCliScreen } from './cliScreenCache.js';
 import { createTrailingThrottle } from '../utils/trailingThrottle.js';
 import { readSpinnerProgress } from './cliSpinnerProgress.js';
@@ -111,7 +111,7 @@ import {
   type PreInjectScreen,
 } from './cliModalDetect.js';
 import { liveFooterText, scrollbackBodyRows } from './cliGridRegion.js';
-import { parseGridCards, type GridCardKind } from './cliGridCards.js';
+import { parseGridCards, collectToolHeaderKeys, restoreFlickeredToolBullets, type GridCard, type GridCardKind } from './cliGridCards.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
@@ -282,12 +282,22 @@ const CLI_QUESTION_SETTLE_MS = 400;
 // bandwidth (the whole screen is re-sent each frame). Trailing edge keeps the latest frame.
 const CLI_SCREEN_FRAME_THROTTLE_DEFAULT_MS = 200;
 /**
- * Story 37.11 AC5: how many scrolled-off rows ABOVE the viewport the live card scraper reads (via
- * `screen.readGrid(N)`), so a block taller than the viewport is parsed from its HEAD (opening glyph),
- * not the glyph-less tail. Bounds the per-frame parse cost; a single block taller than this still
- * falls back to the turn-end file reload (rare — 500 rows is far beyond any normal diff/reasoning).
+ * Story 37.11 (resume snapshot depth): how many rows ABOVE the viewport are read ONCE at injection to
+ * snapshot the resume repaint of the prior conversation (the turn baseline). The live per-frame scraper
+ * reads the VIEWPORT ONLY (deep per-frame re-scrapes of a long, scrolling conversation re-emitted cards
+ * endlessly — 실측 2026-06-16, user dump: 6,529 emits → 491 viewport-only). This depth only bounds the
+ * one-shot baseline read; it matches the emulator's scrollback retention so the whole repaint is captured.
  */
-const CLI_CARD_SCROLLBACK_ROWS = 500;
+const CLI_RESUME_SNAPSHOT_ROWS = 5000;
+/**
+ * Story 37.11 (bounded scroll-up): the live card scraper reads the VIEWPORT first, then scrolls UP in
+ * `CLI_SCROLLUP_INCREMENT`-row steps ONLY while no already-known block (`heldCards`) is in view — so a
+ * paragraph taller than the viewport gets its HEADER recovered, while the read STOPS at the first known
+ * block (the user's "큐에 있는 헤더를 만나면 멈춤"). `MAX_ITERS` caps the climb at the snapshot retention so a
+ * pathological no-known-block frame can't spin; beyond it the turn-end reload backstops.
+ */
+const CLI_SCROLLUP_INCREMENT = 160; // two viewports per step
+const CLI_SCROLLUP_MAX_ITERS = 32; // ≈ CLI_RESUME_SNAPSHOT_ROWS / CLI_SCROLLUP_INCREMENT
 /**
  * Gap between injected menu keys. Arrow/Space/Enter are *discrete* key events — not the
  * typed-text-then-Enter pair that bracketed-paste coalesces (§32.4) — and Task 1 drove
@@ -1040,6 +1050,12 @@ export class CliChatEngine implements ChatEngine {
       let provisionalToolEmitsPending = 0;
       const provToolSlotIds: string[] = [];
       const gridResultFlippedSlots = new Set<number>();
+      // Story 37.16 (scroll-off backstop): real `toolu_…` id → its provisional slot index, recorded when a
+      // grid tool is finalized (drain FIFO matches the provToolSlotIds emit order). Lets emitToolResults
+      // complete a provisional tool via its SYNTHETIC id (the client card kept it) when the grid never saw the
+      // green frame — i.e. a long answer scrolled the still-running tool above the viewport.
+      const provRealIdToSlot = new Map<string, number>();
+      let provFinalizedToolCount = 0;
       // Story 37.11 (AC1): general streaming TEXT is now also a live grid card (the 4th kind 37.10
       // skipped). It rides the SAME provisional/suppress contract as thinking/tool: the grid emits
       // the text card provisionally and `handleAssistantLine` SUPPRESSES the matching canonical text
@@ -1051,18 +1067,20 @@ export class CliChatEngine implements ChatEngine {
       let liveTextSlots = 0;
       let provisionalTextEmitsPending = 0;
       let provisionalCardCounter = 0; // synthesizes a messageId for each provisional grid text chunk
-      // Story 37.11 (AC2): the held transcript — the GRID's scroll-STABLE record of the cards it has
-      // positionally accounted for this turn, in arrival order. Replaces 37.10's viewport-index dedup
-      // (toolIdx/thIdx ≥ liveSlots), which miscounts the moment an old card scrolls off the viewport
-      // top (the viewport index then diverges from the logical count). Each frame we suffix-align the
-      // visible cards against this list (arrival-order is the PRIMARY key; content is only the
-      // alignment signal — the screen scrape is lossy, so content is NEVER a standalone key) to derive
-      // each card's LOGICAL per-kind index, then feed THAT into the unchanged cross-source slot checks.
-      // → an old block scrolling off no longer hides a genuinely new block below it. Holds STABLE
-      // kinds only (text/thinking/tool) — `⎿` result cards mutate frame-to-frame so they are excluded.
-      const heldCards: Array<{ kind: GridCardKind; sig: string }> = [];
-      // A scroll-stable signature: kind + whitespace-normalized text. Arrival ORDER (position in
-      // `heldCards`) is the real key; this sig only aligns the visible window against the held tail.
+      // Story 37.11 (content-set dedup): the ordered list of cards the GRID has already EMITTED this turn,
+      // each with its per-kind `slot` (the synthetic-id index for tools / the cross-source high-water for
+      // thinking/text). The live scraper keys on the card's content SIGNATURE, not its viewport position —
+      // 실측 2026-06-16 the real screen INSERTS a lead-in prose card BETWEEN already-shown cards and MUTATES
+      // a card (`● Read` → `● Read(path)`), so a position/suffix align re-emitted the whole sequence every
+      // frame (the duplicate-parse storm). A sig already here is skipped; a sig that EXTENDS one of these
+      // (same kind) is a growth (emit only the delta). Holds STABLE kinds only (text/thinking/tool) — `⎿`
+      // result cards mutate frame-to-frame and flip the preceding tool instead.
+      const heldCards: Array<{ kind: GridCardKind; sig: string; text: string; slot: number; seenGreen?: boolean; retired?: boolean }> = [];
+      // Story 37.12 (flickered-bullet stickiness): cross-frame memory of tool-header lines seen WITH their
+      // `●` glyph, so a later frame that catches the bullet mid-repaint (glyph momentarily erased) restores
+      // it instead of fusing the tool row into the prose above. Scoped to on-screen lines each frame.
+      const recentToolHeaderKeys = new Set<string>();
+      // The content signature: kind + whitespace-normalized text — the dedup key (order-independent).
       const cardSig = (c: { kind: GridCardKind; text: string }): string =>
         `${c.kind}:${c.text.replace(/\s+/g, ' ').trim().toLowerCase()}`;
       // AskUserQuestion-modal state (Story 32.8 — post-injection only). Story 37.4: detection
@@ -1237,6 +1255,25 @@ export class CliChatEngine implements ChatEngine {
         // holds the settled grid + classification). Injection is reached only on the verified
         // `input-box` path, so there is no blind inject left to capture here.
         onPhase?.('submitting'); // input box verified — typing the prompt now
+
+        // Story 37.11 (resume SNAPSHOT — 실측 2026-06-16, user dump): on a `--resume` turn claude
+        // repaints the ENTIRE prior conversation onto the screen BEFORE this turn generates. Without a
+        // baseline the live scraper re-emits that whole repaint as live-badged cards (the user saw the
+        // prior turn flood in). The input box is verified HERE with NO new content yet, so snapshot the
+        // on-screen cards (deep read of the full repaint) as the turn BASELINE: seed them into
+        // `heldCards` and advance the per-kind live slots, so the scraper treats them as already-known
+        // and emits ONLY content ADDED below them as the turn runs. A fresh (non-resume) turn shows no
+        // cards here → empty snapshot → no-op. Best-effort — never break the turn over instrumentation.
+        try {
+          for (const c of parseGridCards(scrollbackBodyRows(screen.readGrid(CLI_RESUME_SNAPSHOT_ROWS)))) {
+            if (c.kind === 'result') continue; // results mutate per frame — excluded from heldCards
+            const slot = c.kind === 'thinking' ? liveThinkingSlots++ : c.kind === 'tool' ? liveToolSlots++ : liveTextSlots++;
+            heldCards.push({ kind: c.kind, sig: cardSig(c), text: c.text, slot });
+          }
+        } catch {
+          /* best-effort resume snapshot */
+        }
+
         bootBuffer = ''; // done with readiness detection — release it
         if (bootSettleTimer) {
           clearTimeout(bootSettleTimer);
@@ -1559,126 +1596,177 @@ export class CliChatEngine implements ChatEngine {
        * preservation) are preserved. All grid emits are tagged PROVISIONAL (AC4). Viewport-bounded
        * (real-time); the turn-end reload backfills anything that scrolled off (37.9 AC3 completeness).
        */
-      // Story 37.11 AC3: mark the current-turn boundary ONCE, at the first generation frame (below).
-      let turnStartMarked = false;
       const emitProvisionalCards = (): void => {
         if (settled || !resolvedSessionId) return;
-        // Story 37.11 AC5: read the body from the VIEWPORT + SCROLLBACK so a block taller than the
-        // viewport is parsed from its HEAD (the opening glyph) — not the glyph-less tail the viewport
-        // alone shows once it scrolls. Keeps the SCREEN the single primary card source (no file-defer
-        // race). `scrollbackBodyRows` cuts at the bottom-most live-footer anchor (still in the viewport
-        // portion), so the body = scrolled-off head + visible rows. Story 37.10: pair each row with its
-        // leading-`●` color class for tool status — read with the SAME window so colors index-align.
-        const bodyGrid = screen.readGrid(CLI_CARD_SCROLLBACK_ROWS);
-        const bodyRows = scrollbackBodyRows(bodyGrid);
-        const bodyColors = screen.readBulletColors(CLI_CARD_SCROLLBACK_ROWS).slice(0, bodyRows.length);
-        const cards = parseGridCards(bodyRows, bodyColors);
-
-        // Story 37.11 (AC2): suffix-align the visible cards against the held transcript. The visible
-        // cards are a contiguous SUFFIX of all cards this turn (older ones scrolled off the viewport
-        // top), so the largest `overlap` for which the held TAIL equals the visible HEAD identifies
-        // the already-accounted cards; the rest are genuinely new and get appended. Arrival order is
-        // the key; the sig only aligns the window (lossy-scrape safe).
-        //
-        // CRITICAL — align only STABLE cards (text/thinking/tool). A `⎿` result card's text MUTATES
-        // across frames (`Waiting…` → `Running…` → the real result), so including results in the sig
-        // alignment breaks the suffix match the moment a placeholder changes, which re-emits the tool
-        // above it under a runaway logical index. Result cards carry no per-kind slot anyway (they
-        // flip the PRECEDING tool via `lastToolSlot`), so they are excluded from the held transcript
-        // entirely; the main loop below still walks them for the flip.
-        const stable = cards.filter((c) => c.kind !== 'result');
-        const stableSigs = stable.map((c) => cardSig(c));
-        let overlap = 0;
-        const maxK = Math.min(heldCards.length, stable.length);
-        for (let k = maxK; k >= 0; k--) {
-          let ok = true;
-          for (let j = 0; j < k; j++) {
-            if (heldCards[heldCards.length - k + j].sig !== stableSigs[j]) { ok = false; break; }
-          }
-          if (ok) { overlap = k; break; }
-        }
-        for (let i = overlap; i < stable.length; i++) heldCards.push({ kind: stable[i].kind, sig: stableSigs[i] });
-
-        // Each visible STABLE card maps to held position `baseAbs + j`. Pre-count the per-kind cards
-        // BEFORE the visible window so each card's LOGICAL per-kind index = running count at its
-        // position (stable across scroll — unlike the old viewport `thIdx`/`toolIdx`). Result cards
-        // advance no count; the main loop walks the FULL `cards` list and increments only on stable
-        // kinds, so the running counts stay aligned with `heldCards` positions.
-        const baseAbs = heldCards.length - stable.length;
-        let runTh = 0, runTool = 0, runText = 0;
-        for (let p = 0; p < baseAbs; p++) {
-          const k = heldCards[p].kind;
-          if (k === 'thinking') runTh++; else if (k === 'tool') runTool++; else if (k === 'text') runText++;
+        // Story 37.11 (the user's block-queue algorithm — bounded scroll-up): read the VIEWPORT first,
+        // then scroll UP in steps ONLY while NO already-known block (`heldCards`) is in view. This recovers
+        // the HEADER of a paragraph taller than the viewport, yet STOPS the instant the read reaches the
+        // first known block — so the depth is bounded to the NEW content, never re-scraping the whole
+        // scrolling history (a fixed deep read re-emitted endlessly: 실측 6,529 emits on a real resume turn).
+        // `heldCards` empty (a fresh turn's first frame) ⇒ viewport only. Story 37.10: read the bullet
+        // colors with the SAME window so they stay index-aligned with the rows.
+        const knownSigs = new Set(heldCards.map((h) => h.sig));
+        let depth = 0;
+        let prevRowCount = -1;
+        let bodyRows: string[] = [];
+        let bodyColors: CliBulletColor[] = [];
+        let cards: GridCard[] = [];
+        for (let iter = 0; iter < CLI_SCROLLUP_MAX_ITERS; iter++) {
+          bodyRows = scrollbackBodyRows(screen.readGrid(depth));
+          if (bodyRows.length === prevRowCount) break; // reached the top of the buffer — nothing more above
+          prevRowCount = bodyRows.length;
+          bodyColors = screen.readBulletColors(depth).slice(0, bodyRows.length);
+          // Story 37.12: restore the `●` on any tool header whose glyph flickered off THIS frame (caught
+          // mid-repaint) BEFORE parsing, so it opens as its own tool card instead of fusing into the prose
+          // above. Content-gated on the cross-frame memory, so prose is never promoted. Row count is
+          // unchanged (glyph prepended), so `bodyColors` stays index-aligned.
+          cards = parseGridCards(restoreFlickeredToolBullets(bodyRows, recentToolHeaderKeys), bodyColors);
+          // Stop once a known block is in view: it is the bounded boundary — everything above it is known.
+          if (knownSigs.size === 0 || cards.some((c) => knownSigs.has(cardSig(c)))) break;
+          depth += CLI_SCROLLUP_INCREMENT; // no known block yet (a tall block's header is still above) — climb
         }
 
+        // Story 37.12: refresh the cross-frame tool-header memory from the FINAL (deepest) frame read.
+        // First drop keys whose line scrolled off — retention is scoped to on-screen text INCLUDING
+        // bullet-less rows, so a tool whose glyph is currently flickering stays remembered while a tool that
+        // truly scrolled away is forgotten (can't re-promote unrelated prose later). Then add this frame's
+        // glyph-carrying tool headers — the confident observations worth remembering.
+        const onScreenToolKeys = collectToolHeaderKeys(bodyRows, true);
+        for (const key of [...recentToolHeaderKeys]) {
+          if (!onScreenToolKeys.has(key)) recentToolHeaderKeys.delete(key);
+        }
+        for (const key of collectToolHeaderKeys(bodyRows, false)) recentToolHeaderKeys.add(key);
+
+        // CONTENT-SET dedup (replaces the position/suffix align that re-emitted the whole sequence the
+        // moment a card was inserted mid-list or mutated). Walk the visible cards; for each STABLE card:
+        //   - matches an already-emitted card of the SAME content → skip (or growth: emit the delta);
+        //   - identical-content cards (e.g. the same tool called twice) match 1:1 IN ORDER — the FIRST
+        //     unclaimed held card wins, so they are NOT merged (content is the key; order breaks the tie);
+        //   - no match → a genuinely new card → emit + record with its per-kind slot.
+        // Matching by CONTENT (not viewport position) survives the real screen's reorders: a lead-in prose
+        // card inserted ABOVE a still-running tool, a card mutating, scroll, repaint. A `⎿` result flips its
+        // preceding tool. (The old position/suffix align re-emitted the whole list when a card was inserted
+        // mid-sequence — 실측 the duplicate-parse storm.)
+        const usedHeld = new Set<number>(); // held indices already claimed by a visible card THIS frame
         let lastToolSlot = -1; // the tool slot a following `⎿` result card belongs to
-        let lastToolColor: string | null | undefined; // bullet color of the tool the result belongs to
-        for (const card of cards) {
-          if (card.kind === 'thinking') {
-            const thLogical = runTh++;
-            if (thLogical >= liveThinkingSlots && card.text.trim()) {
-              liveThinkingSlots = thLogical + 1;
-              provisionalThinkingEmitsPending++;
-              callbacks.onThinking?.(card.text, true);
-            }
-          } else if (card.kind === 'tool') {
-            // NOTE (known bound): `parseGridCards` classifies any `● Word(…)` body as a tool (the 37.9
-            // single-source rule). A code-heavy prose card that literally STARTS with `identifier(`
-            // (un-backticked — rare; assistant text blocks almost always open with a capitalized
-            // sentence) could be misread as a tool here. Worst case the FIFO suppresses a real tool's
-            // live re-emit, so it renders on RELOAD instead of live — a graceful degrade to the pre-37.10
-            // baseline, never a wrong final state (the reload is authoritative). Not name-filtered on
-            // purpose: real tools include lowercase MCP names (`mcp__server__tool`), so a PascalCase
-            // gate would wrongly drop them.
-            const toolLogical = runTool++;
-            if (toolLogical >= liveToolSlots) {
-              const synthId = `cli-prov-tool-${toolLogical}`;
-              provToolSlotIds[toolLogical] = synthId;
-              liveToolSlots = toolLogical + 1;
-              provisionalToolEmitsPending++;
-              const toolCall: TrackedToolCall = {
-                id: synthId,
-                name: card.toolName ?? 'Tool',
-                input: {}, // the screen truncates the tool input — the reload supplies the full input
-                status: 'pending',
-                provisional: true, // Story 37.11 (AC4): name-only screen estimate, dimmed until reload
-              };
-              callbacks.onToolUse?.(toolCall);
-            }
-            lastToolSlot = toolLogical;
-            lastToolColor = card.bulletColor;
-          } else if (card.kind === 'result') {
-            // A `⎿` result card flips its tool (the immediately preceding tool slot) running→complete
-            // — but ONLY when the tool's `●` bullet is GREEN (=done). claude paints `⎿ Waiting…` /
-            // `⎿ Running…` placeholders under a STILL-RUNNING tool (bullet gray), and those are NOT the
-            // result — flipping on them would show a premature "complete: Waiting…" (the pre-fix bug).
-            // So gate the flip on the green bullet; gray/other stays pending and the turn-end reload
-            // supplies the canonical result. (If color is unreadable — 'other'/undefined — we also stay
-            // pending → reload completes it: a safe degrade, never a wrong completion.) Only a GRID-
-            // provisioned slot (synthetic id present) that hasn't flipped yet; a drain-owned slot is left
-            // to emitToolResults. The result stays PROVISIONAL so the tool card is not finalized early.
+        let lastToolColor: string | null | undefined;
+        // Story 37.13: a tool's GREEN bullet means DONE — flip running→complete on the COLOR, NOT on a `⎿`
+        // result row appearing. The `⎿` row (when present in THIS frame, the very next card) only supplies the
+        // output; if it scrolled off we still mark complete (the turn-end reload fills the canonical output).
+        // Fixes "tool spins forever though the mirror shows a green/done bullet" — the completion row scrolls
+        // out of the viewport but the color is enough.
+        const flipDoneIfGreen = (slot: number, bulletColor: string | null | undefined, cardIdx: number): void => {
+          if (bulletColor !== 'green' || slot < 0 || gridResultFlippedSlots.has(slot)) return;
+          const sid = provToolSlotIds[slot];
+          if (!sid) return;
+          const next = cards[cardIdx + 1];
+          const output = next && next.kind === 'result' && next.text.trim() ? next.text : '';
+          gridResultFlippedSlots.add(slot);
+          callbacks.onToolResult?.(sid, { success: true, output }, true);
+        };
+        for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
+          const card = cards[cardIdx];
+          if (card.kind === 'result') {
+            // Flip the preceding tool running→complete ONLY when its `●` bullet is GREEN (done). claude
+            // paints `⎿ Waiting…`/`⎿ Running…` under a still-running gray-bullet tool; those are NOT the
+            // result (flipping shows a premature "complete: Waiting…"). Gray/unreadable stays pending →
+            // the turn-end reload supplies the canonical result. Only a grid-provisioned slot.
             const sid = lastToolSlot >= 0 ? provToolSlotIds[lastToolSlot] : undefined;
             if (sid && !gridResultFlippedSlots.has(lastToolSlot) && lastToolColor === 'green' && card.text.trim()) {
               gridResultFlippedSlots.add(lastToolSlot);
               callbacks.onToolResult?.(sid, { success: true, output: card.text }, true);
             }
-          } else if (card.kind === 'text') {
-            // Story 37.11 (AC1): the general streaming prose card. Emit it as a PROVISIONAL live text
-            // chunk (the screen is the single live text source now). The drain suppresses the matching
-            // canonical text via `provisionalTextEmitsPending`; the turn-end reload replaces it.
-            const textLogical = runText++;
-            if (textLogical >= liveTextSlots && card.text.trim()) {
-              liveTextSlots = textLogical + 1;
-              provisionalTextEmitsPending++;
-              callbacks.onTextChunk?.({
-                sessionId: resolvedSessionId,
-                messageId: `cli-prov-text-${++provisionalCardCounter}`,
-                content: card.text,
-                done: false,
-                provisional: true,
-              });
+            continue;
+          }
+          const sig = cardSig(card);
+          // Claim the FIRST unclaimed held card: an EXACT same-content match wins; else a GROWTH (same kind,
+          // this card's text extends the held one). First-unclaimed = the order tiebreak among identical sigs.
+          let matchIdx = -1;
+          let growthDelta: string | null = null;
+          // Story 37.13: completed (green) held tools of THIS sig that we SKIP because the current card is a
+          // fresh RUNNING run — retired below if a new card is opened, so the 2nd run can't fuse into them.
+          const supersededDone: number[] = [];
+          for (let i = 0; i < heldCards.length; i++) {
+            const h = heldCards[i];
+            if (usedHeld.has(i) || h.retired || h.sig !== sig) continue;
+            // A held tool that ALREADY went green (completed) cannot be a now-RUNNING (non-green) card of the
+            // SAME content — that is a NEW invocation, not the old one. Skip it (and retire it on open) so the
+            // same tool run twice in a row doesn't fuse the 2nd into the completed 1st once the 1st scrolled
+            // off (the order tiebreak, which needed BOTH in view, is gone). A green card still matches its
+            // green held (a repaint of the same completed tool), so no spurious re-emit.
+            if (card.kind === 'tool' && h.seenGreen && card.bulletColor !== 'green') { supersededDone.push(i); continue; }
+            matchIdx = i; break;
+          }
+          if (matchIdx < 0) {
+            for (let i = 0; i < heldCards.length; i++) {
+              const h = heldCards[i];
+              if (!usedHeld.has(i) && !h.retired && h.kind === card.kind && card.text.startsWith(h.text) && card.text.length > h.text.length) {
+                matchIdx = i; growthDelta = card.text.slice(h.text.length); break;
+              }
             }
           }
+          if (matchIdx >= 0) {
+            usedHeld.add(matchIdx);
+            const h = heldCards[matchIdx];
+            if (growthDelta !== null) {
+              h.sig = sig; h.text = card.text;
+              if (growthDelta.trim()) {
+                if (h.kind === 'thinking') callbacks.onThinking?.(growthDelta, true);
+                else if (h.kind === 'text') callbacks.onTextChunk?.({ sessionId: resolvedSessionId, messageId: `cli-prov-text-${provisionalCardCounter}`, content: growthDelta, done: false, provisional: true });
+                // a tool's growth (`Read` → `Read(path)`) is its input streaming in; the screen truncates it,
+                // so the live card keeps the name and the finalize/reload supplies the full input.
+              }
+            }
+            if (h.kind === 'tool') {
+              lastToolSlot = h.slot; lastToolColor = card.bulletColor;
+              if (card.bulletColor === 'green') h.seenGreen = true;
+              flipDoneIfGreen(h.slot, card.bulletColor, cardIdx); // green = done; don't wait for a `⎿` row
+            }
+            continue;
+          }
+          // Story 37.18 (repaint-echo dedup): a non-green tool whose sig was ALREADY claimed THIS frame by a
+          // still-running (non-green) held card is a REPAINT of the same running tool on another scrollback row
+          // (claude redraws a running tool — 실측 ba310cea: identical gray `● Bash(…)` on rows 231 & 242), NOT a
+          // 2nd invocation. Skip it: a duplicate card would also leak a provisionalToolEmitsPending that the
+          // file's single tool_use can't finalize, leaving the leftover badged (the user's "교체 안 됨"). A REAL
+          // 2nd run shows the color transition (green held → gray card) and is opened via supersededDone below.
+          if (card.kind === 'tool' && card.bulletColor !== 'green'
+              && heldCards.some((h, idx) => usedHeld.has(idx) && !h.retired && h.sig === sig && !h.seenGreen)) {
+            continue;
+          }
+          // genuinely NEW card — emit and record it with its per-kind slot. A fresh run supersedes any
+          // completed same-sig held we skipped above, so they can't reclaim a later (green) frame of THIS run.
+          for (const idx of supersededDone) heldCards[idx].retired = true;
+          if ((card.kind === 'thinking' || card.kind === 'text') && !card.text.trim()) continue;
+          const newIdx = heldCards.length;
+          if (card.kind === 'thinking') {
+            const slot = liveThinkingSlots++;
+            heldCards.push({ kind: 'thinking', sig, text: card.text, slot });
+            provisionalThinkingEmitsPending++;
+            callbacks.onThinking?.(card.text, true);
+          } else if (card.kind === 'tool') {
+            const slot = liveToolSlots++;
+            const synthId = `cli-prov-tool-${slot}`;
+            provToolSlotIds[slot] = synthId;
+            heldCards.push({ kind: 'tool', sig, text: card.text, slot, ...(card.bulletColor === 'green' ? { seenGreen: true } : {}) });
+            provisionalToolEmitsPending++;
+            callbacks.onToolUse?.({
+              id: synthId,
+              name: card.toolName ?? 'Tool',
+              input: {}, // the screen truncates the tool input — the finalize/reload supplies the full input
+              status: 'pending',
+              provisional: true,
+            });
+            lastToolSlot = slot;
+            lastToolColor = card.bulletColor;
+            flipDoneIfGreen(slot, card.bulletColor, cardIdx); // a tool already green on first sight = done
+          } else if (card.kind === 'text') {
+            const slot = liveTextSlots++;
+            heldCards.push({ kind: 'text', sig, text: card.text, slot });
+            provisionalTextEmitsPending++;
+            callbacks.onTextChunk?.({ sessionId: resolvedSessionId, messageId: `cli-prov-text-${++provisionalCardCounter}`, content: card.text, done: false, provisional: true });
+          }
+          usedHeld.add(newIdx);
         }
       };
 
@@ -2060,10 +2148,10 @@ export class CliChatEngine implements ChatEngine {
         // its 32.6 standalone card. Auto-approved tools and thinking run WHILE the spinner spins, so they
         // are scraped and emitted live; the JSONL drain reconciles by arrival-order slot (no double-render).
         if (isGeneratingGrid(grid)) {
-          // Story 37.11 AC3: mark the current-turn boundary at the FIRST generation frame, so the card
-          // scrollback read (emitProvisionalCards) is floored ABOVE a resume boot-repaint of the prior
-          // conversation — 실측: a 130-line turn-2 that scrolled the repaint into scrollback leaked it 0×.
-          if (!turnStartMarked) { screen.markTurnStart(); turnStartMarked = true; }
+          // Story 37.11: the prior-conversation boundary is now handled by the resume SNAPSHOT (seeded
+          // into `heldCards` at injection) + the bounded scroll-up that STOPS at the first known block —
+          // not a position floor (markTurnStart), which couldn't exclude a repaint sitting IN the viewport
+          // and blocked the scroll-up from reaching the snapshotted prior cards above it.
           emitProvisionalCards();
         }
 
@@ -2137,7 +2225,18 @@ export class CliChatEngine implements ChatEngine {
           // client contract, minimal change). Correct whether or not claude re-exposes the card: if it does
           // the double-render is prevented; if it doesn't, a following tool simply renders via the drain
           // instead of the grid (still live, reload authoritative) — no loss, no double render either way.
-          liveToolSlots++;
+          const gatedSlot = liveToolSlots++;
+          // Story 37.11 (content-set): the slot reservation alone isn't seen by the content-set dedup,
+          // which recognizes an already-spoken card by `heldCards` membership (its content signature), not
+          // by a slot counter. So also record the gated tool's on-screen card here, so when the resumed
+          // spinner re-scrapes the SAME `● Tool(…)` line it matches this entry and is skipped. The slot is
+          // left WITHOUT a `provToolSlotIds` entry (as above) — the gated tool's `⎿` result stays on the
+          // reload path. Match the scraper's text: the gated `● <name>(…)` line, glyph stripped.
+          const gatedRow = grid.find((r) => /^\s*●/.test(r) && r.includes(`${toolName}(`));
+          if (gatedRow) {
+            const gatedText = gatedRow.trim().replace(/^●\s*/, '').trim();
+            heldCards.push({ kind: 'tool', sig: cardSig({ kind: 'tool', text: gatedText }), text: gatedText, slot: gatedSlot });
+          }
         }
 
         // (4) AskUserQuestion modal (Story 32.8). Mutually exclusive with the permission path above
@@ -2313,6 +2412,39 @@ export class CliChatEngine implements ChatEngine {
       // caller emits session:resumed + marks the stream active).
       if (resumeId) emitSessionInitOnce();
 
+      /**
+       * Story 37.11 (progressive finalize — PER-KIND binding): when the file-parsed canonical for a block
+       * arrives, re-emit it with `provisional:false` so the client REPLACES the live provisional in place
+       * (drops the badge). Bound PER KIND — the Nth canonical thinking finalizes the OLDEST still-provisional
+       * thinking on the client, etc. — NOT by unified sequence position. The screen and file order the
+       * blocks DIFFERENTLY: a still-running tool sits at the BOTTOM, so on screen it precedes the response
+       * text the file lists before it; a unified-sequence binding diverged there and stalled (the user's
+       * "교체 안 됨"). Per-kind is robust to that interleave order. The friendly tool name (Update vs Edit) is
+       * irrelevant (bound by order, the canonical name overwrites); a permission-gated tool never emits a
+       * provisional card so it doesn't shift the per-kind count; a rarer count mismatch (missed / misread
+       * card) is corrected by the turn-end reload.
+       */
+      const maybeFinalize = (
+        kind: GridCardKind,
+        content: string,
+        toolName?: string,
+        toolInput?: Record<string, unknown>,
+        toolId?: string,
+      ): void => {
+        if (kind === 'thinking') {
+          if (content.trim()) callbacks.onThinking?.(content, false);
+        } else if (kind === 'text') {
+          if (content.trim()) {
+            callbacks.onTextChunk?.({ sessionId: resolvedSessionId ?? '', messageId: `cli-fin-text-${++provisionalCardCounter}`, content, done: false, provisional: false });
+          }
+        } else if (kind === 'tool') {
+          // The client finalizes the OLDEST provisional tool card (keeping its id so the screen result-flip
+          // still lands) with this canonical name+input. The id here is only a fallback for the rare grid-
+          // behind case (no provisional tool to claim → created fresh under the real `toolu_…` id).
+          callbacks.onToolUse?.({ id: toolId ?? `cli-fin-tool-${++provisionalCardCounter}`, name: toolName ?? 'Tool', input: toolInput ?? {}, status: 'pending', provisional: false });
+        }
+      };
+
       /** Process one parsed assistant line. Returns true when the turn ended. */
       const handleAssistantLine = (raw: RawJSONLMessage): boolean => {
         if (emittedUuids.has(raw.uuid)) return false;
@@ -2378,6 +2510,7 @@ export class CliChatEngine implements ChatEngine {
               const thinking = (block as ThinkingContentBlock).thinking;
               if (provisionalThinkingEmitsPending > 0) {
                 provisionalThinkingEmitsPending--;
+                maybeFinalize('thinking', thinking ?? ''); // swap the live ∴ scrape for the canonical, drop the badge
               } else if (thinking && thinking.trim()) {
                 liveThinkingSlots++;
                 callbacks.onThinking?.(thinking);
@@ -2402,6 +2535,7 @@ export class CliChatEngine implements ChatEngine {
                 } else if (provisionalTextEmitsPending > 0) {
                   // (b) general grid provisional holds this slot.
                   provisionalTextEmitsPending--;
+                  maybeFinalize('text', text); // swap the live screen literal for the canonical markdown
                 } else {
                   // (c) authoritative (grid behind / no grid frame).
                   liveTextSlots++;
@@ -2432,10 +2566,15 @@ export class CliChatEngine implements ChatEngine {
                 // (synthetic `cli-prov-tool-N`, arrival-order FIFO — checked AFTER the permission
                 // gate so an interleaved gated tool consumes its own counter first). Suppress the
                 // canonical live re-emit; a real-`toolu_…` card here would split from the provisional.
-                // Left OUT of liveEmittedToolIds so emitToolResults also leaves this tool's result to
-                // the grid flip (synthetic id) — no orphan real-id result against a synthetic-id card.
-                // The turn-end reload replaces the name-only provisional with the full-input canonical.
+                // Left OUT of liveEmittedToolIds: the client card KEEPS its synthetic id (chatStore finalize:
+                // "KEEPING its id", the screen flip rides it), so a real-id onToolResult would orphan. Instead
+                // (Story 37.16) record real id → this tool's provisional slot (drain FIFO matches provToolSlotIds)
+                // so emitToolResults can complete it via the SYNTHETIC id — the scroll-off backstop for when the
+                // grid never sees green (the running tool scrolled above the viewport). The turn-end reload still
+                // replaces the name-only provisional with the full-input canonical.
                 provisionalToolEmitsPending--;
+                maybeFinalize('tool', '', toolBlock.name, toolBlock.input, toolBlock.id); // fill real name+input, drop badge
+                provRealIdToSlot.set(toolBlock.id, provFinalizedToolCount++);
               } else {
                 // Auto-approved / safe tool the grid scraper didn't reach (32.9 path). Track the id so
                 // the matching tool_result is mirrored live, and advance the shared slot counter so the
@@ -2461,6 +2600,7 @@ export class CliChatEngine implements ChatEngine {
             // authoritatively and advance the high-water.
             if (provisionalTextEmitsPending > 0) {
               provisionalTextEmitsPending--;
+              maybeFinalize('text', text); // string-content path — same progressive finalize as block-array text
             } else {
               liveTextSlots++;
               callbacks.onTextChunk?.({
@@ -2525,6 +2665,25 @@ export class CliChatEngine implements ChatEngine {
           if (block.type !== 'tool_result') continue;
           const trb = block as ToolResultContentBlock & { is_error?: boolean };
           const id = trb.tool_use_id;
+          // Story 37.16: a provisional (grid) tool kept its SYNTHETIC id on the client, so mirror its real-id
+          // result onto that synthetic id — but ONLY if the grid hasn't already flipped it green
+          // (gridResultFlippedSlots). This is the scroll-off backstop. A non-provisional (auto-approved) tool
+          // kept its real id and follows the original liveEmittedToolIds path below.
+          const provSlot = provRealIdToSlot.get(id);
+          if (provSlot !== undefined) {
+            const synthId = provToolSlotIds[provSlot];
+            if (resultEmittedToolIds.has(id) || gridResultFlippedSlots.has(provSlot) || !synthId) continue;
+            resultEmittedToolIds.add(id);
+            gridResultFlippedSlots.add(provSlot);
+            const provRaw = typeof trb.content === 'string' ? trb.content : '';
+            const provErr = trb.is_error ?? false;
+            callbacks.onToolResult?.(synthId, {
+              success: !provErr,
+              output: provErr ? undefined : sanitizeToolResultContent(provRaw),
+              error: provErr ? sanitizeToolResultContent(provRaw) : undefined,
+            }, true);
+            continue;
+          }
           if (!liveEmittedToolIds.has(id) || resultEmittedToolIds.has(id)) continue;
           resultEmittedToolIds.add(id);
           const rawContent = typeof trb.content === 'string' ? trb.content : '';

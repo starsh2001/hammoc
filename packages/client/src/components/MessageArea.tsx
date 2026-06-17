@@ -22,6 +22,7 @@ import { isTextSegment, isToolSegment, isInteractiveSegment, isThinkingSegment, 
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { debugLogger } from '../utils/debugLogger';
 import { scrollElementIntoContainer } from '../utils/scrollUtils';
+import { formatElapsed, formatTokensK } from '../utils/formatStreamingProgress';
 import { ScrollProvider } from '../contexts/ScrollContext';
 
 /**
@@ -512,17 +513,16 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
     return () => clearInterval(id);
   }, [isStreaming, streamingStartedAt]);
 
-  // mm:ss elapsed clock (700s reads as 11:40); under a minute is 0:SS — one colon format, no
-  // per-locale unit text needed.
-  const elapsedClock = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
-  // Story 37.11: label the (already-live) progress as "Thinking…" while the spinner reports the
-  // thinking phase. verbose-mode claude paints NO live thinking *content* (실측) — only this spinner
-  // phase advances — so labeling the existing indicator is the achievable "see thinking in progress".
+  // CLI-style elapsed clock: "Ns" under a minute, "Nm Ns" otherwise (700s → "11m 40s") — mirrors the
+  // claude spinner readout (time before tokens), replacing the prior mm:ss. See formatElapsed.
+  const elapsedClock = formatElapsed(elapsedSeconds);
+  // Story 37.11: while claude's spinner reports the THINKING phase, the LEFT indicator label reads
+  // "Thinking" (vs "Generating response") — see `thinkingActive` below. The RIGHT counter is ALWAYS the
+  // plain token/elapsed readout, so "Thinking" isn't duplicated on both sides (the user's report). The
+  // reasoning content itself streams separately as a provisional `∴` card when it lands.
+  const thinkingActive = generationProgress?.thinking === true;
   const generationProgressLabel = generationProgress
-    ? t(generationProgress.thinking ? 'streaming.thinkingProgress' : 'streaming.generationProgress', {
-        tokens: generationProgress.tokens,
-        time: elapsedClock,
-      })
+    ? t('streaming.generationProgress', { tokens: formatTokensK(generationProgress.tokens), time: elapsedClock })
     : null;
 
   // Story 36.2: localized phase label, shown in the waiting indicator before the first block.
@@ -631,6 +631,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
 
         {/* Streaming segments - rendered in order (hidden after pending permission, hidden during restore) */}
         {!isRestoringStream && shouldRenderSegments && visibleSegments.map((seg, index) => {
+          // Story 37.11/37.12: a PROVISIONAL segment is a CLI screen scrape (live estimate). The card is
+          // dimmed (wrapper below) AND a "preview" chip sits beside that card's OWN title (tool name /
+          // "Claude" / thinking header) — passed into each card component here.
+          const segProvisional = (seg as { provisional?: boolean }).provisional === true;
           const el: ReactNode = (() => {
           if (isThinkingSegment(seg)) {
             // Thinking is still streaming only if it's the last segment and overall streaming is active
@@ -638,7 +642,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
             return (
               <div key={`seg-thinking-${index}`} className="flex justify-start">
                 <div className="max-w-[90%] md:max-w-[80%]">
-                  <ThinkingBlock content={seg.content} isStreaming={isThinkingStillStreaming} />
+                  <ThinkingBlock content={seg.content} isStreaming={isThinkingStillStreaming} provisional={segProvisional} />
                 </div>
               </div>
             );
@@ -681,6 +685,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                     timestamp: startedAt?.toISOString() ?? new Date().toISOString(),
                   }}
                   isStreaming={isStillStreaming}
+                  provisional={segProvisional}
                 />
               </StreamingErrorBoundary>
             );
@@ -725,6 +730,7 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                     useChatStore.getState().setPermissionMode(mode);
                     useChatStore.getState().respondToolPermission(seg.toolCall.id, true);
                   } : undefined}
+                  provisional={segProvisional}
                 />
               </div>
             );
@@ -793,23 +799,21 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
           return null;
           })();
           if (el == null) return null;
-          // Story 37.11 (AC4): a PROVISIONAL card is a CLI grid SCREEN-SCRAPE (live estimate) not yet
-          // replaced by the file-parsed authoritative copy — dim it and attach a color-INDEPENDENT
-          // `live` text badge (a11y: never color-only). Applies uniformly to text/thinking/tool cards.
-          // The turn-end authoritative reload clears streamingSegments, so the distinction disappears
-          // on completion. `data-provisional` is the locale-independent integration-test hook.
-          const isProvisional = (seg as { provisional?: boolean }).provisional === true;
+          // Story 37.11 (AC4): a PROVISIONAL card is a CLI grid SCREEN-SCRAPE (preview estimate) not yet
+          // replaced by the file-parsed authoritative copy — DIM it (opacity, not a color-only cue) and
+          // tag it for a11y + selectors. The WORDED "preview" indicator no longer rides each card; it sits
+          // once on the streaming status line (the in-progress response's title) — see
+          // `hasProvisionalSegments` above. The turn-end authoritative reload clears streamingSegments, so
+          // the dimming disappears on completion. `data-provisional` is the locale-independent test hook.
+          const isProvisional = segProvisional;
           const card: ReactNode = isProvisional ? (
             <div
               key={`seg-prov-${index}`}
-              className="relative opacity-[0.65] transition-opacity"
+              className="opacity-[0.65] transition-opacity"
               data-provisional="true"
               aria-label={t('streamingMessage.provisionalAriaLabel')}
             >
               {el}
-              <span className="pointer-events-none absolute left-3 -top-1.5 z-10 select-none rounded-full bg-blue-500/90 px-1.5 py-px text-[10px] font-semibold uppercase leading-tight tracking-wide text-white shadow-sm">
-                {t('streamingMessage.liveBadge')}
-              </span>
             </div>
           ) : el;
           // Bubble each streaming card in as it mounts. A new segment mounts fresh → the
@@ -882,7 +886,10 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
               <div className="flex items-center gap-2.5">
                 <StreamingIndicator variant={sparkleActive ? 'sparkle' : 'default'} frame={sparkleActive ? spinnerFrame : undefined} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">
-                  {sparkleActive ? <GeneratingLabel text={t('streaming.generating')} dots={dotCount} /> : t('streaming.generating')}
+                  {(() => {
+                    const label = thinkingActive ? t('streaming.thinking') : t('streaming.generating');
+                    return sparkleActive ? <GeneratingLabel text={label} dots={dotCount} /> : label;
+                  })()}
                 </span>
                 {generationProgressLabel && (
                   <span className="text-xs text-gray-400 dark:text-gray-400 tabular-nums">{generationProgressLabel}</span>
@@ -900,7 +907,9 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
                 <StreamingIndicator variant={sparkleActive ? 'sparkle' : 'default'} frame={sparkleActive ? spinnerFrame : undefined} />
                 <span className="text-sm text-gray-500 dark:text-gray-300">
                   {(() => {
-                    const label = cliPhaseLabel ?? (isForking ? t('streaming.forking') : t('streaming.waiting'));
+                    const label = thinkingActive
+                      ? t('streaming.thinking')
+                      : (cliPhaseLabel ?? (isForking ? t('streaming.forking') : t('streaming.waiting')));
                     return sparkleActive ? <GeneratingLabel text={label} dots={dotCount} /> : label;
                   })()}
                   {!isForking && !cliPhaseLabel && showCompactionHint && (

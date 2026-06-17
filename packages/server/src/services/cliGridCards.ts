@@ -68,24 +68,50 @@ const RESULT_BULLET = '⎿';
 /** The thinking-summary header claude paints once a thinking block lands ("Thought for 16s"). */
 const THOUGHT_RE = /^Thought for\b/i;
 /**
- * The verbose/expanded thinking-detail glyph (U+2234 THEREFORE). In verbose mode (Hammoc's spawn —
- * `showThinkingSummaries` + `verbose`) claude paints the EXPANDED reasoning as a `∴ <reasoning>`
- * block in the scrollback BODY, NOT a collapsed "Thought for Ns" header (that summary lives in the
- * footer spinner instead). 실측 2026-06-16 (real production-settings PTY capture): the full multi-line
- * reasoning lands on screen ~7s BEFORE the JSONL canonical (which is written only at turn end, with
- * the next block). Recognizing this glyph lets `emitProvisionalCards` scrape the live reasoning so the
- * thinking card shows during that 7s window instead of waiting for the file.
+ * The verbose/expanded thinking-detail glyph (U+2234 THEREFORE). In verbose mode claude paints the
+ * EXPANDED reasoning as a `∴ <reasoning>` block in the body (실측 2026-06-16). It STREAMS — the block
+ * grows frame by frame — so `emitProvisionalCards` must emit only the growing DELTA, not the full text
+ * each frame (a full re-emit duplicated the card ~48× live). See the delta-streaming path there.
  */
 const THINKING_DETAIL_GLYPH = '∴';
-/** A tool-use header body: a tool name immediately followed by `(` — "Write(", "PowerShell(". */
-const TOOL_HEADER_RE = /^([A-Za-z][A-Za-z0-9_]*)\(/;
+/**
+ * The live generation spinner / status line's LEADING glyph ("<glyph> Precipitating… (18s …)"). claude's
+ * spinner is a 6-frame pulse — a star that grows from a dot — and its glyph is the ONLY reliable signal
+ * (the gerund word and the elapsed-time are version-fragile). The EXACT set was enumerated from real PTY
+ * captures (NOT guessed): `·`U+00B7 `*`U+002A `✢`U+2722 `✶`U+2736 `✻`U+273B `✽`U+273D. A paragraph whose
+ * HEADER is one of these IS the spinner — the parser drops that block, so its ticking counter never folds
+ * into the card above and re-emits each frame. None collide with a content header (`●`U+25CF `∴`U+2234
+ * `⎿`U+23BF) or the input prompt (`❯`U+276F). Matched ONLY at a paragraph header (`atBlockStart`), so one
+ * of these glyphs QUOTED inside prose (a continuation row) stays folded into its real card. If a future
+ * claude revision changes the animation, re-enumerate from a capture — do not guess. */
+const SPINNER_HEADER_RE = /^[·*✢✶✻✽]/;
+/** A tool-use header body: a tool name immediately followed by `(` — "Write(", "PowerShell(", and
+ *  HYPHENATED sub-agent names like "claude-code-guide(" (실측: the bullet is a tool, but the strict
+ *  identifier set dropped the `-`). Used as the tool-NAME extractor + the no-color FALLBACK classifier. */
+const TOOL_HEADER_RE = /^([A-Za-z][A-Za-z0-9_-]*)\(/;
+/** A tool whose input hasn't painted yet: the `●` body is JUST the tool name, no `(` (실측: claude paints
+ *  `● Read` for a beat before `● Read(path)`). A single CapitalizedWord or an `mcp__…` name with no spaces
+ *  — never a prose card (claude heads prose with a sentence, which has spaces / lowercase / punctuation).
+ *  Parsing it as a tool (not a `text:Read` card) lets it GROW into `Read(path)` instead of leaving a
+ *  spurious text card that re-emits each time another `● Read` tool starts. */
+const BARE_TOOL_RE = /^(?:[A-Z][A-Za-z0-9_]*|mcp__[\w-]+)$/;
 /** The collapse affordance claude appends to a truncated card ("(ctrl+o to expand)" / "(ctrl+r …)",
  *  optionally after a "… +N lines" tail) — stripped so the card text is clean. */
 const EXPAND_MARKER_RE = /\s*(?:…\s*)?(?:\+\d+\s+lines?\s*)?\(ctrl\+[a-z] to expand\)\s*$/i;
+/**
+ * Max left indentation (columns) at which a header glyph (`●`/`⎿`/`∴`/`Thought for`) opens a CARD.
+ * 실측 (HAMMOC_CLI_PTY_DUMP replay): a real card header sits at the left margin — `●` col 0, `⎿` col 2,
+ * `∴` col 0. A glyph DEEPER than this is inside a tool's INDENTED verbose output (a bash line that prints
+ * a `●`/`⎿`, a Write file preview — measured at col 5–7), so it must NOT open a card. Gating the header
+ * globs on this stops that output from being misread as a tool/result/thinking card. (Story 37.17)
+ */
+const MAX_CARD_INDENT = 3;
 
-/** Strip the trailing collapse affordance and surrounding whitespace from a card row. */
+/** Strip the trailing collapse affordance, any trailing box-drawing rule (the input-box top border
+ *  `────` can overlap a streaming card's last row mid-repaint, polluting the card text and breaking
+ *  its monotonic growth — 실측 2026-06-16), and surrounding whitespace from a card row. */
 function clean(s: string): string {
-  return s.replace(EXPAND_MARKER_RE, '').trim();
+  return s.replace(EXPAND_MARKER_RE, '').replace(/[─╭╮╰╯│]+\s*$/, '').trim();
 }
 
 /**
@@ -103,6 +129,14 @@ function clean(s: string): string {
 export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]): GridCard[] {
   const cards: GridCard[] = [];
   let current: GridCard | null = null;
+  // Story 37.11 (spinner-block drop): claude's blocks are blank-line-separated paragraphs, each opened
+  // by a HEADER glyph on its first row (● / ∴ / ⎿ / "Thought for" for content, a star dingbat for the
+  // live spinner). `atBlockStart` is true at the start and after every blank spacer, so it marks a row
+  // as a paragraph HEADER vs a wrapped continuation — letting us drop a SPINNER-headed block while
+  // keeping a spinner glyph that merely appears INSIDE prose (a continuation row). `droppingSpinner`
+  // swallows the spinner paragraph's own wrapped rows until the next blank/header.
+  let atBlockStart = true;
+  let droppingSpinner = false;
 
   const flush = () => {
     if (current) {
@@ -115,26 +149,66 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
   for (let i = 0; i < rows.length; i++) {
     const raw = rows[i];
     const trimmed = raw.trim();
-    if (trimmed.length === 0) continue; // spacer row — does not break a card span
+    // Story 37.17: a header glyph counts as a CARD opener only near the left margin (see MAX_CARD_INDENT).
+    // A `●`/`⎿`/`∴` deeper than that is a tool's indented verbose output, NOT a header — it falls through
+    // to the continuation branch and folds into the open card instead of spawning a spurious one.
+    const indent = raw.length - raw.trimStart().length;
+    const atHeaderIndent = indent <= MAX_CARD_INDENT;
+    if (trimmed.length === 0) {
+      atBlockStart = true; // a blank spacer opens a new paragraph and ends a spinner block's span
+      droppingSpinner = false;
+      continue;
+    }
 
-    if (trimmed.startsWith(CARD_BULLET)) {
+    // A SPINNER-headed paragraph is claude's live generation indicator, never content — drop the whole
+    // block (header + its wrapped rows). Gated on `atBlockStart` so a spinner glyph quoted mid-prose (a
+    // continuation row) is NOT mistaken for a spinner and instead folds into its real card below.
+    if (atBlockStart && SPINNER_HEADER_RE.test(trimmed)) {
+      flush();
+      droppingSpinner = true;
+      atBlockStart = false;
+      continue;
+    }
+    if (droppingSpinner) {
+      atBlockStart = false; // still inside the spinner paragraph — swallow its wrapped rows
+      continue;
+    }
+
+    if (atHeaderIndent && trimmed.startsWith(CARD_BULLET)) {
       flush();
       const body = clean(trimmed.slice(CARD_BULLET.length).trim());
-      const toolMatch = body.match(TOOL_HEADER_RE);
       const bulletColor = bulletColors?.[i];
-      current = toolMatch
-        ? { kind: 'tool', text: body, toolName: toolMatch[1], ...(bulletColor ? { bulletColor } : {}) }
-        : { kind: 'text', text: body, ...(bulletColor ? { bulletColor } : {}) };
-    } else if (trimmed.startsWith(RESULT_BULLET)) {
+      // Story 37.13: the bullet COLOR is the PRIMARY tool/text signal (실측 cli-real-pty-dump: a tool's
+      // bullet is green=done / gray=running, an assistant text body's bullet is white — the SAME `●` glyph,
+      // the COLOR splits them). The name pattern (`Tool(` / bare `Tool`) is only the FALLBACK when no color
+      // is supplied (pure unit tests) or the fg is a non-RGB 'other'. This makes hyphenated sub-agent names
+      // (claude-code-guide) read as tools, and stops a prose line that merely contains `foo(bar)` from being
+      // misread as a tool.
+      const isTool =
+        bulletColor === 'green' || bulletColor === 'gray'
+          ? true
+          : bulletColor === 'white'
+            ? false
+            : TOOL_HEADER_RE.test(body) || BARE_TOOL_RE.test(body); // 'other' / no color → name pattern
+      if (isTool) {
+        // Tool name: the part before `(` (covers hyphens/dots the strict regex would miss), else the body.
+        const toolMatch = body.match(TOOL_HEADER_RE);
+        const parenIdx = body.indexOf('(');
+        const toolName = (toolMatch ? toolMatch[1] : parenIdx > 0 ? body.slice(0, parenIdx) : body).trim() || 'Tool';
+        current = { kind: 'tool', text: body, toolName, ...(bulletColor ? { bulletColor } : {}) };
+      } else {
+        current = { kind: 'text', text: body, ...(bulletColor ? { bulletColor } : {}) };
+      }
+    } else if (atHeaderIndent && trimmed.startsWith(RESULT_BULLET)) {
       flush();
       current = { kind: 'result', text: clean(trimmed.slice(RESULT_BULLET.length).trim()) };
-    } else if (THOUGHT_RE.test(trimmed)) {
+    } else if (atHeaderIndent && THOUGHT_RE.test(trimmed)) {
       flush();
       current = { kind: 'thinking', text: clean(trimmed) };
-    } else if (trimmed.startsWith(THINKING_DETAIL_GLYPH)) {
+    } else if (atHeaderIndent && trimmed.startsWith(THINKING_DETAIL_GLYPH)) {
       // Story 37.11: a verbose-mode expanded reasoning block opens with `∴`; its wrapped continuation
-      // rows fold into this card (the `else if (current)` arm below), so the FULL on-screen reasoning
-      // is captured as one thinking card — the body counterpart of the footer "Thought for Ns" summary.
+      // rows fold into this thinking card. The block STREAMS (grows each frame) — the engine emits the
+      // delta, not the full text, to avoid the live re-emit storm.
       flush();
       current = { kind: 'thinking', text: clean(trimmed.slice(THINKING_DETAIL_GLYPH.length).trim()) };
     } else if (current) {
@@ -143,7 +217,67 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       if (extra) current.text += (current.text ? ' ' : '') + extra;
     }
     // else: a loose non-glyph row before any card opens — not a card, ignored.
+    atBlockStart = false;
   }
   flush();
   return cards;
+}
+
+/**
+ * Story 37.12 (flickered-bullet stickiness — the user's "detect across frames, not one frame" insight):
+ * `parseGridCards` classifies a row as a TOOL only by its leading `●` glyph, but that glyph FLICKERS while
+ * the tool runs — claude repaints the bullet, and the 60ms poll can land on the half-frame where it's
+ * momentarily erased. A frame caught with the glyph gone reads the tool row as prose and FUSES it into the
+ * block above (실측: the `Search(…)` header glued onto the answer body). These two helpers give the caller a
+ * tiny CROSS-FRAME memory: {@link collectToolHeaderKeys} records the tool-header lines it actually saw, and
+ * {@link restoreFlickeredToolBullets} re-adds the `●` on a later frame's bullet-less line whose body was
+ * recently a tool header. Content-gated on BOTH the tool-header SHAPE and recent observation, so prose that
+ * merely contains `foo(x)` is never promoted.
+ */
+
+/** The cleaned body of a row IFF it stands alone as a tool header (`Tool(…)` or a bare `Tool`/`mcp__…`),
+ *  any leading `●` stripped first. Null for prose / results / blanks. This is the cross-frame match KEY. */
+function toolHeaderKey(row: string): string | null {
+  const body = clean(row.trim().replace(/^●\s*/, ''));
+  if (!body) return null;
+  return TOOL_HEADER_RE.test(body) || BARE_TOOL_RE.test(body) ? body : null;
+}
+
+/**
+ * The tool-header match keys present in `rows`. With `includeBulletless: false` (default) it counts ONLY
+ * rows that actually carry the `●` glyph this frame — the confident set to REMEMBER. With `true` it also
+ * counts bullet-less rows whose shape matches — used to scope retention to lines still on screen, so a
+ * tool that scrolled off drops out of memory and can't later re-promote unrelated prose.
+ */
+export function collectToolHeaderKeys(rows: string[], includeBulletless = false): Set<string> {
+  const out = new Set<string>();
+  for (const row of rows) {
+    const t = row.trim();
+    if (t.length === 0) continue;
+    if (row.length - row.trimStart().length > MAX_CARD_INDENT) continue; // deep glyph = tool output, not a header
+    if (!t.startsWith(CARD_BULLET) && !includeBulletless) continue;
+    const key = toolHeaderKey(t);
+    if (key) out.add(key);
+  }
+  return out;
+}
+
+/**
+ * Restore the `●` on any bullet-less row whose body was a tool header in a recent frame (`recentKeys`,
+ * supplied by the caller and scoped to on-screen lines). Returns a NEW rows array — the parser stays pure.
+ * No-op when `recentKeys` is empty. Restoring the glyph makes `parseGridCards` open the row as its own
+ * tool card again instead of folding it into the prose above (the fusion the user reported).
+ */
+export function restoreFlickeredToolBullets(rows: string[], recentKeys: ReadonlySet<string>): string[] {
+  if (recentKeys.size === 0) return rows;
+  return rows.map((row) => {
+    const t = row.trim();
+    if (t.length === 0 || t.startsWith(CARD_BULLET)) return row;
+    // Story 37.17: don't resurrect a `●` on a DEEPLY indented row — that's a tool's verbose output, not a
+    // flickered header. Restoring it would strip the indent (`● ${t}` lands at col 0) and bypass the parser's
+    // indent gate, re-introducing the exact misdetection the gate prevents.
+    if (row.length - row.trimStart().length > MAX_CARD_INDENT) return row;
+    const key = toolHeaderKey(t);
+    return key && recentKeys.has(key) ? `${CARD_BULLET} ${t}` : row;
+  });
 }

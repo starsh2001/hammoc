@@ -17,15 +17,18 @@ import { useTranslation } from 'react-i18next';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatStore } from '../stores/chatStore';
 import { useScrollContext } from '../contexts/ScrollContext';
+import { ProvisionalBadge } from './ProvisionalBadge';
 
 interface ThinkingBlockProps {
   /** Thinking content (markdown string) */
   content: string;
   /** Whether thinking is still streaming */
   isStreaming?: boolean;
+  /** Story 37.11/37.12: a CLI screen-scrape live estimate — shows a "preview" chip beside the header. */
+  provisional?: boolean;
 }
 
-export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockProps) {
+export function ThinkingBlock({ content, isStreaming = false, provisional = false }: ThinkingBlockProps) {
   const { t } = useTranslation('common');
   const isExpanded = useChatStore((s) => s.thinkingExpanded);
   const toggleThinkingExpanded = useChatStore((s) => s.toggleThinkingExpanded);
@@ -84,6 +87,7 @@ export function ThinkingBlock({ content, isStreaming = false }: ThinkingBlockPro
       >
         <Brain className={`w-4 h-4 ${isExpanded ? 'text-purple-500' : ''}`} aria-hidden="true" />
         <span className={`text-xs ${isExpanded ? 'text-purple-600 dark:text-purple-400' : ''}`}>{isStreaming ? t('thinking.thinkingStreaming') : t('thinking.thinking')}</span>
+        {provisional && <ProvisionalBadge />}
         {isExpanded
           ? <ChevronDown className="w-3 h-3" aria-hidden="true" />
           : <ChevronRight className="w-3 h-3" aria-hidden="true" />

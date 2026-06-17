@@ -15,6 +15,7 @@ import { BranchPagination } from './BranchPagination';
 import { getBaseUuid } from '../utils/messageTree';
 import { useChatStore } from '../stores/chatStore';
 import { useImageViewerStore } from '../stores/imageViewerStore';
+import { ProvisionalBadge } from './ProvisionalBadge';
 
 export interface EditSubmitParams {
   messageUuid: string;
@@ -55,6 +56,9 @@ interface MessageBubbleProps {
   onFork?: (assistantMessageId: string) => void;
   /** When true, edit/rewind/summarize buttons are disabled (but still visible) */
   actionsLocked?: boolean;
+  /** Story 37.11/37.12: a CLI screen-scrape live estimate (streaming text card) — shows a "preview"
+   *  chip beside the "Claude" header. Undefined/false for history + user messages (no chip). */
+  provisional?: boolean;
 }
 
 export function MessageBubble({
@@ -74,6 +78,7 @@ export function MessageBubble({
   onClearSummaryResult,
   onFork,
   actionsLocked = false,
+  provisional = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation('chat');
   const isOptimistic = (message as HistoryMessage & { _optimistic?: boolean })._optimistic === true;
@@ -126,6 +131,7 @@ export function MessageBubble({
           <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 dark:text-gray-300">
             <Bot className="w-4 h-4" aria-hidden="true" />
             <span>{t('messageBubble.assistantName')}</span>
+            {provisional && <ProvisionalBadge />}
             {isBackgroundFlow && (
               <span
                 className="ml-1 rounded border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300"

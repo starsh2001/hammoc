@@ -165,8 +165,8 @@
   "streamingMessage": {
     "ariaLabel": "Claude 正在回复",
     "assistantName": "Claude",
-    "liveBadge": "实时",
-    "provisionalAriaLabel": "实时屏幕估计 — 尚未确定"
+    "liveBadge": "预览",
+    "provisionalAriaLabel": "屏幕估计预览 — 即将被最终版本替换"
   },
   "messageActionBar": {
     "copy": "复制",
@@ -295,8 +295,8 @@
     "generating": "生成中...",
     "restoring": "正在恢复对话...",
     "compactionHint": "可能正在进行上下文压缩",
-    "generationProgress": "↓ {{tokens}} 个令牌 · {{time}}",
-    "thinkingProgress": "思考中… ↓ {{tokens}} 个令牌 · {{time}}",
+    "generationProgress": "{{time}} · ↓ {{tokens}} 个令牌",
+    "thinking": "思考中",
     "cliPhase": {
       "launching": "正在启动 Claude Code…",
       "submitting": "正在发送提示…",

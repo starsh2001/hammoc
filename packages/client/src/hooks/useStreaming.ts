@@ -353,8 +353,20 @@ export function useStreaming() {
       // This is a safety net for reconnect replay scenarios.
       autoResolveStaleInteractiveSegments();
 
-      // Story 37.11 (AC4): propagate the provisional flag (CLI grid screen-scrape) to the segment.
-      enqueueChunk(data.content, data.provisional);
+      // Story 37.11: propagate the provisional flag. A canonical (provisional === false) block FINALIZES
+      // the provisional text segment in place. It must run AFTER the in-flight provisional text has been
+      // committed to a segment — the provisional rides the synthetic typer (first char lands a frame
+      // later) or the rAF frame buffer, so applying the canonical *immediately* finds no provisional to
+      // replace yet and spawns a DUPLICATE. Routing it through revealSegment puts the finalize on the SAME
+      // ordered chain as the provisional (and flushes the frame buffer in non-synthetic mode), so it lands
+      // right after the provisional segment exists → in-place replace, never a dup. Mirrors the thinking
+      // path, which already goes through revealSegment for both states. delayMs 0: a finalize is an
+      // in-place swap, not a new card, so it should not wait the card-entrance stagger.
+      if (data.provisional === false) {
+        revealSegment(() => appendStreamingContent(data.content, false), 0);
+      } else {
+        enqueueChunk(data.content, data.provisional);
+      }
     };
 
     /**
@@ -478,14 +490,19 @@ export function useStreaming() {
       // Reveal the tool card. Synthetic mode: queue it so it bubbles in AFTER the assistant
       // text finishes typing (staggered). Otherwise: flush buffered text first to prevent the
       // response from splitting, then insert immediately (original behavior).
-      // Story 37.11 (AC4): a CLI grid tool card is provisional (name-only, empty input until reload).
-      revealSegment(() => addStreamingToolCall({
+      // Story 37.11: a CLI grid tool card is provisional (name-only, empty input until the file confirms
+      // it). The canonical re-sends the SAME id with `provisional: false` to FINALIZE it (real name+input,
+      // badge dropped) — apply that in place immediately, NOT through `revealSegment` (the synthetic-typing
+      // reveal is for NEW cards bubbling in). `true`/`undefined` keep the reveal path.
+      const applyTool = () => addStreamingToolCall({
         id: data.id,
         name: data.name,
         input: data.input,
         startedAt: data.startedAt,
-        ...(data.provisional ? { provisional: true } : {}),
-      }));
+        ...(data.provisional !== undefined ? { provisional: data.provisional } : {}),
+      });
+      if (data.provisional === false) applyTool();
+      else revealSegment(applyTool);
     };
 
     // Handle permission:request event — add interactive segment for permission or question (Story 7.1)

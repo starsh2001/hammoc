@@ -21,10 +21,11 @@ vi.mock('../ToolResultRenderer', () => ({
   )),
 }));
 
-// Mock ThinkingBlock
+// Mock ThinkingBlock — echoes the `provisional` prop (Story 37.12) so the provisional-card test can
+// assert the preview chip is wired through; the REAL chip is unit-tested in ThinkingBlock.test.tsx.
 vi.mock('../ThinkingBlock', () => ({
-  ThinkingBlock: ({ content, isStreaming }: { content: string; isStreaming?: boolean }) => (
-    <div data-testid="mock-thinking-block" data-streaming={isStreaming}>{content}</div>
+  ThinkingBlock: ({ content, isStreaming, provisional }: { content: string; isStreaming?: boolean; provisional?: boolean }) => (
+    <div data-testid="mock-thinking-block" data-streaming={isStreaming}>{content}{provisional ? <span>미리보기</span> : null}</div>
   ),
 }));
 
@@ -902,10 +903,10 @@ describe('MessageArea', () => {
     });
   });
 
-  // Story 37.11 (AC4): a PROVISIONAL card (CLI grid screen-scrape) renders dimmed + a color-
-  // INDEPENDENT `live` text badge, with a locale-stable `data-provisional` hook for selectors.
-  // Tests run under the ko locale (setup forces it), so the badge text is '라이브'.
-  describe('provisional (live) card rendering (Story 37.11 AC4)', () => {
+  // Story 37.11/37.12 (AC4): a PROVISIONAL card (CLI grid screen-scrape) renders DIMMED with a locale-
+  // stable `data-provisional` hook, AND a "preview" chip sits BESIDE that card's OWN title (tool name /
+  // "Claude" / thinking header). Tests run under the ko locale (setup forces it), so the chip reads '미리보기'.
+  describe('provisional card rendering + preview chip (Story 37.11/37.12)', () => {
     it('marks a provisional TEXT segment dimmed with a live badge + data-provisional hook', () => {
       const seg: StreamingSegment = { type: 'text', content: 'Live screen estimate body', provisional: true };
       const { container } = render(
@@ -914,7 +915,8 @@ describe('MessageArea', () => {
       const wrapper = container.querySelector('[data-provisional="true"]');
       expect(wrapper).toBeInTheDocument();
       expect(wrapper).toContainElement(screen.getByText('Live screen estimate body'));
-      expect(screen.getByText('라이브')).toBeInTheDocument(); // color-independent affordance
+      // The "preview" chip sits beside the card's title (inside the dimmed card).
+      expect(screen.getByText('미리보기')).toBeInTheDocument();
     });
 
     it('does NOT mark an AUTHORITATIVE (non-provisional) text segment', () => {
@@ -923,7 +925,8 @@ describe('MessageArea', () => {
         <MessageArea streamingSegments={[seg]} isStreaming={true}>{null}</MessageArea>
       );
       expect(container.querySelector('[data-provisional="true"]')).not.toBeInTheDocument();
-      expect(screen.queryByText('라이브')).not.toBeInTheDocument();
+      // Not provisional → no preview chip on the card.
+      expect(screen.queryByText('미리보기')).not.toBeInTheDocument();
     });
 
     it('marks a provisional TOOL segment (name-only grid card) as live', () => {
@@ -932,7 +935,7 @@ describe('MessageArea', () => {
         <MessageArea streamingSegments={[seg]} isStreaming={true}>{null}</MessageArea>
       );
       expect(container.querySelector('[data-provisional="true"]')).toBeInTheDocument();
-      expect(screen.getByText('라이브')).toBeInTheDocument();
+      expect(screen.getByText('미리보기')).toBeInTheDocument();
     });
 
     it('marks a provisional THINKING segment as live', () => {
@@ -941,7 +944,7 @@ describe('MessageArea', () => {
         <MessageArea streamingSegments={[seg]} isStreaming={true}>{null}</MessageArea>
       );
       expect(container.querySelector('[data-provisional="true"]')).toBeInTheDocument();
-      expect(screen.getByText('라이브')).toBeInTheDocument();
+      expect(screen.getByText('미리보기')).toBeInTheDocument();
     });
   });
 });

@@ -15,6 +15,11 @@ vi.mock('../MarkdownRenderer', () => ({
   ),
 }));
 
+// Mock ProvisionalBadge so the chip assertion is locale-independent (it carries its own 'chat' i18n).
+vi.mock('../ProvisionalBadge', () => ({
+  ProvisionalBadge: () => <span data-testid="prov-badge">미리보기</span>,
+}));
+
 describe('ThinkingBlock', () => {
   const thinkingContent = 'Let me think about this problem step by step...';
 
@@ -172,6 +177,18 @@ describe('ThinkingBlock', () => {
       const contentArea = screen.getByRole('region');
       expect(contentArea).toHaveClass('max-h-96');
       expect(contentArea).toHaveClass('overflow-y-auto');
+    });
+  });
+
+  describe('provisional preview chip (Story 37.12)', () => {
+    it('renders a ProvisionalBadge beside the header when provisional', () => {
+      render(<ThinkingBlock content={thinkingContent} provisional />);
+      expect(screen.getByTestId('prov-badge')).toBeInTheDocument();
+    });
+
+    it('renders no ProvisionalBadge by default (history / SDK)', () => {
+      render(<ThinkingBlock content={thinkingContent} />);
+      expect(screen.queryByTestId('prov-badge')).not.toBeInTheDocument();
     });
   });
 });

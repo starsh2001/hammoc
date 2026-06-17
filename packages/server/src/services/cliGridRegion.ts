@@ -42,17 +42,45 @@ export function liveFooterText(grid: string[]): string {
  */
 const LIVE_FOOTER_ANCHOR_RE = /esc to interrupt|[↑↓]\s*[\d.,]+\s*k?\s*tokens|❯/i;
 
+/** A pure box-drawing rule row (the input-box top/bottom border `────`, corners, sides) — chrome that
+ *  is part of the live-footer cluster, never a content card. */
+const BOX_RULE_RE = /^[─╭╮╰╯│]+$/;
+
 /**
- * The SCROLLBACK BODY — the grid rows strictly ABOVE the live footer (the inverse of `liveFooterRows`).
- * Story 37.9/37.10: the card parser (`parseGridCards`) folds a trailing non-glyph row into the open
- * card, so feeding it the spinner / input-box / mode-status footer would pollute the last card's text
- * (and, worse, fold the spinner into a thinking card). Callers therefore pass ONLY this region — the
- * "anchor to the region, not the whole screen" discipline. Cut at the bottommost live-footer anchor;
- * with no anchor at all (a pure scrollback frame) the whole grid is body.
+ * The SCROLLBACK BODY — the grid rows strictly ABOVE the live footer CLUSTER (the inverse of
+ * `liveFooterRows`). Story 37.9/37.10: the card parser (`parseGridCards`) folds a trailing non-glyph
+ * row into the open card, so feeding it the footer would pollute the last card — and, worse, fold the
+ * live spinner (whose `Ns`/`↓N tokens` counters change every frame) into a thinking card, making its
+ * text churn and re-emit endlessly (실측 2026-06-16).
+ *
+ * During generation claude renders the footer as a CLUSTER of contiguous rows — the spinner
+ * (`↓N tokens`), the input box (`────` / `❯` / `────`), the `esc to interrupt` row, then the mode/effort
+ * status row at the very bottom. Cutting at only the BOTTOM-most anchor leaves the spinner (the
+ * cluster's TOP) inside the body. So: find the bottom-most anchor, then walk UP through the contiguous
+ * cluster (anchor rows + box-rule chrome — claude draws no blank WITHIN it) to the cluster top, and cut
+ * there. Anything below (incl. the variable status row) is excluded; a blank or content row above the
+ * cluster ends the walk and stays in the body. No anchor at all ⇒ a pure scrollback frame ⇒ all body.
  */
 export function scrollbackBodyRows(grid: string[]): string[] {
+  let bottom = -1;
   for (let i = grid.length - 1; i >= 0; i--) {
-    if (LIVE_FOOTER_ANCHOR_RE.test(grid[i])) return grid.slice(0, i);
+    if (LIVE_FOOTER_ANCHOR_RE.test(grid[i])) { bottom = i; break; }
   }
-  return grid;
+  if (bottom < 0) return grid;
+  const isCluster = (r: string) => LIVE_FOOTER_ANCHOR_RE.test(r) || BOX_RULE_RE.test(r.trim());
+  let top = bottom;
+  let i = bottom - 1;
+  while (i >= 0) {
+    if (isCluster(grid[i])) { top = i; i--; continue; }
+    if (grid[i].trim() === '') {
+      // A blank belongs to the cluster only if footer chrome continues ABOVE it (claude pads between
+      // the spinner and the input box); a blank with CONTENT above it is a body↔footer separator and
+      // stays in the body. Peek past the blank run.
+      let j = i - 1;
+      while (j >= 0 && grid[j].trim() === '') j--;
+      if (j >= 0 && isCluster(grid[j])) { top = j; i = j - 1; continue; }
+    }
+    break; // content row (or a separator blank) → the cluster ends here
+  }
+  return grid.slice(0, top);
 }

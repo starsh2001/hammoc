@@ -18,6 +18,7 @@ import { isImagePath } from '../utils/languageDetect';
 import { useProjectStore } from '../stores/projectStore';
 import { usePermissionTimeout } from '../hooks/usePermissionTimeout';
 import { sanitizeToolResultContent } from '@hammoc/shared';
+import { ProvisionalBadge } from './ProvisionalBadge';
 
 export interface ToolCardProps {
   toolName: string;
@@ -41,6 +42,9 @@ export interface ToolCardProps {
   onPlanModeExit?: (mode: 'bypassPermissions' | 'acceptEdits' | 'default') => void;
   /** When true, render with background-flow styling (amber accents) */
   isBackgroundFlow?: boolean;
+  /** Story 37.11/37.12: a CLI screen-scrape live estimate (not yet the file-parsed canonical) — shows a
+   *  "preview" chip beside the tool name. Undefined/false for SDK + history cards (no chip). */
+  provisional?: boolean;
 }
 
 /** Real-time elapsed timer for pending tool calls */
@@ -202,6 +206,7 @@ export function ToolCard({
   onPermissionRespond,
   onPlanModeExit,
   isBackgroundFlow,
+  provisional,
 }: ToolCardProps) {
   const { t } = useTranslation('chat');
   const { projectSlug } = useParams<{ projectSlug: string }>();
@@ -287,6 +292,7 @@ export function ToolCard({
             <span className="text-sm font-medium text-gray-700 dark:text-gray-200 min-w-0 break-all">
               {toolDisplayName}
             </span>
+            {provisional && <ProvisionalBadge />}
             {isDenied ? (
               <>
                 <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
