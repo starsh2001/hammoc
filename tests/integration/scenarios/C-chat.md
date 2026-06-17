@@ -89,6 +89,7 @@
 **엣지케이스**:
 - E1. 1M 모델에서 SDK `contextWindow` 오보 → `correctContextWindow` 가 올바른 값으로 교정하는지 확인 (커밋 6219883 대응)
 - E2. **자동 Compact 토글 (both engines)**: 고급 설정의 "컨텍스트가 차면 자동 압축"(`autoCompactEnabled`, 기본 ON) 토글이 SDK·CLI 양쪽의 자동 압축을 함께 제어한다. SDK 는 query 인라인 `settings.autoCompactEnabled`, CLI 는 `--settings` 블록의 동일 키로 전달되고(같은 번들 엔진이 해석), Hammoc 의 resume-오버플로 자동 `/compact` 복구도 함께 게이트된다. OFF 로 두면 컨텍스트가 차도 자동 압축/`system:compact` 가 발생하지 않아 수동 `/compact` 가 필요하다 (검증은 C-04-01 과 동일하게 `[MANUAL]` — 90% 도달 비용 문제).
+- E3. **오버플로 전송 차단의 자동압축 연동 (both engines, Story 37.14)**: 컨텍스트가 유효 한계를 넘은 *resume* 턴에서 클라이언트 전송 pre-check 는 **auto-compact OFF 일 때만** 막고 경고(`chat:contextOverflow`, ko 미번역→영문 기본값)를 띄운다. **ON 이면 막지 않고 그대로 전송**해 claude 자체 auto-compact(CLI) / 서버의 오버플로 자동 `/compact`+재시도(SDK)가 작동하게 한다 — 설정 설명("멈추지 않고 세션 이어감")과 정합. 이전엔 토글과 무관하게 **무조건** 막아, ON 이어도 메시지가 서버에 도달하지 못해 compact 가 트리거될 수 없었다(증상: "100% 찼는데 경고만 뜨고 전송 안 됨"). 단위 `chatStore.test.ts` 의 ON→`chat:send` 전송 / OFF→차단 2종이 직접 커버(90% 도달 비용 무관, 자동화됨).
 
 ---
 

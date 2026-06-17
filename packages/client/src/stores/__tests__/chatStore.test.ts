@@ -688,6 +688,30 @@ describe('useChatStore', () => {
     });
   });
 
+  describe('sendMessage context-overflow pre-check (Story 37.14)', () => {
+    // currentTokens (250K) exceeds the effective limit of a 200K window — the overflow condition.
+    const overflowUsage = {
+      inputTokens: 250000, outputTokens: 0, cacheReadInputTokens: 0,
+      cacheCreationInputTokens: 0, totalCostUSD: 0, contextWindow: 200000,
+    };
+
+    it('BLOCKS an overflowing resume turn when auto-compact is OFF (user must /compact manually)', () => {
+      usePreferencesStore.setState((s) => ({ preferences: { ...s.preferences, autoCompactEnabled: false } }));
+      useChatStore.getState().setContextUsage(overflowUsage);
+      useChatStore.getState().sendMessage('next', { workingDirectory: '/p', sessionId: 'sid', resume: true });
+      // Pre-check fires → nothing is sent to the server.
+      expect(mockEmit).not.toHaveBeenCalledWith('chat:send', expect.anything());
+    });
+
+    it('does NOT block when auto-compact is ON — lets the message through so compaction can run', () => {
+      usePreferencesStore.setState((s) => ({ preferences: { ...s.preferences, autoCompactEnabled: true } }));
+      useChatStore.getState().setContextUsage(overflowUsage);
+      useChatStore.getState().sendMessage('next', { workingDirectory: '/p', sessionId: 'sid', resume: true });
+      // No pre-check block → the message reaches the server, where auto-compact (claude/SDK) handles it.
+      expect(mockEmit).toHaveBeenCalledWith('chat:send', expect.objectContaining({ content: 'next', resume: true }));
+    });
+  });
+
   describe('selectedEffort (Story 26.2)', () => {
     it('has initial selectedEffort set to undefined', () => {
       const { selectedEffort } = useChatStore.getState();

@@ -476,9 +476,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const projectSettings = get().projectSettings;
     const effectivePermissionMode = projectSettings?.permissionModeOverride ?? get().permissionMode;
 
-    // Pre-check: warn if current context exceeds the target model's max context window
+    // Pre-check (Story 37.14): when auto-compact is OFF, block sending past the model's usable context so
+    // the user explicitly /compacts or switches models. When auto-compact is ON, DON'T block here — let the
+    // message through so claude's own auto-compact (CLI) / the server's overflow recovery (SDK: auto /compact
+    // + retry) runs, honoring the setting's promise to "keep the session going instead of stalling".
+    // Previously this fired REGARDLESS of the setting, so an overflowing turn was killed here and nothing
+    // ever got the chance to compact (the user saw only the warning, with no message sent to the server).
     const contextUsage = get().contextUsage;
-    if (contextUsage && resume) {
+    const autoCompactEnabled = usePreferencesStore.getState().preferences.autoCompactEnabled ?? true;
+    if (contextUsage && resume && !autoCompactEnabled) {
       const maxCtx = contextUsage.contextWindow;
       if (maxCtx > 0) {
         const currentTokens = contextUsage.inputTokens + contextUsage.cacheCreationInputTokens + contextUsage.cacheReadInputTokens;
