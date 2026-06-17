@@ -230,6 +230,10 @@ export function InteractiveResponseCard({
   const renderQuestionSection = (q: InteractiveQuestion, qIndex: number, standalone: boolean) => {
     const selectedForMulti = multiSelections[qIndex] || new Set<string>();
     const selectedSingle = answers[qIndex] as string | undefined;
+    // When any single-select option carries a description (CLI now scrapes these off-screen, SDK
+    // always had them), lay the options out as full-width cards with the description under each label
+    // instead of bare wrapped buttons whose description only showed on hover — the "선택지가 단순" fix.
+    const hasOptionDescriptions = q.choices.some((c) => c.description);
 
     return (
       <div key={qIndex} className={!standalone && qIndex > 0 ? 'mt-4 pt-3 border-t border-gray-100 dark:border-[#3a4d5e]' : ''}>
@@ -291,14 +295,16 @@ export function InteractiveResponseCard({
             )}
           </div>
         ) : (
-          /* Single select: buttons */
-          <div className="flex flex-wrap gap-2">
+          /* Single select: full-width option cards (label + description) when descriptions exist,
+             else the original compact wrapped buttons for simple yes/no-style questions. */
+          <div className={hasOptionDescriptions ? 'flex flex-col gap-1.5' : 'flex flex-wrap gap-2'}>
             {q.choices.map((choice) => (
               <button
                 key={choice.value}
                 onClick={() => standalone ? handleSingleChoiceClick(choice) : handleMultiQuestionChoice(qIndex, choice)}
                 disabled={isDisabled}
-                className={`px-3 py-1.5 text-sm rounded-md border transition-colors max-w-full min-w-0 whitespace-normal break-words text-left
+                className={`text-sm rounded-md border transition-colors text-left whitespace-normal break-words
+                  ${hasOptionDescriptions ? 'block w-full px-3 py-2' : 'px-3 py-1.5 max-w-full min-w-0'}
                   ${!standalone && selectedSingle === choice.value
                     ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/30 dark:text-blue-300'
                     : 'border-gray-300 hover:bg-gray-100 text-gray-700 dark:border-[#455568] dark:hover:bg-[#253040] dark:text-gray-200'}
@@ -306,7 +312,12 @@ export function InteractiveResponseCard({
                 aria-label={choice.label}
                 title={choice.description}
               >
-                {choice.label}
+                <span className={hasOptionDescriptions ? 'block font-medium' : undefined}>{choice.label}</span>
+                {hasOptionDescriptions && choice.description && (
+                  <span className="block text-xs font-normal text-gray-500 dark:text-gray-400 mt-0.5 break-words">
+                    {choice.description}
+                  </span>
+                )}
               </button>
             ))}
             {/* "Other" option */}
@@ -315,10 +326,11 @@ export function InteractiveResponseCard({
                 ? handleSingleChoiceClick({ label: t('interactive.other'), value: '__other__' })
                 : handleMultiQuestionChoice(qIndex, { label: t('interactive.other'), value: '__other__', description: undefined })}
               disabled={isDisabled}
-              className="px-3 py-1.5 text-sm rounded-md border border-dashed
+              className={`text-sm rounded-md border border-dashed
                 border-gray-300 hover:bg-gray-100 text-gray-500
                 dark:border-[#455568] dark:hover:bg-[#253040] dark:text-gray-300
-                disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled:opacity-50 disabled:cursor-not-allowed transition-colors
+                ${hasOptionDescriptions ? 'block w-full px-3 py-2 text-left' : 'px-3 py-1.5'}`}
               aria-label={t('interactive.otherOption')}
             >
               {t('interactive.otherButton')}

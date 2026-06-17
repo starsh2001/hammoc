@@ -82,7 +82,7 @@ vi.mock('../../utils/logger.js', () => ({
 }));
 
 // Import after mocks. historyParser (real) is pulled in transitively for parseJSONLFile.
-import { CliChatEngine, buildMultiQuestionKeys } from '../cliChatEngine.js';
+import { CliChatEngine, buildMultiQuestionKeys, buildQuestionKeys } from '../cliChatEngine.js';
 // NOT mocked — the real singleton; spied per-test to drive the usage-limit corroboration guard.
 import { rateLimitProbeService } from '../rateLimitProbeService.js';
 
@@ -208,6 +208,31 @@ describe('buildMultiQuestionKeys (ISSUE-99 — multi-question answer → per-tab
 
   it('returns null when answers is undefined', () => {
     expect(buildMultiQuestionKeys([Q_COLOR], undefined)).toBeNull();
+  });
+});
+
+describe('buildQuestionKeys (single-question — Story 37.15 custom/Other free-text)', () => {
+  const DOWN = '\x1b[B';
+  const ENTER = '\r';
+  const Q = { question: 'Color?', header: 'Color', multiSelect: false, options: [{ label: 'Red' }, { label: 'Blue' }] };
+
+  it('drives a custom/free-text answer via the "Type something" item: ↓×optionCount → Enter → type → Enter', () => {
+    // 실측 (probe-askq): from option-0 highlight, ↓×2 lands on "Type something" (the item after the 2 real
+    // options), Enter opens text-input, the text is typed, Enter submits.
+    expect(buildQuestionKeys(Q, 'Purple')).toEqual([DOWN, DOWN, ENTER, 'Purple', ENTER]);
+  });
+
+  it('still drives a LISTED option the normal way (↓×index, Enter)', () => {
+    expect(buildQuestionKeys(Q, 'Blue')).toEqual([DOWN, ENTER]); // Blue = index 1
+    expect(buildQuestionKeys(Q, 'Red')).toEqual([ENTER]);        // Red = index 0
+  });
+
+  it('returns null for a custom answer in a multiSelect question (still unsupported → caller cancels)', () => {
+    expect(buildQuestionKeys({ ...Q, multiSelect: true }, 'Nope')).toBeNull();
+  });
+
+  it('returns null when there is no answer', () => {
+    expect(buildQuestionKeys(Q, undefined)).toBeNull();
   });
 });
 
@@ -1856,10 +1881,15 @@ describe('CliChatEngine', () => {
       await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
       const [toolName, input, opts] = canUseTool.mock.calls[0] as [string, Record<string, unknown>, { toolUseID: string; signal: AbortSignal }];
       expect(toolName).toBe('AskUserQuestion');
-      // Scraped single question — options in modal-row order (self-consistent with the ↓-count).
+      // Scraped single question — options in modal-row order (self-consistent with the ↓-count),
+      // each carrying the per-option description claude paints on the indented row below its label.
       expect(input).toEqual({
         questions: [
-          { question: 'Which color do you want?', header: 'Color', multiSelect: false, options: [{ label: 'Red' }, { label: 'Green' }, { label: 'Blue' }] },
+          { question: 'Which color do you want?', header: 'Color', multiSelect: false, options: [
+            { label: 'Red', description: 'The color red.' },
+            { label: 'Green', description: 'The color green.' },
+            { label: 'Blue', description: 'The color blue.' },
+          ] },
         ],
       });
       expect(opts.toolUseID).toMatch(/^cli-q-/); // synthesized — no real id in JSONL pre-answer
@@ -2021,7 +2051,9 @@ describe('CliChatEngine', () => {
             question: 'Which spinner motion?',
             header: 'Spinner',
             multiSelect: false,
-            options: [{ label: 'Rotating dot' }, { label: 'Bounce dot one glyph' }],
+            // Box chrome stripped from the description row too (│ borders → spaces); the option with
+            // no prose row below it ("Bounce dot one glyph") stays a bare label.
+            options: [{ label: 'Rotating dot', description: 'A rotating dot.' }, { label: 'Bounce dot one glyph' }],
           },
         ],
       });
@@ -2076,7 +2108,11 @@ describe('CliChatEngine', () => {
             question: 'Which pets do you want? Choose any.',
             header: 'Pets',
             multiSelect: true,
-            options: [{ label: 'Cat' }, { label: 'Dog' }, { label: 'Fish' }],
+            options: [
+              { label: 'Cat', description: 'A cat.' },
+              { label: 'Dog', description: 'A dog.' },
+              { label: 'Fish', description: 'A fish.' },
+            ],
           },
         ],
       });
@@ -2118,21 +2154,23 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
-    it('guards an answer that maps to no listed option (custom/Other): canUseTool called, then Esc', async () => {
+    it('Story 37.15: drives a custom/Other single-select answer via the "Type something" item (not Esc)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const canUseTool = vi.fn().mockResolvedValue({
         behavior: 'allow',
-        updatedInput: { answers: { 'Which color do you want?': 'Purple' } }, // not a listed option
+        updatedInput: { answers: { 'Which color do you want?': 'Purple' } }, // a CUSTOM / free-text answer
       });
       const { turn } = await injectThenReady(engine, canUseTool);
       h.fakePty._onData?.(Q_MODAL_SINGLE);
 
       await vi.waitFor(() => expect(canUseTool).toHaveBeenCalledTimes(1), { timeout: 2000 });
-      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('\x1b'), { timeout: 2000 }); // Esc — not drivable
-      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[B'); // no wrong selection driven
-      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b[C');
+      // Pre-37.15 this Esc-cancelled (custom "not drivable"). Now it's DRIVEN: ↓ to the "Type something"
+      // item → Enter (text-input) → type the text → Enter (submit).
+      await vi.waitFor(() => expect(h.fakePty.write).toHaveBeenCalledWith('Purple'), { timeout: 2000 });
+      expect(h.fakePty.write).toHaveBeenCalledWith('\x1b[B'); // ↓ navigation toward "Type something"
+      expect(h.fakePty.write).not.toHaveBeenCalledWith('\x1b'); // NOT Esc-cancelled anymore
 
-      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'cancelled' })]);
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'done' })]);
       await turn;
     });
 

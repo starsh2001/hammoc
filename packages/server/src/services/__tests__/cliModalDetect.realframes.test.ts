@@ -103,6 +103,14 @@ describe('Story 37.9 — real captured AskUserQuestion-modal-with-prose frame', 
     const parsed = parseQuestionModal(grid);
     expect(parsed?.question).toContain('선호');
     expect(parsed?.options.map((o) => o.label)).toEqual(['빨강', '초록', '파랑']);
+    // The per-option description claude painted on the indented row below each label — captured off
+    // the real frame, not just the bare label (the "선택지가 단순" fix). These rows were silently
+    // dropped before; now they ride through to the web card.
+    expect(parsed?.options.map((o) => o.description)).toEqual([
+      '빨간색을 선호합니다.',
+      '초록색을 선호합니다.',
+      '파란색을 선호합니다.',
+    ]);
   });
 
   it('parsePrecedingText extracts the real SHORT lead-in prose above the question modal (AC4 + 16→4 floor fix)', async () => {

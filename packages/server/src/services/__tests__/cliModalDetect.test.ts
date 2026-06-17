@@ -136,6 +136,34 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
       });
     });
 
+    it('attaches the indented prose rows under each option as its description, joining wraps (실측 2026-06-17)', () => {
+      // claude paints each option as "N. label" with the description on the indented row(s) below it.
+      // The scrape now captures those rows (label → next-number boundary), space-joining a wrapped
+      // description and leaving an option with no prose row as a bare `{ label }`.
+      const rows = [
+        ' ☐ Color',
+        ' Which color do you want?',
+        ' ❯ 1. Red',
+        '      A warm color,',
+        '      good for autumn.',
+        '   2. Green',
+        '      A calm color.',
+        '   3. Blue',
+        '   4. Type something.',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ];
+      expect(parseQuestionModal(rows)).toEqual({
+        question: 'Which color do you want?',
+        header: 'Color',
+        multiSelect: false,
+        options: [
+          { label: 'Red', description: 'A warm color, good for autumn.' },
+          { label: 'Green', description: 'A calm color.' },
+          { label: 'Blue' }, // no prose row below → stays a bare label
+        ],
+      });
+    });
+
     it('resolves box-drawing chrome (│ ──────) into clean labels — each option on its OWN row (32.8)', () => {
       // The linear buffer fused "│"-laden / "──────"-stretched labels; the grid puts each option on
       // its own row, so a per-row stripBoxChrome leaves the label body intact.

@@ -47,7 +47,10 @@ export interface ParsedQuestion {
   question: string;
   header?: string;
   multiSelect: boolean;
-  options: Array<{ label: string }>;
+  /** Each option's label plus the per-option `description` claude paints on the indented row(s)
+   *  directly below its label (실측 2026-06-17). The description is optional — a confirm-style menu
+   *  or a bare option carries none. The web card already renders `description` when present. */
+  options: Array<{ label: string; description?: string }>;
 }
 
 /** "Chat about this" is auto-appended to every AskUserQuestion modal — a marker unique to
@@ -180,23 +183,36 @@ function questionModalRegion(rows: string[]): { region: string[]; headerIdx: num
 function scrapeQuestionBody(
   modalRows: string[],
   header: string | undefined,
-): { question: string; multiSelect: boolean; options: Array<{ label: string }> } | null {
+): { question: string; multiSelect: boolean; options: Array<{ label: string; description?: string }> } | null {
   const multiSelect = modalRows.some((r) => /\[\s*[✔x ]?\s*\]/.test(r)); // [ ] / [✔] ⇒ multiSelect
-  // Numbered option rows; last label wins per number, then order by number. One option per row, so
-  // a per-row match suffices — no cross-row scanning, no fusion.
-  const byNum = new Map<number, string>();
+  // A numbered row opens an option; the indented prose row(s) claude paints directly BELOW the label,
+  // up to the next numbered row, are that option's DESCRIPTION (실측 2026-06-17: the TUI renders
+  // "1. 빨강 / <indent>빨간색을 선호합니다." for EVERY option, not just the highlighted one). The earlier
+  // scrape read only the label row and silently dropped these description rows, so the web card showed
+  // bare labels while the richer text sat right there on screen — the "선택지가 단순" gap. Last
+  // occurrence wins per number, then ordered by number; one label per row so a per-row match suffices.
+  const byNum = new Map<number, { label: string; desc: string[] }>();
+  let currentNum: number | null = null;
   for (const r of modalRows) {
     const m = r.match(/(\d{1,2})\.\s+(?:\[[✔x ]?\s*\]\s*)?(.*\S)/);
-    if (m) byNum.set(parseInt(m[1], 10), stripBoxChrome(m[2]));
+    if (m) {
+      currentNum = parseInt(m[1], 10);
+      byNum.set(currentNum, { label: stripBoxChrome(m[2]), desc: [] });
+    } else if (currentNum !== null) {
+      // Continuation row under the open option → its description. Drop chrome-only rows (empty after
+      // stripBoxChrome) and the auto-appended affordance rows so neither leaks into the description.
+      const extra = stripBoxChrome(r);
+      if (extra && !/^(?:Type something|Chat about this)\.?$/i.test(extra)) byNum.get(currentNum)!.desc.push(extra);
+    }
   }
   const options = [...byNum.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map((e) => e[1])
-    // Drop rows that were ONLY box-drawing chrome (empty after stripBoxChrome) and the
-    // auto-appended affordance rows — none of these are real answer options.
-    .filter((l) => l.length > 0)
-    .filter((l) => !/^Type something\.?$/i.test(l) && !/^Chat about this\.?$/i.test(l))
-    .map((label) => ({ label }));
+    .map(([, v]) => ({ label: v.label, description: v.desc.join(' ').trim().slice(0, 500) }))
+    // Drop rows that were ONLY box-drawing chrome (empty label) and the auto-appended affordance rows
+    // — none of these are real answer options. Omit an empty description so the option stays `{label}`.
+    .filter((o) => o.label.length > 0)
+    .filter((o) => !/^Type something\.?$/i.test(o.label) && !/^Chat about this\.?$/i.test(o.label))
+    .map((o) => ({ label: o.label, ...(o.description ? { description: o.description } : {}) }));
   if (options.length === 0) return null;
   // Question = the last meaningful row between the header tab and the first numbered option
   // (best-effort; it may not end in '?' — e.g. "Which pets? Choose any."). Strip tab/cursor glyphs

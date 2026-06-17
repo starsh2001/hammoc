@@ -355,9 +355,24 @@ function resolveSelectedIndices(labels: string[], answer: string | string[] | un
  * Task 1). Returns null when the answer maps to no scraped option (e.g. a custom "Other" entry) —
  * not safely drivable, so the caller cancels (Esc) rather than risk a wrong selection.
  */
-function buildQuestionKeys(parsed: ParsedQuestion, answer: string | string[] | undefined): string[] | null {
-  const selected = resolveSelectedIndices(parsed.options.map((o) => o.label), answer, parsed.multiSelect);
-  if (selected.length === 0) return null;
+export function buildQuestionKeys(parsed: ParsedQuestion, answer: string | string[] | undefined): string[] | null {
+  const labels = parsed.options.map((o) => o.label);
+  const selected = resolveSelectedIndices(labels, answer, parsed.multiSelect);
+  if (selected.length === 0) {
+    // Story 37.15: a custom/free-text answer ("Other"). The TUI lists it as a "Type something" item right
+    // AFTER the real options (index = options.length). 실측 (probe-askq, claude v2.1.177): from the option-0
+    // highlight, ↓×optionCount lands on "Type something" → Enter enters a text-input mode → typing fills the
+    // input → Enter submits it as the answer. Drive that for a SINGLE-select string answer; a multiSelect or
+    // array custom stays unsupported (null → the caller Esc-cancels, the prior safe behavior).
+    const customText = !parsed.multiSelect && typeof answer === 'string' && answer.trim() ? answer.trim() : null;
+    if (!customText) return null;
+    const custom: string[] = [];
+    for (let i = 0; i < labels.length; i++) custom.push(CLI_QUESTION_DOWN_KEY); // ↓ × optionCount → "Type something"
+    custom.push(CLI_QUESTION_ENTER_KEY); // select it → enter text-input mode
+    custom.push(customText);             // type the free text (bulk write — verified the input accepts it)
+    custom.push(CLI_QUESTION_ENTER_KEY); // submit
+    return custom;
+  }
   const keys: string[] = [];
   if (!parsed.multiSelect) {
     // Single-select: ↓ to the option, Enter selects + submits (one keypress — verified Task 1).

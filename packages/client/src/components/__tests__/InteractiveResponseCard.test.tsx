@@ -114,6 +114,13 @@ describe('InteractiveResponseCard', () => {
       render(<InteractiveResponseCard {...defaultQuestionProps} />);
       expect(screen.getByText('Which option do you prefer?')).toBeInTheDocument();
     });
+
+    it('shows per-option descriptions under the labels (not just as a hover tooltip)', () => {
+      render(<InteractiveResponseCard {...defaultQuestionProps} />);
+      // Option A / B carry descriptions; they now render as visible text under each label.
+      expect(screen.getByText('First option')).toBeInTheDocument();
+      expect(screen.getByText('Second option')).toBeInTheDocument();
+    });
   });
 
   // === Multi-select Mode Tests ===
