@@ -37,8 +37,24 @@
             "beta": "Beta"
         },
         "engineModeDesc": {
-            "sdk": "The recommended engine — responses stream in real time and it supports the widest range of features.",
-            "cli": "Runs in the same environment as the interactive Claude Code in your terminal, so it stays unaffected by billing-policy changes."
+            "sdk": {
+                "summary": "Hammoc's default engine — most stable, broadest feature support",
+                "points": [
+                    { "label": "Response", "value": "Real-time, token-by-token streaming; answers flow in immediately" },
+                    { "label": "Features", "value": "Every model and Hammoc feature, no restrictions" },
+                    { "label": "Environment", "value": "Direct call to Anthropic's Agent SDK (the official path)" },
+                    { "label": "Maturity", "value": "Generally available and stable, even in long sessions" }
+                ]
+            },
+            "cli": {
+                "summary": "Runs your terminal's interactive Claude Code as-is — same subscription environment",
+                "points": [
+                    { "label": "Response", "value": "Block-by-block updates (paragraphs, tool runs), not token by token" },
+                    { "label": "Features", "value": "Core chat focus; some features still limited" },
+                    { "label": "Environment", "value": "Runs in your subscription (Max) environment; unaffected by billing-policy changes" },
+                    { "label": "Maturity", "value": "Beta; first response may take a brief moment to start" }
+                ]
+            }
         },
         "autoApproveSafetyChecks": "Auto-approve safety checks in Bypass mode",
         "autoApproveSafetyChecksDesc": "When enabled, CLI safety check prompts are automatically approved without user confirmation in Bypass mode.",

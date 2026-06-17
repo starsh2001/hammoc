@@ -36,8 +36,24 @@
             "beta": "测试版"
         },
         "engineModeDesc": {
-            "sdk": "推荐引擎，响应实时流式呈现并支持更丰富的功能。",
-            "cli": "在与终端中交互式 Claude Code 相同的环境中运行，因此不受计费政策变更的影响。"
+            "sdk": {
+                "summary": "Hammoc 默认引擎 — 最为稳定，广泛支持各项功能",
+                "points": [
+                    { "label": "响应", "value": "按 token 实时流式呈现，回答即时连贯" },
+                    { "label": "功能", "value": "无限制使用所有模型和 Hammoc 功能" },
+                    { "label": "运行环境", "value": "通过 Anthropic Agent SDK 直接调用的正式路径" },
+                    { "label": "成熟度", "value": "正式支持阶段，长会话也保持稳定" }
+                ]
+            },
+            "cli": {
+                "summary": "原样运行终端中的 Claude Code — 使用相同的订阅环境",
+                "points": [
+                    { "label": "响应", "value": "以段落、工具执行等块为单位刷新（非逐 token 显示）" },
+                    { "label": "功能", "value": "以核心聊天功能为主，部分功能仍有限制" },
+                    { "label": "运行环境", "value": "在订阅（Max）环境中原样运行，不受计费政策变更影响" },
+                    { "label": "成熟度", "value": "测试版阶段，首次响应开始前可能需稍作准备" }
+                ]
+            }
         },
         "autoApproveSafetyChecks": "在Bypass模式下自动批准安全检查",
         "autoApproveSafetyChecksDesc": "启用后，在Bypass模式下CLI安全检查提示将自动批准，无需用户确认。",

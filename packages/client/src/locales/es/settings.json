@@ -36,8 +36,24 @@
             "beta": "Beta"
         },
         "engineModeDesc": {
-            "sdk": "El motor recomendado: las respuestas se transmiten en tiempo real y admite la mayor variedad de funciones.",
-            "cli": "Se ejecuta en el mismo entorno que el Claude Code interactivo de la terminal, por lo que no le afectan los cambios en la política de facturación."
+            "sdk": {
+                "summary": "Motor predeterminado de Hammoc — el más estable y con mayor soporte de funciones",
+                "points": [
+                    { "label": "Respuesta", "value": "Transmisión en tiempo real, token a token; respuestas inmediatas" },
+                    { "label": "Funciones", "value": "Todos los modelos y funciones de Hammoc, sin restricciones" },
+                    { "label": "Entorno", "value": "Llamada directa al Agent SDK de Anthropic (la vía oficial)" },
+                    { "label": "Madurez", "value": "Disponible de forma general y estable, incluso en sesiones largas" }
+                ]
+            },
+            "cli": {
+                "summary": "Ejecuta tal cual el Claude Code interactivo de la terminal — mismo entorno de suscripción",
+                "points": [
+                    { "label": "Respuesta", "value": "Actualización por bloques (párrafos, ejecuciones de herramientas), no token a token" },
+                    { "label": "Funciones", "value": "Centrado en el chat principal; algunas funciones aún limitadas" },
+                    { "label": "Entorno", "value": "Se ejecuta en tu entorno de suscripción (Max); sin afectación por cambios de facturación" },
+                    { "label": "Madurez", "value": "En beta; la primera respuesta puede tardar un momento en empezar" }
+                ]
+            }
         },
         "autoApproveSafetyChecks": "Aprobar automáticamente verificaciones de seguridad en modo Bypass",
         "autoApproveSafetyChecksDesc": "Cuando está habilitado, las solicitudes de verificación de seguridad del CLI se aprueban automáticamente sin confirmación del usuario en modo Bypass.",

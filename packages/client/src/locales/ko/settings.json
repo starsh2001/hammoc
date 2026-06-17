@@ -37,8 +37,24 @@
             "beta": "베타"
         },
         "engineModeDesc": {
-            "sdk": "응답이 실시간으로 이어지고 다양한 기능을 지원하는 권장 엔진입니다.",
-            "cli": "터미널의 Claude Code와 동일한 환경에서 실행되어, 빌링 정책 변경의 영향을 받지 않는 모드입니다."
+            "sdk": {
+                "summary": "Hammoc 기본 엔진 — 가장 안정적이고 모든 기능을 폭넓게 지원",
+                "points": [
+                    { "label": "응답", "value": "토큰 단위 실시간 스트리밍, 답변이 바로바로 이어짐" },
+                    { "label": "기능", "value": "모든 모델과 Hammoc 기능을 제약 없이 사용 가능" },
+                    { "label": "실행 환경", "value": "Anthropic Agent SDK를 통한 직접 호출 (정식 경로)" },
+                    { "label": "성숙도", "value": "정식 지원 단계, 긴 세션에서도 안정적" }
+                ]
+            },
+            "cli": {
+                "summary": "터미널의 Claude Code를 그대로 구동 — 구독 환경을 동일하게 사용",
+                "points": [
+                    { "label": "응답", "value": "문단·도구 실행 같은 블록 단위로 갱신 (토큰 단위 타이핑 아님)" },
+                    { "label": "기능", "value": "핵심 채팅 기능 위주, 일부 기능은 아직 제약" },
+                    { "label": "실행 환경", "value": "구독(Max) 환경에서 그대로 실행, 빌링 정책 변경 영향 없음" },
+                    { "label": "성숙도", "value": "베타 단계, 첫 응답까지 약간의 준비 시간 필요할 수 있음" }
+                ]
+            }
         },
         "autoApproveSafetyChecks": "Bypass 모드에서 안전 검사 자동 승인",
         "autoApproveSafetyChecksDesc": "활성화하면 Bypass 모드에서 CLI 안전 검사 프롬프트를 사용자 확인 없이 자동 승인합니다.",

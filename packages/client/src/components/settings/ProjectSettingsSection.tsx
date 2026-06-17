@@ -13,6 +13,7 @@ import { projectsApi } from '../../services/api/projects';
 import { getSocket } from '../../services/socket';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
 import { EngineModeBadge } from './EngineModeBadge';
+import { EngineModeDescription } from './EngineModeDescription';
 import { MODEL_GROUPS } from '../ModelSelector';
 import type {
   EngineMode,
@@ -435,12 +436,11 @@ export function ProjectSettingsSection({ projectSlug }: ProjectSettingsSectionPr
                       </span>
                       <EngineModeBadge tone={opt.badgeTone} />
                     </span>
-                    <p
+                    <EngineModeDescription
+                      descKey={opt.descKey}
                       id={`project-engine-desc-${opt.value}`}
-                      className="text-xs text-gray-500 dark:text-gray-300 mt-0.5"
-                    >
-                      {t(opt.descKey)}
-                    </p>
+                      className="mt-1"
+                    />
                   </div>
                 </label>
               ))}

@@ -15,6 +15,7 @@ import { MODEL_GROUPS } from '../ModelSelector';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
 import { DeviceLocalBadge } from '../DeviceLocalBadge';
 import { EngineModeBadge } from './EngineModeBadge';
+import { EngineModeDescription } from './EngineModeDescription';
 import type { EngineMode, PermissionMode, PermissionSyncPolicy, SupportedLanguage, ThinkingEffort } from '@hammoc/shared';
 import { SUPPORTED_LANGUAGES } from '@hammoc/shared';
 
@@ -131,12 +132,7 @@ export function GlobalSettingsSection() {
                 </span>
                 <EngineModeBadge tone={opt.badgeTone} />
               </div>
-              <p
-                id={`engine-desc-${opt.value}`}
-                className="text-xs text-gray-500 dark:text-gray-300 leading-snug"
-              >
-                {t(opt.descKey)}
-              </p>
+              <EngineModeDescription descKey={opt.descKey} id={`engine-desc-${opt.value}`} />
             </label>
           ))}
         </div>
