@@ -165,8 +165,8 @@
   "streamingMessage": {
     "ariaLabel": "Claude 正在回复",
     "assistantName": "Claude",
-    "liveBadge": "预览",
-    "provisionalAriaLabel": "屏幕估计预览 — 即将被最终版本替换"
+    "liveBadge": "暂定",
+    "provisionalAriaLabel": "从屏幕读取的暂定内容 — 即将被最终版本替换"
   },
   "messageActionBar": {
     "copy": "复制",

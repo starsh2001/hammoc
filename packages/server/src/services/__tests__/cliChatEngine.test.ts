@@ -853,6 +853,34 @@ describe('CliChatEngine', () => {
       expect(onComplete).toHaveBeenCalledTimes(1);
       expect(response.content).toBe('fresh');
     });
+
+    it('does NOT finish on an AUTO compact_boundary — the response after it completes the turn', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onComplete = vi.fn();
+      const onCompact = vi.fn();
+      const promise = engine.sendMessageWithCallbacks('big task', { onComplete, onError: vi.fn(), onCompact }, { sessionId: SID }, undefined, vi.fn());
+
+      await wait(30);
+      // Context-limit auto-compaction lands MID-turn: claude compacts first, then resumes the real
+      // answer. The boundary must surface a marker but NOT end the turn (else the answer is stranded).
+      await writeSession(SID, [userLine('u1'), compactBoundaryLine('cb-auto', { trigger: 'auto' })]);
+
+      await wait(30);
+      expect(onCompact).toHaveBeenCalledWith(expect.objectContaining({ trigger: 'auto' }));
+      expect(onComplete).not.toHaveBeenCalled(); // still waiting for the real response
+
+      // The genuine end_turn assistant arrives after the compaction → now the turn completes.
+      await writeSession(SID, [
+        userLine('u1'),
+        compactBoundaryLine('cb-auto', { trigger: 'auto' }),
+        assistantLine('a-after', { text: 'answer after compaction' }),
+      ]);
+
+      const response = await promise;
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(onCompact).toHaveBeenCalledTimes(1); // not re-fired when the boundary is re-read
+      expect(response.content).toBe('answer after compaction');
+    });
   });
 
   describe('interrupt completion (turn-end safety net — ISSUE-99 follow-up)', () => {
@@ -2420,6 +2448,23 @@ describe('CliChatEngine', () => {
       await turn;
     });
 
+    it('emits when ONLY the elapsed clock advances (tokens flat) — the spinner clock must tick between token changes (Story 37.21)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onProgress = vi.fn();
+      const { turn } = await injectThenReady(engine, onProgress);
+
+      h.fakePty._onData?.(drawSpinner('✢ Moseying… (6s · ↓ 246 tokens)'));
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 246, elapsedSeconds: 6 }));
+
+      // Tokens FLAT (still 246) but the clock advanced 6s → 7s. The old tokens-only gate froze the time
+      // between token changes; the fix gates on EITHER tokens or elapsed changing, so this must emit.
+      h.fakePty._onData?.(drawSpinner('✶ Moseying… (7s · ↓ 246 tokens)'));
+      await vi.waitFor(() => expect(onProgress).toHaveBeenCalledWith({ tokens: 246, elapsedSeconds: 7 }));
+
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+    });
+
     it('reads an in-place 365→366 redraw as 366 — the linear-fusion "365366" is structurally absent (AC2)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onProgress = vi.fn();
@@ -2849,6 +2894,41 @@ describe('CliChatEngine', () => {
 
       await writeSession(SID, [userLine('u1'), thinkingToolLine('a1', { thinking: '', stopReason: 'end_turn' })]);
       await turn;
+    });
+
+    it('Story 37.16: a tool that goes green WHILE scrolling off (a new tool appears below it, both were on screen) still completes via the file backstop', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onToolUse = vi.fn();
+      const onToolResult = vi.fn();
+      const { turn } = await injectThenReady(engine, { onToolUse, onToolResult, onComplete: vi.fn(), onError: vi.fn(), onTextChunk: vi.fn() });
+
+      // A runs (gray) at the bottom → cli-prov-tool-0.
+      h.fakePty._onData?.(genFrame([grayTool('Read(a.ts)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(1));
+      // A new tool B starts; both gray and on screen → cli-prov-tool-1.
+      h.fakePty._onData?.(genFrame([grayTool('Read(a.ts)'), grayTool('Bash(b)')]));
+      await vi.waitFor(() => expect(onToolUse).toHaveBeenCalledTimes(2));
+      // A completes (green) but scrolls off the TOP as B keeps running — only B (gray) is on screen now,
+      // so the grid NEVER captures A's green frame.
+      h.fakePty._onData?.(genFrame([grayTool('Bash(b)')]));
+      await wait(80);
+      expect(onToolResult).not.toHaveBeenCalled(); // A's green was never seen
+
+      // The file records both tools + both results. A must still complete — via the scroll-off backstop.
+      await writeSession(SID, [
+        userLine('u1'),
+        thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_A', name: 'Read', input: { file_path: 'a.ts' } } }),
+        thinkingToolLine('a2', { thinking: '', parentUuid: 'a1', tool: { id: 'toolu_B', name: 'Bash', input: { command: 'b' } } }),
+        toolResultLine('tr', [
+          { tool_use_id: 'toolu_A', content: 'A done' },
+          { tool_use_id: 'toolu_B', content: 'B done' },
+        ]),
+        thinkingToolLine('a3', { thinking: '', parentUuid: 'a2', stopReason: 'end_turn' }),
+      ]);
+      await turn;
+
+      // Does A (cli-prov-tool-0) complete with ITS OWN result via the backstop?
+      expect(onToolResult).toHaveBeenCalledWith('cli-prov-tool-0', { success: true, output: 'A done', error: undefined }, true);
     });
 
     it('preserves the provisional thinking when the canonical block arrives EMPTY (signature-only — AC1)', async () => {

@@ -583,8 +583,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (provisional === false) {
       const idx = segments.findIndex((s) => s.type === 'text' && (s as { provisional?: boolean }).provisional === true);
       if (idx >= 0) {
-        const updated = [...segments];
-        updated[idx] = { type: 'text', content }; // canonical md replaces the literal; badge dropped
+        // Story 37.21: finalize this anchor AND prune leftover provisional TOOLS in its section (from just
+        // after the previous canonical text/thinking anchor up to idx). An N>M tool count leaves some
+        // provisional tools with no canonical; without this they stick forever as live badges. The canonical
+        // markdown replaces the literal and the badge is dropped.
+        let sectionStart = 0;
+        for (let i = idx - 1; i >= 0; i--) {
+          const s = segments[i];
+          if ((s.type === 'text' || s.type === 'thinking') && !(s as { provisional?: boolean }).provisional) { sectionStart = i + 1; break; }
+        }
+        const updated = segments
+          .map((s, i) => (i === idx ? { type: 'text' as const, content } : s))
+          .filter((s, i) => !(i >= sectionStart && i < idx && s.type === 'tool' && (s as { provisional?: boolean }).provisional === true));
         set({ streamingSegments: updated });
         return;
       }
@@ -619,8 +629,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (provisional === false) {
       const idx = segments.findIndex((s) => s.type === 'thinking' && (s as { provisional?: boolean }).provisional === true);
       if (idx >= 0) {
-        const updated = [...segments];
-        updated[idx] = { type: 'thinking', content };
+        // Story 37.21: finalize this anchor AND prune its section's leftover provisional tools (same rationale
+        // as appendStreamingContent — an N>M tool section leaves orphan provisional tools that must be dropped).
+        let sectionStart = 0;
+        for (let i = idx - 1; i >= 0; i--) {
+          const s = segments[i];
+          if ((s.type === 'text' || s.type === 'thinking') && !(s as { provisional?: boolean }).provisional) { sectionStart = i + 1; break; }
+        }
+        const updated = segments
+          .map((s, i) => (i === idx ? { type: 'thinking' as const, content } : s))
+          .filter((s, i) => !(i >= sectionStart && i < idx && s.type === 'tool' && (s as { provisional?: boolean }).provisional === true));
         set({ streamingSegments: updated });
         return;
       }
@@ -661,7 +679,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // (the server sends the Nth canonical tool to finalize the Nth provisional), robust to the screen↔file
     // block-order difference. No provisional tool waiting ⇒ fall through and create it (grid-behind backstop).
     if (!toolCall.provisional) {
-      const idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true);
+      // Story 37.21: prefer an EXACT provisional-id match first. From Step 2 on, the server finalizes a tool
+      // with the SAME id as its provisional card (the synthId), so id-matching is robust to the N:M tool-count
+      // mismatch (screen 'Search' ↔ file Grep/Glob, Task sub-tasks, redraw dups) that the order-only rule
+      // can't handle. Fall back to "oldest still-provisional tool" when the id isn't present (pre-Step2 server,
+      // or grid-behind backstop with no provisional card) — keeps every existing behavior intact.
+      let idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true && s.toolCall.id === toolCall.id);
+      if (idx < 0) idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true);
       if (idx >= 0) {
         const seg = segments[idx];
         if (seg.type === 'tool') {
@@ -736,10 +760,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         ...seg,
         toolCall: { ...seg.toolCall, output: result, duration },
         status: isError ? 'error' as const : 'completed' as const,
-        // Story 37.11 (AC4): a PROVISIONAL grid result (the screen flip) keeps the card live-badged —
-        // it must not finalize early. An authoritative result (SDK / file-drain) leaves the flag as-is
-        // (SDK was never provisional; the turn-end reload clears the card regardless). Only set true.
-        ...(provisional ? { provisional: true } : {}),
+        // Story 37.11 (AC4) + 37.20 FIX: a PROVISIONAL grid result (the screen flip) keeps the card
+        // live-badged ONLY while it is STILL provisional (not yet finalized) — it must not finalize
+        // early. But it must NOT RE-badge a card the canonical onToolUse already finalized (badge
+        // dropped at L670): the common server order is canonical-USE BEFORE the screen-flip RESULT, so
+        // an unconditional re-apply re-stuck completed tools on the live "잠정" badge. Gate on the card
+        // still being provisional. An authoritative result (SDK / file-drain) leaves the flag as-is.
+        ...(provisional && (seg as { provisional?: boolean }).provisional === true ? { provisional: true } : {}),
         // Auto-resolve stale permission on reconnect replay: if the tool
         // completed, the permission must have been handled already.
         ...(seg.permissionStatus === 'waiting' && {

@@ -76,6 +76,7 @@ import type {
   ToolResultContentBlock,
   TrackedToolCall,
   ToolResult,
+  CompactMetadata,
 } from '@hammoc/shared';
 import { resolveEffectiveModel, sanitizeToolResultContent, effectiveModelIs1M, isAutoNative1MModel } from '@hammoc/shared';
 import path from 'path';
@@ -946,6 +947,28 @@ export class CliChatEngine implements ChatEngine {
       }
     }
 
+    // HAMMOC_CLI_TOOL_TRACE (OFF by default): a structured trace of the parser's tool-completion decisions
+    // — per-frame card parse + scroll-up depth, green flips, maybeFinalize slot mapping, the file backstop,
+    // and a turn-end completion matrix — to a gitignored logs/cli-tool-trace/*.log. Best-effort.
+    let toolTraceStream: WriteStream | null = null;
+    // Activate when EITHER its own flag OR the PTY-dump flag is set — so when only HAMMOC_CLI_PTY_DUMP can
+    // be toggled (already on), the tool-completion trace rides along with no extra env. (Temporary debug
+    // convenience; both are gitignored *.log and OFF in normal runs.)
+    if (process.env.HAMMOC_CLI_TOOL_TRACE || process.env.HAMMOC_CLI_PTY_DUMP) {
+      try {
+        const traceDir = path.join(process.cwd(), 'logs', 'cli-tool-trace');
+        mkdirSync(traceDir, { recursive: true });
+        const traceSid = resumeId ?? options.sessionId ?? 'new';
+        toolTraceStream = createWriteStream(path.join(traceDir, `${traceSid}-${Date.now()}.log`), { encoding: 'utf8' });
+        log.info(`[CLI-TOOL-TRACE] → ${traceDir}/${traceSid}-*.log`);
+      } catch (e) {
+        log.warn(`[CLI-TOOL-TRACE] setup failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    const trace = (msg: string): void => {
+      if (toolTraceStream) { try { toolTraceStream.write(`${msg}\n`); } catch { /* best-effort */ } }
+    };
+
     // Story 36.2: report the pre-generation phase so the UI shows progress through the
     // ~3s boot/inject window instead of a frozen spinner. launching → (❯ seen) submitting
     // → (Enter sent) waiting → (first block) null, handing off to onGenerationProgress.
@@ -1055,7 +1078,16 @@ export class CliChatEngine implements ChatEngine {
       // complete a provisional tool via its SYNTHETIC id (the client card kept it) when the grid never saw the
       // green frame — i.e. a long answer scrolled the still-running tool above the viewport.
       const provRealIdToSlot = new Map<string, number>();
-      let provFinalizedToolCount = 0;
+      // Story 37.19 (확정 via HAMMOC_CLI_TOOL_TRACE — `finalize-tool → provSlot=0 (synthId=?)` then `backstop
+      // SKIP … noSynth=true`): the backstop must map a tool to the SLOT its screen card ACTUALLY got
+      // (`liveToolSlots`, already advanced by the resume-snapshot / earlier tools), NOT a fresh 0-based counter
+      // — else `provToolSlotIds[provSlot]` is empty and the backstop can't fire. FIFO queue of the real slots,
+      // in screen-emit order; the drain shifts one per finalized tool (kept in lockstep with the pending count).
+      const provPendingToolSlots: number[] = [];
+      // Story 37.19: only emit a `frame` trace line when the parsed-card summary CHANGES — skips the
+      // spinner-repaint duplicates that bloated the trace to ~300KB/turn (tool decisions + matrix still log
+      // every time).
+      let lastTraceFrameSig = '';
       // Story 37.11 (AC1): general streaming TEXT is now also a live grid card (the 4th kind 37.10
       // skipped). It rides the SAME provisional/suppress contract as thinking/tool: the grid emits
       // the text card provisionally and `handleAssistantLine` SUPPRESSES the matching canonical text
@@ -1099,6 +1131,9 @@ export class CliChatEngine implements ChatEngine {
 
       // Generation-progress state (Story 32.7 — post-injection only; token source = screen grid, 37.2).
       let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
+      let lastProgressElapsed = -1; // last emitted elapsed seconds. Gate on EITHER tokens OR time changing —
+      // the spinner's clock ticks every second even while the token count is momentarily flat, so a
+      // tokens-only gate froze the time between token changes.
       // Story 36.2: the phase indicator ends once generation actually starts (first
       // progress counter). Idempotent — only the first call emits the null hand-off.
       let phaseCleared = false;
@@ -1195,6 +1230,8 @@ export class CliChatEngine implements ChatEngine {
         try {
           ptyDumpStream?.end();
           ptyDumpStream = null;
+          toolTraceStream?.end();
+          toolTraceStream = null;
         } catch {
           /* ignore — dump best-effort */
         }
@@ -1625,6 +1662,8 @@ export class CliChatEngine implements ChatEngine {
           if (knownSigs.size === 0 || cards.some((c) => knownSigs.has(cardSig(c)))) break;
           depth += CLI_SCROLLUP_INCREMENT; // no known block yet (a tall block's header is still above) — climb
         }
+        const traceFrameSig = `depth=${depth} rows=${bodyRows.length} cards=[${cards.map((c) => `${c.kind}:${c.toolName ?? ''}:${c.bulletColor ?? '-'}`).join(', ')}]`;
+        if (traceFrameSig !== lastTraceFrameSig) { trace(`frame ${traceFrameSig}`); lastTraceFrameSig = traceFrameSig; }
 
         // Story 37.12: refresh the cross-frame tool-header memory from the FINAL (deepest) frame read.
         // First drop keys whose line scrolled off — retention is scoped to on-screen text INCLUDING
@@ -1662,6 +1701,7 @@ export class CliChatEngine implements ChatEngine {
           const next = cards[cardIdx + 1];
           const output = next && next.kind === 'result' && next.text.trim() ? next.text : '';
           gridResultFlippedSlots.add(slot);
+          trace(`flip-green slot=${slot} sid=${sid} (screen green → done)`);
           callbacks.onToolResult?.(sid, { success: true, output }, true);
         };
         for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
@@ -1750,6 +1790,8 @@ export class CliChatEngine implements ChatEngine {
             provToolSlotIds[slot] = synthId;
             heldCards.push({ kind: 'tool', sig, text: card.text, slot, ...(card.bulletColor === 'green' ? { seenGreen: true } : {}) });
             provisionalToolEmitsPending++;
+            provPendingToolSlots.push(slot); // Story 37.19: remember the REAL slot for the backstop mapping
+            trace(`prov-emit-tool slot=${slot} sid=${synthId} name=${card.toolName ?? 'Tool'} green=${card.bulletColor === 'green'}`);
             callbacks.onToolUse?.({
               id: synthId,
               name: card.toolName ?? 'Tool',
@@ -2089,8 +2131,9 @@ export class CliChatEngine implements ChatEngine {
         if (settled || !onGenerationProgress) return; // async — re-check at emit time
         const progress = readSpinnerProgress(grid);
         if (!progress) return; // no counter row → don't emit a phantom 0
-        if (progress.tokens === lastProgressTokens) return; // change-only throttle
+        if (progress.tokens === lastProgressTokens && progress.elapsedSeconds === lastProgressElapsed) return; // change-only throttle (tokens OR elapsed)
         lastProgressTokens = progress.tokens;
+        lastProgressElapsed = progress.elapsedSeconds;
         clearPhase(); // spinner counter appeared → generation started; end the phase indicator
         onGenerationProgress({
           tokens: progress.tokens,
@@ -2573,8 +2616,18 @@ export class CliChatEngine implements ChatEngine {
                 // grid never sees green (the running tool scrolled above the viewport). The turn-end reload still
                 // replaces the name-only provisional with the full-input canonical.
                 provisionalToolEmitsPending--;
-                maybeFinalize('tool', '', toolBlock.name, toolBlock.input, toolBlock.id); // fill real name+input, drop badge
-                provRealIdToSlot.set(toolBlock.id, provFinalizedToolCount++);
+                // Story 37.19: map to the screen card's ACTUAL slot (FIFO), not a 0-based counter — see the
+                // trace-confirmed `synthId=?` / `noSynth` skip. Shift FIRST so we know the synthId.
+                const finalizeSlot = provPendingToolSlots.shift() ?? -1;
+                // Story 37.21: finalize with the provisional card's OWN synthId (not the real toolu_ id) so the
+                // client id-matches the canonical onto its provisional card — robust to the N:M tool-count
+                // mismatch (screen 'Search' ↔ file Grep/Glob, Task sub-tasks, redraw dups). Completion (green
+                // flip / file backstop) already uses this synthId, so provisional-emit, finalize and result now
+                // all share one id. grid-behind (no slot → -1) falls back to the real toolu_ id as before.
+                const finalizeSynthId = provToolSlotIds[finalizeSlot];
+                maybeFinalize('tool', '', toolBlock.name, toolBlock.input, finalizeSynthId ?? toolBlock.id); // fill real name+input, drop badge
+                provRealIdToSlot.set(toolBlock.id, finalizeSlot);
+                trace(`finalize-tool name=${toolBlock.name} realId=${toolBlock.id} → provSlot=${finalizeSlot} synthId=${finalizeSynthId ?? '(fallback toolu_)'}`);
               } else {
                 // Auto-approved / safe tool the grid scraper didn't reach (32.9 path). Track the id so
                 // the matching tool_result is mirrored live, and advance the shared slot counter so the
@@ -2672,7 +2725,11 @@ export class CliChatEngine implements ChatEngine {
           const provSlot = provRealIdToSlot.get(id);
           if (provSlot !== undefined) {
             const synthId = provToolSlotIds[provSlot];
-            if (resultEmittedToolIds.has(id) || gridResultFlippedSlots.has(provSlot) || !synthId) continue;
+            if (resultEmittedToolIds.has(id) || gridResultFlippedSlots.has(provSlot) || !synthId) {
+              trace(`backstop SKIP id=${id} provSlot=${provSlot} (alreadyResult=${resultEmittedToolIds.has(id)} alreadyFlipped=${gridResultFlippedSlots.has(provSlot)} noSynth=${!synthId})`);
+              continue;
+            }
+            trace(`backstop FIRE id=${id} provSlot=${provSlot} → ${synthId}`);
             resultEmittedToolIds.add(id);
             gridResultFlippedSlots.add(provSlot);
             const provRaw = typeof trb.content === 'string' ? trb.content : '';
@@ -2699,6 +2756,24 @@ export class CliChatEngine implements ChatEngine {
       };
 
       const finishTurn = () => {
+        if (toolTraceStream) {
+          trace('=== turn-end tool matrix ===');
+          let mDone = 0, mIncomplete = 0, mSnapshot = 0;
+          for (const h of heldCards) {
+            if (h.kind !== 'tool') continue;
+            const flipped = gridResultFlippedSlots.has(h.slot);
+            // resume-snapshot tools never receive a synthId (no client provisional card was emitted) — the
+            // client already shows the completed history card, so they are NOT real incompletes. Without this
+            // distinction the matrix over-reports (every restored prior tool looks INCOMPLETE).
+            const hasSynth = !!provToolSlotIds[h.slot];
+            let status: string;
+            if (flipped) { status = h.seenGreen ? 'DONE(screen-green)' : 'DONE(file-backstop)'; mDone++; }
+            else if (!hasSynth) { status = 'SKIP(resume-snapshot)'; mSnapshot++; }
+            else { status = 'INCOMPLETE'; mIncomplete++; }
+            trace(`  slot=${h.slot} seenGreen=${!!h.seenGreen} flipped=${flipped} synth=${hasSynth} → ${status} | ${h.text.slice(0, 40)}`);
+          }
+          trace(`turn-end summary: done=${mDone} INCOMPLETE=${mIncomplete} resume-snapshot=${mSnapshot}`);
+        }
         finish({
           id: lastAssistantUuid,
           sessionId: resolvedSessionId ?? '',
@@ -2753,20 +2828,33 @@ export class CliChatEngine implements ChatEngine {
               }
               emitToolResults(raw);
             } else if (raw.type === 'system' && raw.subtype === 'compact_boundary') {
-              // Turn-completion signal for a compaction. claude itself writes this when it
-              // self-compacts on resume — confirmed 2026-06-10 from packages/server/logs: NO
-              // [AUTO-COMPACT] marker for the observed cases, so this is NOT a Hammoc/websocket
-              // `/compact` injection; the interactive claude binary decides to compact on some
-              // long-idle resumes (root cause still under investigation). It can also come from a
-              // user clicking the context ring (/compact). Unlike a normal turn, a compaction
-              // writes NO end_turn assistant line — only this system boundary plus a "Compacted"
-              // stdout — so without treating the boundary as completion the turn waits forever for
-              // an end_turn that never comes (the CLI compact-hang root cause). Guarded by
-              // emittedUuids so a prior compaction replayed on resume (seeded above) is ignored.
+              // A compaction writes NO end_turn assistant line — only this system boundary plus a
+              // "Compacted" stdout. Whether the boundary ENDS the turn depends entirely on its
+              // trigger, and the two cases are opposites:
+              //
+              //   - `manual` — the user clicked the context ring (/compact). Compaction IS the whole
+              //     turn; nothing follows. Treat the boundary as completion, else we'd wait forever
+              //     for an end_turn that never comes (the original CLI compact-hang bug, fixed
+              //     2026-06-10). Also covers a past compaction replayed on resume.
+              //   - `auto` — claude hit the context limit WHILE servicing a normal message. It
+              //     compacts first, then resumes generating the real response to that same message
+              //     (실측 2026-06-17: boundary at 07:08:18, first assistant text at 07:11:13, ~1000
+              //     more transcript lines after). Here the boundary is a MID-TURN event, not the end.
+              //     Finishing here would strand the answer that follows — the "auto-compact then
+              //     immediately stops" symptom. So surface a "compacting" marker and keep draining;
+              //     the genuine end_turn line still arrives downstream and completes the turn normally.
+              //
+              // Guarded by emittedUuids so a prior compaction replayed on resume (seeded above) is ignored.
               if (emittedUuids.has(raw.uuid)) continue;
               emittedUuids.add(raw.uuid);
-              const cm = (raw as { compactMetadata?: { trigger?: string; preTokens?: number; postTokens?: number } }).compactMetadata;
-              log.info(`[CLI-DEBUG] compact_boundary detected: trigger=${cm?.trigger} preTokens=${cm?.preTokens} postTokens=${cm?.postTokens}`);
+              const cm = (raw as { compactMetadata?: CompactMetadata }).compactMetadata;
+              log.info(`[CLI-DEBUG] compact_boundary detected: trigger=${cm?.trigger} preTokens=${cm?.preTokens}`);
+              if (cm?.trigger === 'auto') {
+                // Mid-turn: show the compaction marker but do NOT finish — the real response follows.
+                callbacks.onCompact?.({ trigger: 'auto', preTokens: cm.preTokens ?? 0 });
+                continue;
+              }
+              // manual (or trigger absent): the compaction is the turn — finish as before.
               finishTurn();
               return;
             }

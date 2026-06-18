@@ -465,6 +465,50 @@ describe('useStreaming', () => {
     });
   });
 
+  describe('stream:buffer-replay tool finalize (reconnect mid-turn)', () => {
+    it('snapshot order (provisional → result → canonical) finalizes to ONE completed card (not a stuck duplicate)', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'tool:call', data: { id: 'cli-prov-tool-54', name: 'playwright - Page snapshot', input: {}, provisional: true }, ts: 1000 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-54', result: { success: true, output: 'snap' }, provisional: true }, ts: 1100 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-54', name: 'mcp__playwright__browser_snapshot', input: {}, provisional: false }, ts: 1200 },
+        ],
+      });
+
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      expect(tools).toHaveLength(1); // finalized in place — NOT two cards
+      const t = tools[0];
+      expect(t).toMatchObject({ status: 'completed' });
+      if (t.type === 'tool') expect(t.toolCall.name).toBe('mcp__playwright__browser_snapshot');
+      expect(t).not.toHaveProperty('provisional');
+    });
+
+    it('evaluate order (provisional → canonical → result) finalizes to ONE completed card', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'tool:call', data: { id: 'cli-prov-tool-60', name: 'playwright - Evaluate JavaScript', input: {}, provisional: true }, ts: 1000 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-60', name: 'mcp__playwright__browser_evaluate', input: {}, provisional: false }, ts: 1100 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-60', result: { success: true, output: 'res' }, provisional: true }, ts: 1200 },
+        ],
+      });
+
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      expect(tools).toHaveLength(1);
+      const t = tools[0];
+      expect(t).toMatchObject({ status: 'completed' });
+      if (t.type === 'tool') expect(t.toolCall.name).toBe('mcp__playwright__browser_evaluate');
+      expect(t).not.toHaveProperty('provisional');
+    });
+  });
+
   describe('cli:phase event (Story 36.2 — transient CLI boot/inject phase)', () => {
     it('stores the phase on a live cli:phase event', () => {
       renderHook(() => useStreaming());

@@ -17,7 +17,7 @@ vi.mock('../MarkdownRenderer', () => ({
 
 // Mock ProvisionalBadge so the chip assertion is locale-independent (it carries its own 'chat' i18n).
 vi.mock('../ProvisionalBadge', () => ({
-  ProvisionalBadge: () => <span data-testid="prov-badge">미리보기</span>,
+  ProvisionalBadge: () => <span data-testid="prov-badge">잠정</span>,
 }));
 
 describe('ThinkingBlock', () => {

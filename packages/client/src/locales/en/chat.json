@@ -171,8 +171,8 @@
   "streamingMessage": {
     "ariaLabel": "Claude is responding",
     "assistantName": "Claude",
-    "liveBadge": "Preview",
-    "provisionalAriaLabel": "Preview from a screen estimate — will be replaced by the finalized copy"
+    "liveBadge": "Provisional",
+    "provisionalAriaLabel": "A provisional read from the screen — will be replaced by the finalized copy"
   },
   "messageActionBar": {
     "copy": "Copy",

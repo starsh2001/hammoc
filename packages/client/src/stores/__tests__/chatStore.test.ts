@@ -405,6 +405,67 @@ describe('useChatStore', () => {
       }
       expect(seg).not.toHaveProperty('provisional'); // badge dropped
     });
+
+    it('REPRO snapshot order: provisional → result-flip(complete) → canonical finalize stays completed (not stuck pending)', () => {
+      const { startStreaming, addStreamingToolCall, updateStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      // 1. friendly provisional card (screen: "playwright - Page snapshot")
+      addStreamingToolCall({ id: 'cli-prov-tool-54', name: 'playwright - Page snapshot', input: {}, provisional: true });
+      // 2. screen flips green FIRST (snapshot completes on screen before the file canonical) — completes, keeps badge
+      updateStreamingToolCall('cli-prov-tool-54', 'snapshot text', false, true);
+      // 3. canonical finalize LAST (same synthId, real name)
+      addStreamingToolCall({ id: 'cli-prov-tool-54', name: 'mcp__playwright__browser_snapshot', input: {}, provisional: false });
+      const segs = useChatStore.getState().streamingSegments;
+      expect(segs).toHaveLength(1);
+      const seg = segs[0];
+      expect(seg.type).toBe('tool');
+      expect(seg).toMatchObject({ status: 'completed' });
+      if (seg.type === 'tool') expect(seg.toolCall.name).toBe('mcp__playwright__browser_snapshot');
+    });
+
+    it('does NOT re-badge a finalized tool when the provisional screen-flip result lands AFTER the canonical (Story 37.20 order race)', () => {
+      const { startStreaming, addStreamingToolCall, updateStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      // Provisional screen card for a Bash tool.
+      addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Bash', input: {}, provisional: true });
+      // The canonical finalize lands FIRST — the common server order is file-drain USE before the screen
+      // green-flip RESULT (confirmed by the real-claude harness: USE toolu_… precedes RESULT cli-prov-…).
+      // Badge dropped, synthId kept.
+      addStreamingToolCall({ id: 'toolu_real', name: 'Bash', input: { command: 'ls -la' }, provisional: false });
+      expect(useChatStore.getState().streamingSegments[0]).not.toHaveProperty('provisional');
+      // THEN the screen green-flip result (provisional=true) lands on the kept synthId. It completes the
+      // tool but must NOT resurrect the live badge — re-badging a finalized card was the "잠정 잔존" bug.
+      updateStreamingToolCall('cli-prov-tool-0', 'done', false, true);
+      const seg = useChatStore.getState().streamingSegments[0];
+      expect(seg).toMatchObject({ type: 'tool', status: 'completed' });
+      expect(seg).not.toHaveProperty('provisional');
+    });
+
+    it('chatStore ALONE finalizes the real Glob-turn order correctly (flip-53 before canonical batch, flip-54/55 after) — isolating the bug to the useStreaming queue bypass (L504), NOT chatStore', () => {
+      const { startStreaming, addStreamingToolCall, updateStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      // 3 provisional Search cards (screen scrape)
+      addStreamingToolCall({ id: 'cli-prov-tool-53', name: 'Search', input: {}, provisional: true });
+      addStreamingToolCall({ id: 'cli-prov-tool-54', name: 'Search', input: {}, provisional: true });
+      addStreamingToolCall({ id: 'cli-prov-tool-55', name: 'Search', input: {}, provisional: true });
+      // slot 53 flips green (completes) FIRST — before any canonical
+      updateStreamingToolCall('cli-prov-tool-53', 'ok', false, true);
+      // canonical Glob finalize batch (toolu_ ids, provisional=false) — binds OLDEST provisional by order
+      addStreamingToolCall({ id: 'toolu_a', name: 'Glob', input: { pattern: 'a' }, provisional: false });
+      addStreamingToolCall({ id: 'toolu_b', name: 'Glob', input: { pattern: 'b' }, provisional: false });
+      addStreamingToolCall({ id: 'toolu_c', name: 'Glob', input: { pattern: 'c' }, provisional: false });
+      // slot 54/55 flip green AFTER the canonical
+      updateStreamingToolCall('cli-prov-tool-54', 'ok', false, true);
+      updateStreamingToolCall('cli-prov-tool-55', 'ok', false, true);
+      // EXPECT: 3 cards, all completed, none stuck on the live badge, names finalized to Glob
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      expect(tools).toHaveLength(3);
+      tools.forEach((t) => {
+        expect(t.status).toBe('completed');
+        expect(t).not.toHaveProperty('provisional');
+        if (t.type === 'tool') expect(t.toolCall.name).toBe('Glob');
+      });
+    });
   });
 
   describe('addStreamingToolCall', () => {
@@ -814,6 +875,96 @@ describe('useChatStore', () => {
       expect((texts[0] as { content: string }).content).toBe('the final answer');
       // The surviving segment is canonical (not dimmed/badged) anymore.
       expect((texts[0] as { provisional?: boolean }).provisional).not.toBe(true);
+    });
+
+    it('REPRO(tool): canonical tool applied immediately (old useStreaming L504) cannot find the still-queued provisional → duplicate stuck card', async () => {
+      const { preso, flushRaf } = setup();
+      // provisional tool card enters the reveal queue (revealSegment — same path the screen scrape uses)
+      preso.enqueueReveal(() => useChatStore.getState().addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Search', input: {}, provisional: true }), 0);
+      // OLD buggy path: the canonical (different toolu_ id) applied IMMEDIATELY, bypassing the queue, while
+      // the provisional is still waiting → findIndex(provisional) === -1 → fall-through spawns a 2nd card.
+      useChatStore.getState().addStreamingToolCall({ id: 'toolu_x', name: 'Glob', input: { pattern: 'a' }, provisional: false });
+      await flushRaf();
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      // Bug signature: a SECOND (canonical) card spawned instead of finalizing the provisional in place.
+      expect(tools.length).toBeGreaterThan(1);
+    });
+
+    it('FIX(tool): canonical routed through the queue (revealSegment delay 0) finalizes the provisional in place → single Glob card', async () => {
+      const { preso, flushRaf } = setup();
+      preso.enqueueReveal(() => useChatStore.getState().addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Search', input: {}, provisional: true }), 0);
+      // FIXED path (useStreaming L504): the canonical also rides the queue, ordered AFTER the provisional.
+      preso.enqueueReveal(() => useChatStore.getState().addStreamingToolCall({ id: 'toolu_x', name: 'Glob', input: { pattern: 'a' }, provisional: false }), 0);
+      await flushRaf();
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      expect(tools).toHaveLength(1); // finalized in place — no duplicate
+      if (tools[0].type === 'tool') expect(tools[0].toolCall.name).toBe('Glob');
+      expect(tools[0]).not.toHaveProperty('provisional');
+    });
+  });
+
+  describe('N:M tool finalize — anchor-section reconcile (Story 37.21)', () => {
+    it('FIX(late-canonical): a provisional tool whose canonical arrives AFTER the next anchor must NOT be pruned — else its canonical mis-binds to the next tool and its completion is lost (Read spinner)', () => {
+      const { startStreaming, appendStreamingContent, addStreamingToolCall, updateStreamingToolCall } = useChatStore.getState();
+      startStreaming('s', 'm');
+      // SCREEN: msg1 · Read(62) · msg2 · Update(63). The Read's canonical arrives AFTER msg2's anchor.
+      appendStreamingContent('msg1', true);
+      addStreamingToolCall({ id: 'cli-prov-tool-62', name: 'Read', input: {}, provisional: true });
+      appendStreamingContent('msg2', true);
+      addStreamingToolCall({ id: 'cli-prov-tool-63', name: 'Update', input: {}, provisional: true });
+      // CANONICAL order: msg1 · msg2(anchor) · Read(62) · Update(63). If the anchor prunes the still-
+      // provisional Read 62, the Read canonical falls back onto Update 63 (names it 'Read') and the
+      // completion addressed to 62 is lost → spinner.
+      appendStreamingContent('msg1', false);
+      appendStreamingContent('msg2', false);
+      addStreamingToolCall({ id: 'cli-prov-tool-62', name: 'Read', input: { file_path: 'x' }, provisional: false });
+      addStreamingToolCall({ id: 'cli-prov-tool-63', name: 'Update', input: { file_path: 'y' }, provisional: false });
+      updateStreamingToolCall('cli-prov-tool-62', 'ok', false);
+      updateStreamingToolCall('cli-prov-tool-63', 'ok', false);
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      const read = tools.find((t) => (t as { toolCall: { name: string } }).toolCall.name === 'Read');
+      // FIX: Read survives the anchor, binds its OWN canonical (id 62), and completes — no spinner.
+      expect(read).toBeDefined();
+      expect((read as { status?: string })?.status).toBe('completed');
+    });
+
+    it('FIX: a thinking boundary with 2 provisional tools but 1 canonical before it keeps Glob in the post-thinking section', () => {
+      const { startStreaming, appendStreamingContent, addStreamingToolCall, addStreamingThinking } = useChatStore.getState();
+      startStreaming('s', 'm');
+      // SCREEN (provisional): msg1 · Search · Search · [thinking] · msg2 · Search · msg3
+      //   the screen rendered TWO Search cards before the thinking for what the FILE records as ONE Grep
+      //   (friendly-name many-to-one + a redraw split, etc.).
+      appendStreamingContent('msg1', true);
+      addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Search', input: {}, provisional: true });
+      addStreamingToolCall({ id: 'cli-prov-tool-1', name: 'Search', input: {}, provisional: true });
+      addStreamingThinking('reasoning', true);
+      appendStreamingContent('msg2', true);
+      addStreamingToolCall({ id: 'cli-prov-tool-2', name: 'Search', input: {}, provisional: true });
+      appendStreamingContent('msg3', true);
+      // FILE (canonical), in file order: msg1 · Grep · [thinking] · msg2 · Glob · msg3.
+      //   The server (Story 37.21 Step 2) finalizes each canonical tool with the provisional card's OWN synthId
+      //   (FIFO slot order): Grep→slot0=cli-prov-tool-0, Glob→slot1=cli-prov-tool-1.
+      appendStreamingContent('msg1', false);
+      addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Grep', input: { pattern: 'x' }, provisional: false });
+      addStreamingThinking('reasoning', false);
+      appendStreamingContent('msg2', false);
+      addStreamingToolCall({ id: 'cli-prov-tool-1', name: 'Glob', input: { pattern: 'y' }, provisional: false });
+      appendStreamingContent('msg3', false);
+
+      const segs = useChatStore.getState().streamingSegments;
+      const thinkingIdx = segs.findIndex((s) => s.type === 'thinking');
+      const tools = segs.filter((s) => s.type === 'tool');
+
+      // FIX 1: the orphan provisional tool (screen had 2 before thinking, file had 1) was PRUNED at the
+      // thinking-anchor finalize → exactly 2 tool cards remain, none stuck on the live badge.
+      expect(tools).toHaveLength(2);
+      expect(tools.some((t) => (t as { provisional?: boolean }).provisional === true)).toBe(false);
+
+      // FIX 2: each tool lands in its correct section — Grep BEFORE thinking, Glob AFTER thinking.
+      const grepIdx = segs.indexOf(segs.find((s) => s.type === 'tool' && (s as { toolCall: { name: string } }).toolCall.name === 'Grep')!);
+      const globIdx = segs.indexOf(segs.find((s) => s.type === 'tool' && (s as { toolCall: { name: string } }).toolCall.name === 'Glob')!);
+      expect(grepIdx).toBeLessThan(thinkingIdx);
+      expect(globIdx).toBeGreaterThan(thinkingIdx);
     });
   });
 

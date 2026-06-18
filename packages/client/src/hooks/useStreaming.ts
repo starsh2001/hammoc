@@ -490,10 +490,14 @@ export function useStreaming() {
       // Reveal the tool card. Synthetic mode: queue it so it bubbles in AFTER the assistant
       // text finishes typing (staggered). Otherwise: flush buffered text first to prevent the
       // response from splitting, then insert immediately (original behavior).
-      // Story 37.11: a CLI grid tool card is provisional (name-only, empty input until the file confirms
-      // it). The canonical re-sends the SAME id with `provisional: false` to FINALIZE it (real name+input,
-      // badge dropped) — apply that in place immediately, NOT through `revealSegment` (the synthetic-typing
-      // reveal is for NEW cards bubbling in). `true`/`undefined` keep the reveal path.
+      // Story 37.11/37.20: a CLI grid tool card is provisional (name-only, empty input until the file
+      // confirms it). The canonical re-sends with `provisional: false` to FINALIZE it (real name+input, badge
+      // dropped). It MUST ride the SAME reveal queue (delayMs 0 = no stagger, finalize-in-place once it's its
+      // turn), NOT apply immediately. In CLI mode the canonical id (toolu_) DIFFERS from the provisional id
+      // (cli-prov-tool-N) and binds by ORDER, so applying it immediately — while the provisional card is still
+      // waiting in the typing queue (rAF) — finds no provisional to finalize, spawns a DUPLICATE canonical
+      // card, and that card never receives the completion (which arrives on the synthId) → stuck spinner.
+      // Same fix as the text-canonical bypass (L366). `true`/`undefined` keep the normal staggered reveal.
       const applyTool = () => addStreamingToolCall({
         id: data.id,
         name: data.name,
@@ -501,7 +505,7 @@ export function useStreaming() {
         startedAt: data.startedAt,
         ...(data.provisional !== undefined ? { provisional: data.provisional } : {}),
       });
-      if (data.provisional === false) applyTool();
+      if (data.provisional === false) revealSegment(applyTool, 0);
       else revealSegment(applyTool);
     };
 
@@ -1276,6 +1280,27 @@ export function useStreaming() {
             const d = eventData as { id: string; name: string; input?: Record<string, unknown>; startedAt?: number; provisional?: boolean };
             if (d.name === 'AskUserQuestion') break;
             flushText();
+            // Mirror chatStore.addStreamingToolCall (Story 37.11/37.21): a NON-provisional (canonical)
+            // tool call FINALIZES the matching provisional card IN PLACE (prefer exact synthId, else the
+            // oldest still-provisional tool), keeping its id + status. Without this, a reconnect mid-turn
+            // rebuilt every CLI tool as TWO cards — friendly provisional + real canonical — and the
+            // completion (tool:result, which binds by id) attached to only ONE, leaving the other stuck
+            // spinning forever (the "Read 초록인데 카드 spinner" reconnect symptom).
+            if (!d.provisional) {
+              let idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true && s.toolCall.id === d.id);
+              if (idx < 0) idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true);
+              if (idx >= 0) {
+                const seg = segments[idx];
+                if (seg.type === 'tool') {
+                  seg.toolCall.name = d.name;
+                  seg.toolCall.input = d.input;
+                  delete (seg as { provisional?: boolean }).provisional; // badge dropped, id + status kept
+                }
+                break;
+              }
+            }
+            // Dedup: never create a second card for an id already present (defensive).
+            if (segments.some((s) => s.type === 'tool' && s.toolCall.id === d.id)) break;
             segments.push({
               type: 'tool',
               toolCall: { id: d.id, name: d.name, input: d.input, startedAt: d.startedAt },
@@ -1299,8 +1324,12 @@ export function useStreaming() {
               const toolSeg = found.seg as { type: 'tool'; toolCall: StreamingToolCall; status: string; provisional?: boolean };
               toolSeg.toolCall.output = d.result.output ?? d.result.error ?? '';
               toolSeg.status = d.result.success ? 'completed' : 'error';
-              // Story 37.11: a provisional grid flip keeps the card live-badged.
-              if (d.provisional) toolSeg.provisional = true;
+              // Story 37.11 + 37.20 (reconnect parity): a provisional grid flip keeps the badge ONLY
+              // while the card is STILL provisional. On evaluate-order reconnect the canonical tool:call
+              // FINALIZES this card (badge dropped) BEFORE the flip arrives — re-stamping would wrongly
+              // re-badge a completed tool. Gate on the card still being provisional, exactly like
+              // chatStore.updateStreamingToolCall L769.
+              if (d.provisional && toolSeg.provisional === true) toolSeg.provisional = true;
             }
             // Auto-resolve interactive segments for this tool call
             for (const seg of segments) {
@@ -1712,11 +1741,15 @@ export function useStreaming() {
         // the next frame) fires after completeStreaming() and re-populates segments
         // via appendStreamingContent, creating an orphaned segment that renders as
         // a duplicate message bubble.
-        // Synthetic typing: let the queued text finish at typing speed before swapping in
-        // the authoritative messages (so the effect isn't cut off). Aborted streams skip
-        // the wait; drain() resolves instantly when nothing is queued.
+        // Synthetic typing: the turn is DONE — the authoritative answer has already arrived, so there is no
+        // reason to WAIT for the typing animation. That await was the hang: while the tab is hidden (Win+L /
+        // lock / sleep / mobile background) the browser throttles requestAnimationFrame, so `drain()` (which
+        // loops until the typing chain settles) never resolves → the canonical swap below never runs → the
+        // provisional stays on screen forever. Instead collapse the animation INSTANTLY: `flush()` is
+        // synchronous and never blocks, so the canonical messages swap in right away. The typing effect is
+        // best-effort *during* streaming; once the turn ends the canonical wins. Aborted streams skip it too.
         if (!data.aborted && isSyntheticTyping()) {
-          await preso.drain();
+          preso.flush();
         }
         clearChunkQueue();
         useMessageStore.getState().setMessages(messages);

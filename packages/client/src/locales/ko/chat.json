@@ -171,8 +171,8 @@
   "streamingMessage": {
     "ariaLabel": "Claude 응답 중",
     "assistantName": "Claude",
-    "liveBadge": "미리보기",
-    "provisionalAriaLabel": "화면 추정 미리보기 — 곧 확정본으로 교체됩니다"
+    "liveBadge": "잠정",
+    "provisionalAriaLabel": "화면에서 읽은 잠정 표시 — 곧 확정본으로 교체됩니다"
   },
   "messageActionBar": {
     "copy": "복사",

@@ -495,27 +495,12 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   // Applies to BOTH engines, streaming segments only — history/reload is left static.
   const cardEntranceAnimation = usePreferencesStore((s) => s.preferences.cardEntranceAnimation ?? true);
 
-  // Elapsed seconds measured CLIENT-SIDE from the stream's start — deliberately NOT the
-  // seconds scraped off claude's spinner (generationProgress.elapsedSeconds). The scraped
-  // value freezes whenever the token count stalls and reads 0 on counter-only frames; a 1s
-  // wall-clock tick off streamingStartedAt advances smoothly regardless of the CLI parse.
-  const streamingStartedAt = useChatStore((s) => s.streamingStartedAt);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  useEffect(() => {
-    if (!isStreaming || !streamingStartedAt) {
-      setElapsedSeconds(0);
-      return;
-    }
-    const startMs = streamingStartedAt.getTime();
-    const tick = () => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
-    tick(); // paint the correct value immediately (start may already be in the past on resume)
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [isStreaming, streamingStartedAt]);
-
-  // CLI-style elapsed clock: "Ns" under a minute, "Nm Ns" otherwise (700s → "11m 40s") — mirrors the
-  // claude spinner readout (time before tokens), replacing the prior mm:ss. See formatElapsed.
-  const elapsedClock = formatElapsed(elapsedSeconds);
+  // Elapsed seconds SCRAPED from claude's spinner (generationProgress.elapsedSeconds) — the user opted
+  // for the parsed value over a client-side wall-clock so the counter matches the claude/mirror screen
+  // exactly. Accepted trade-off: the scraped value freezes when the token count stalls and reads 0 on
+  // counter-only frames, so the clock can hitch instead of ticking smoothly. CLI-style format: "Ns" under
+  // a minute, "Nm Ns" otherwise (700s → "11m 40s"). See formatElapsed.
+  const elapsedClock = formatElapsed(generationProgress?.elapsedSeconds ?? 0);
   // Story 37.11: while claude's spinner reports the THINKING phase, the LEFT indicator label reads
   // "Thinking" (vs "Generating response") — see `thinkingActive` below. The RIGHT counter is ALWAYS the
   // plain token/elapsed readout, so "Thinking" isn't duplicated on both sides (the user's report). The

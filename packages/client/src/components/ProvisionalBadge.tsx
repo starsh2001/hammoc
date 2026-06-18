@@ -1,5 +1,5 @@
 /**
- * ProvisionalBadge — a small "preview" chip marking a CLI screen-scrape card as PROVISIONAL: a live
+ * ProvisionalBadge — a small "provisional" chip marking a CLI screen-scrape card as PROVISIONAL: a live
  * estimate not yet replaced by the file-parsed authoritative copy. It sits BESIDE each card's title
  * (the tool name / "Claude" / the thinking header) so the per-card "이건 아직 확정 전" affordance reads
  * right where the eye already is — not floated at the card edge, not on a single status line.

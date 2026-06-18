@@ -165,8 +165,8 @@
   "streamingMessage": {
     "ariaLabel": "Claudeが応答中です",
     "assistantName": "Claude",
-    "liveBadge": "プレビュー",
-    "provisionalAriaLabel": "画面推定のプレビュー — まもなく確定版に置き換わります"
+    "liveBadge": "暫定",
+    "provisionalAriaLabel": "画面から読み取った暫定表示 — まもなく確定版に置き換わります"
   },
   "messageActionBar": {
     "copy": "コピー",
