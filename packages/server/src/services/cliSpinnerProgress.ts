@@ -132,6 +132,10 @@ export function readSpinnerProgress(grid: string[]): SpinnerProgress | null {
   // Require a real minute/second digit (GRID_ELAPSED_RE leaves both groups undefined for a bare "("), so a
   // stray paren in prose can't flash a phantom. Bottom-most (freshest) within the live region wins.
   for (let y = region.length - 1; y >= 0; y--) {
+    // A counter ARROW on the row means a counter is mid-write ("↓ 36" before "tokens" settles, split across
+    // PTY chunks) — wait for it to settle rather than flashing a time-only reading. Fall back ONLY when the
+    // row carries no counter glyph at all (the genuine pre-counter "(12s" before any counter appears).
+    if (/[↑↓]/.test(region[y])) continue;
     const m = GRID_ELAPSED_RE.exec(region[y]);
     if (m && (m[1] !== undefined || m[2] !== undefined)) {
       return { tokens: 0, elapsedSeconds: sumElapsedSeconds(region[y]) };
