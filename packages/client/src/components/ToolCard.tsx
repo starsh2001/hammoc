@@ -279,7 +279,7 @@ export function ToolCard({
                 : t('tool.completedAria', { name: toolDisplayName })
         }
       >
-        <div data-tool-card className={`max-w-[80%] rounded-lg p-3 border ${
+        <div data-tool-card className={`max-w-[92%] md:max-w-[88%] rounded-lg p-3 border ${
           isDenied || isError
             ? 'bg-gray-100 dark:bg-[#263240] border-red-200 dark:border-red-800'
             : isBackgroundFlow
@@ -289,7 +289,7 @@ export function ToolCard({
           {/* Header: icon + name + status + duration */}
           <div className="flex items-center gap-2 min-w-0">
             <ToolIcon className="w-4 h-4 text-blue-500 flex-shrink-0" aria-hidden="true" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200 min-w-0 break-all">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200 min-w-0 truncate" title={toolDisplayName}>
               {toolDisplayName}
             </span>
             {provisional && <ProvisionalBadge />}
@@ -303,7 +303,7 @@ export function ToolCard({
             ) : isError ? (
               <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />
             ) : isPending ? (
-              <Loader2 className="w-4 h-4 text-blue-500 animate-spin" aria-hidden="true" />
+              <Loader2 className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0" aria-hidden="true" />
             ) : (
               <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
             )}
