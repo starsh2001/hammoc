@@ -72,9 +72,19 @@ describe('readSpinnerProgress (Story 37.2 — grid token reader)', () => {
     expect(p?.elapsedSeconds).toBe(0); // no leading "(Ns ·" clock → 0
   });
 
-  it('returns null when no counter row is present (false-0 guard)', async () => {
+  it('returns null when no counter AND no clock is present (false-0 guard)', async () => {
     const p = await read([drawSpinner('✢ Deliberating…  esc to interrupt')]);
     expect(p).toBeNull();
+  });
+
+  it('reads a TOKEN-LESS elapsed clock as time-only (tokens 0) — the early "(12s" before any counter appears', async () => {
+    const p = await read([drawSpinner('✶ Cogitating… (12s · esc to interrupt)')]);
+    expect(p).toEqual({ tokens: 0, elapsedSeconds: 12 });
+  });
+
+  it('reads a token-less MINUTE clock too ("(1m 5s" → 65, tokens 0)', async () => {
+    const p = await read([drawSpinner('✶ Cogitating… (1m 5s · esc to interrupt)')]);
+    expect(p).toEqual({ tokens: 0, elapsedSeconds: 65 });
   });
 
   it('returns null on a fully blank grid', async () => {

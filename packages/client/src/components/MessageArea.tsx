@@ -507,7 +507,11 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
   // reasoning content itself streams separately as a provisional `∴` card when it lands.
   const thinkingActive = generationProgress?.thinking === true;
   const generationProgressLabel = generationProgress
-    ? t('streaming.generationProgress', { tokens: formatTokensK(generationProgress.tokens), time: elapsedClock })
+    // Story 37.2 fallback: before claude paints the first "↓ N tokens" counter only the elapsed clock
+    // exists (tokens 0). Show the time alone instead of "↓ 0 토큰", which reads as a stalled counter.
+    ? (generationProgress.tokens > 0
+        ? t('streaming.generationProgress', { tokens: formatTokensK(generationProgress.tokens), time: elapsedClock })
+        : elapsedClock)
     : null;
 
   // Story 36.2: localized phase label, shown in the waiting indicator before the first block.

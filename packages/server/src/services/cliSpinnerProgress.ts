@@ -126,5 +126,16 @@ export function readSpinnerProgress(grid: string[]): SpinnerProgress | null {
     const thinking = THINKING_PHASE_RE.test(region[y]);
     return { tokens, elapsedSeconds: sumElapsedSeconds(region[y]), ...(thinking ? { thinking: true } : {}) };
   }
+  // Fallback: no token counter yet, but an elapsed clock is on screen → emit time-only (tokens 0). claude
+  // paints "(Ns ·" the moment generation starts, BEFORE the first "↓ N tokens" counter appears — without
+  // this the live timer stays frozen until tokens show up (the token-less "(12s" the user saw not parsed).
+  // Require a real minute/second digit (GRID_ELAPSED_RE leaves both groups undefined for a bare "("), so a
+  // stray paren in prose can't flash a phantom. Bottom-most (freshest) within the live region wins.
+  for (let y = region.length - 1; y >= 0; y--) {
+    const m = GRID_ELAPSED_RE.exec(region[y]);
+    if (m && (m[1] !== undefined || m[2] !== undefined)) {
+      return { tokens: 0, elapsedSeconds: sumElapsedSeconds(region[y]) };
+    }
+  }
   return null;
 }
