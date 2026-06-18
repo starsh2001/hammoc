@@ -6,6 +6,13 @@ import { registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 
+// `registerType: 'autoUpdate'` with the injectManifest strategy does NOT auto-inject these — a
+// custom SW must claim them itself. Without it a freshly built SW sits in 'waiting' behind the old
+// one, which keeps serving the previous bundle, so a rebuild never reaches the user on refresh.
+// skipWaiting() activates the new SW immediately; clients.claim() makes it control open pages at once.
+self.skipWaiting();
+self.addEventListener('activate', () => self.clients.claim());
+
 // Precache static assets (injected by vite-plugin-pwa)
 precacheAndRoute(self.__WB_MANIFEST);
 
