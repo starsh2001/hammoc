@@ -137,6 +137,11 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
   // swallows the spinner paragraph's own wrapped rows until the next blank/header.
   let atBlockStart = true;
   let droppingSpinner = false;
+  // Preserve paragraph breaks. A blank row INSIDE an open card is claude's paragraph separator (markdown
+  // \n\n, rendered as a blank terminal line). Mark it so the next continuation row joins with "\n\n"
+  // instead of a space — otherwise multi-paragraph prose collapses into one run. (Wrapped lines — no
+  // blank between them — still space-join: the screen can't tell a soft wrap from a hard newline.)
+  let pendingBreak = false;
 
   const flush = () => {
     if (current) {
@@ -144,6 +149,7 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       if (current.text.length > 0) cards.push(current);
     }
     current = null;
+    pendingBreak = false;
   };
 
   for (let i = 0; i < rows.length; i++) {
@@ -155,6 +161,7 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
     const indent = raw.length - raw.trimStart().length;
     const atHeaderIndent = indent <= MAX_CARD_INDENT;
     if (trimmed.length === 0) {
+      if (current) pendingBreak = true; // blank row inside an open card = a paragraph break (\n\n)
       atBlockStart = true; // a blank spacer opens a new paragraph and ends a spinner block's span
       droppingSpinner = false;
       continue;
@@ -212,9 +219,13 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       flush();
       current = { kind: 'thinking', text: clean(trimmed.slice(THINKING_DETAIL_GLYPH.length).trim()) };
     } else if (current) {
-      // Continuation of the open card (wrapped prose / multi-line tool output).
+      // Continuation of the open card (wrapped prose / multi-line tool output). A pending paragraph
+      // break (a blank row preceded this row) joins with "\n\n"; a plain wrapped line joins with a space.
       const extra = clean(trimmed);
-      if (extra) current.text += (current.text ? ' ' : '') + extra;
+      if (extra) {
+        current.text += (current.text ? (pendingBreak ? '\n\n' : ' ') : '') + extra;
+        pendingBreak = false;
+      }
     }
     // else: a loose non-glyph row before any card opens — not a card, ignored.
     atBlockStart = false;

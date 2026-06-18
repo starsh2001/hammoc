@@ -149,6 +149,21 @@ describe('parseGridCards (hand-built rows)', () => {
     ]);
   });
 
+  it('joins a continuation row after a BLANK row with a paragraph break (\\n\\n), not a space', () => {
+    // claude separates paragraphs with a blank terminal line. A blank row INSIDE a card → "\n\n" so
+    // multi-paragraph prose keeps its breaks instead of collapsing into one run. (A blank row BEFORE a
+    // new `●` header is still just a spacer — see the next test.)
+    const cards = parseGridCards([
+      '● First paragraph that',
+      '  wraps once.',
+      '',
+      'Second paragraph after the blank row.',
+    ], ['white']);
+    expect(cards).toEqual([
+      { kind: 'text', text: 'First paragraph that wraps once.\n\nSecond paragraph after the blank row.', bulletColor: 'white' },
+    ]);
+  });
+
   it('preserves card ORDER and treats blank rows as spacers (not card breaks)', () => {
     const cards = parseGridCards([
       '  Thought for 3s',
