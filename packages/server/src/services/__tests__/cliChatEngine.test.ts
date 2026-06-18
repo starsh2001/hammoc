@@ -1998,7 +1998,7 @@ describe('CliChatEngine', () => {
       expect(proseEmits).toHaveLength(1);
     });
 
-    it('Story 37.9: emits the lead-in prose as a PROVISIONAL chunk before the card when it is NOT yet in the JSONL, then suppresses the canonical re-emit (no duplicate)', async () => {
+    it('Story 37.9 + fix: emits the lead-in prose PROVISIONALLY before the card, then FINALIZES it via maybeFinalize (not suppressed — an input-waiting modal parks the turn, so the lead-in must not stay dimmed)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onTextChunk = vi.fn();
       let chunksBeforeCard = -1;
@@ -2038,8 +2038,10 @@ describe('CliChatEngine', () => {
       expect(chunksBeforeCard).toBeGreaterThanOrEqual(1);
 
       // Turn ends: the whole assistant message finally lands — the SAME prose as a text block plus
-      // the AskUserQuestion tool_use — then a closing block. The canonical text re-emit must be
-      // SUPPRESSED (the provisional already holds the slot; reload replaces it).
+      // the AskUserQuestion tool_use — then a closing block. The canonical text is now FINALIZED via
+      // maybeFinalize (provisional:false) rather than suppressed — the client swaps the canonical onto the
+      // provisional IN PLACE. Without this the lead-in sits dimmed the whole time the modal waits for input
+      // (the turn-end reload that would otherwise replace it is deferred until after the answer).
       const canonicalModalLine = JSON.stringify({
         type: 'assistant', uuid: 'a1', parentUuid: 'u1', timestamp: '2026-06-04T00:00:01.000Z', entrypoint: 'cli',
         message: {
@@ -2054,9 +2056,13 @@ describe('CliChatEngine', () => {
       await writeSession(SID, [userLine('u1'), canonicalModalLine, assistantLine('a2', { parentUuid: 'a1', text: 'done' })]);
       await turn;
 
-      // The prose is emitted EXACTLY once (the provisional) — the canonical block's text was suppressed.
+      // The prose is emitted TWICE: the provisional (screen) then the canonical (file) via maybeFinalize.
+      // The client replaces the provisional in place — no double render — but the lead-in finalizes WITHOUT
+      // waiting for the deferred reload.
       const proseEmits = onTextChunk.mock.calls.filter((c) => String((c[0] as { content: string }).content).includes('어떤 것을 원하시는지'));
-      expect(proseEmits).toHaveLength(1);
+      expect(proseEmits).toHaveLength(2);
+      expect(proseEmits[0][0]).toMatchObject({ provisional: true });  // screen scrape (live badge)
+      expect(proseEmits[1][0]).toMatchObject({ provisional: false }); // canonical finalize (badge dropped)
     });
 
     it('strips box-drawing chrome (─ │) from scraped option labels (bug: stretched / │-laden rows)', async () => {
@@ -2322,6 +2328,21 @@ describe('CliChatEngine', () => {
       // PTY is torn down so the claude process does not linger at the limit screen.
       expect(h.cliSessionPool.dispose).toHaveBeenCalled();
       corroborated.mockRestore();
+    });
+
+    it('fails the turn on the transient rate-limit error (server throttle — no usage corroboration needed)', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onError = vi.fn();
+      const { turn } = await injectThenReady(engine, { onError });
+
+      // The rate-limit error lives only on the PTY (never the JSONL) — like the usage limit the turn would
+      // otherwise hang on the spinner. Unlike the usage limit it needs NO usage corroboration (it is an
+      // explicit error string, not the ambiguous usage-cap prose).
+      h.fakePty._onData?.(drawModal(['API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited']));
+
+      await expect(turn).rejects.toThrow(/temporarily limiting requests/i);
+      expect(onError).toHaveBeenCalled();
+      expect(h.cliSessionPool.dispose).toHaveBeenCalled();
     });
 
     it('does NOT fail on the limit sentence painted BEFORE injection (resumed-transcript repaint)', async () => {

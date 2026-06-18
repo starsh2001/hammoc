@@ -87,6 +87,7 @@ import { readSpinnerProgress } from './cliSpinnerProgress.js';
 import {
   detectPermissionDialog,
   detectUsageLimit,
+  detectRateLimit,
   extractToolName,
   extractPromptSentence,
   detectQuestionModal,
@@ -2224,6 +2225,17 @@ export class CliChatEngine implements ChatEngine {
           }
         }
 
+        // (2b) Transient rate-limit: a server-side throttle, DISTINCT from the weekly usage cap. Same
+        // screen-only problem (the notice is on the PTY, never the JSONL → the turn hangs on the spinner),
+        // but it's an explicit error string so no corroboration is needed — end the turn at once so the
+        // user can retry. Coded RATE_LIMIT_EXCEEDED like the usage limit (parseSDKError forwards it verbatim,
+        // the resume-retry path skips it). POST-INJECTION-gated by this same enclosing block.
+        const rateLimitMsg = detectRateLimit(text);
+        if (rateLimitMsg) {
+          fail(new SDKError(rateLimitMsg, SDKErrorCode.RATE_LIMIT_EXCEEDED));
+          return;
+        }
+
         // (3) Permission modal (Story 32.6). `permissionPending` is the per-modal re-fire guard: set
         // true on detection, cleared once handlePermission resolves (key driven). The dialog stays on
         // the living screen every frame until then, so the flag (not a buffer clear) bounds it to once.
@@ -2569,7 +2581,12 @@ export class CliChatEngine implements ChatEngine {
                 //   (c) neither pending → authoritative emit; advance `liveTextSlots` so a later grid
                 //       scrape of this same card falls below the high-water and is skipped.
                 if (suppressBlockText) {
-                  // (a) 37.9 modal lead-in — already counted via provisionalBodyEmitsPending above.
+                  // (a) 37.9 modal lead-in: FINALIZE the provisional prose IN PLACE now instead of waiting for
+                  // the turn-end reload. An AskUserQuestion modal parks the turn on the user's input, so that
+                  // reload can be far off — the lead-in would otherwise sit dimmed/badged the whole time the
+                  // choices are on screen. maybeFinalize swaps the canonical markdown onto the oldest still-
+                  // provisional text (the client replaces it in place — no double render). Counted above.
+                  maybeFinalize('text', text);
                 } else if (provisionalTextEmitsPending > 0) {
                   // (b) general grid provisional holds this slot.
                   provisionalTextEmitsPending--;

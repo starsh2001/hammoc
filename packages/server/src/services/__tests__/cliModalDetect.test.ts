@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest';
 import {
   detectPermissionDialog,
   detectUsageLimit,
+  detectRateLimit,
   extractToolName,
   extractPromptSentence,
   detectQuestionModal,
@@ -95,6 +96,21 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
 
     it('returns null without a reset clause (avoid stopping a healthy turn on a stray mention)', () => {
       expect(detectUsageLimit("You've hit your weekly limit while testing")).toBeNull();
+    });
+  });
+
+  describe('detectRateLimit', () => {
+    it('detects the transient throttle (the phrase + the Rate-limited tag)', () => {
+      expect(detectRateLimit('API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited'))
+        .toMatch(/temporarily limiting requests/i);
+    });
+
+    it('returns null without the "Rate limited" tag (a stray mention can not trip it)', () => {
+      expect(detectRateLimit('the server is temporarily limiting requests in this design doc')).toBeNull();
+    });
+
+    it('returns null on the usage-cap notice (that is a different path)', () => {
+      expect(detectRateLimit("You've hit your weekly limit · resets 1am")).toBeNull();
     });
   });
 
