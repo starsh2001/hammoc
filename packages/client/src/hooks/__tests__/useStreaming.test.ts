@@ -542,6 +542,37 @@ describe('useStreaming', () => {
       if (thinks[0].type === 'thinking') expect(thinks[0].content).toBe('pondering the plan');
       expect(thinks[0]).not.toHaveProperty('provisional');
     });
+
+    // Real mobile sleep/wake order (captured from a live turn): TWO provisional blocks (screen scrape)
+    // buffer up BEFORE their canonicals (file) arrive, so canonical/provisional INTERLEAVE across blocks.
+    // Each canonical must finalize its OWN block — i.e. the OLDEST still-provisional segment — not the
+    // last one. A "last segment" match binds block A's canonical to block B's provisional and leaves both
+    // copies of each block alive ("정본+잠정 둘 다" — the whole turn renders twice on wake).
+    it('interleaved provisional blocks then canonicals: each canonical replaces its OLDEST provisional, no duplicates', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'thinking:chunk', data: { content: 'plan A prov', provisional: true }, ts: 1000 },
+          { event: 'message:chunk', data: { content: 'answer A prov', provisional: true }, ts: 1010 },
+          { event: 'thinking:chunk', data: { content: 'plan B prov', provisional: true }, ts: 1020 },
+          { event: 'message:chunk', data: { content: 'answer B prov', provisional: true }, ts: 1030 },
+          { event: 'thinking:chunk', data: { content: 'plan A canonical', provisional: false }, ts: 1040 },
+          { event: 'message:chunk', data: { content: 'answer A canonical', provisional: false }, ts: 1050 },
+          { event: 'thinking:chunk', data: { content: 'plan B canonical', provisional: false }, ts: 1060 },
+          { event: 'message:chunk', data: { content: 'answer B canonical', provisional: false }, ts: 1070 },
+          // trailing tool:call flushes the final pending canonical text (mirrors a real turn continuing)
+          { event: 'tool:call', data: { id: 'cli-flush', name: 'Read', input: {}, provisional: false }, ts: 1080 },
+        ],
+      });
+      const segs = useChatStore.getState().streamingSegments;
+      expect(segs.filter((s) => (s as { provisional?: boolean }).provisional)).toHaveLength(0); // all finalized, no badges
+      const thinks = segs.filter((s) => s.type === 'thinking');
+      const texts = segs.filter((s) => s.type === 'text');
+      expect(thinks.map((s) => (s.type === 'thinking' ? s.content : ''))).toEqual(['plan A canonical', 'plan B canonical']);
+      expect(texts.map((s) => (s.type === 'text' ? s.content : ''))).toEqual(['answer A canonical', 'answer B canonical']);
+    });
   });
 
   // Real harness capture (_harness_cli.ts, opus-4-8): 6 interleaved Read/Search tools in ONE live

@@ -1058,18 +1058,29 @@ export function useStreaming() {
 
       /** Flush accumulated text into a text segment */
       const flushText = () => {
-        if (pendingTextBuffer.length > 0) {
-          // Merge into last text segment if possible
-          const lastSeg = segments[segments.length - 1];
-          if (lastSeg && lastSeg.type === 'text') {
-            (lastSeg as { type: 'text'; content: string; provisional?: boolean }).content += pendingTextBuffer;
-            if (pendingTextProvisional) (lastSeg as { provisional?: boolean }).provisional = true;
-          } else {
-            segments.push({ type: 'text', content: pendingTextBuffer, ...(pendingTextProvisional ? { provisional: true } : {}) });
+        if (pendingTextBuffer.length === 0) return;
+        // Canonical flush REPLACES the oldest still-provisional text segment in place (mirrors
+        // chatStore.appendStreamingContent). The buffer interleaves blocks, so the right target is the
+        // OLDEST provisional — not the last segment (another block's provisional can sit after it).
+        if (pendingTextProvisional === false) {
+          const idx = segments.findIndex((s) => s.type === 'text' && (s as { provisional?: boolean }).provisional);
+          if (idx >= 0) {
+            segments[idx] = { type: 'text', content: pendingTextBuffer };
+            pendingTextBuffer = '';
+            pendingTextProvisional = undefined;
+            return;
           }
-          pendingTextBuffer = '';
-          pendingTextProvisional = undefined;
         }
+        // Merge only into a SAME-state trailing text segment; otherwise start a new one. Merging a
+        // canonical flush into a provisional segment (or vice-versa) is what left both copies alive.
+        const lastSeg = segments[segments.length - 1];
+        if (lastSeg && lastSeg.type === 'text' && Boolean((lastSeg as { provisional?: boolean }).provisional) === Boolean(pendingTextProvisional)) {
+          (lastSeg as { type: 'text'; content: string }).content += pendingTextBuffer;
+        } else {
+          segments.push({ type: 'text', content: pendingTextBuffer, ...(pendingTextProvisional ? { provisional: true } : {}) });
+        }
+        pendingTextBuffer = '';
+        pendingTextProvisional = undefined;
       };
 
       /** Find a tool segment by toolCallId */
@@ -1204,19 +1215,18 @@ export function useStreaming() {
             if (!sessionId && d.sessionId) sessionId = d.sessionId;
             if (!messageId && d.messageId) messageId = d.messageId;
             isCompacting = false;
-            // Story 37.11 + reconnect parity: the buffer holds BOTH the provisional preview and the
-            // canonical text of each block. A canonical chunk (provisional === false) REPLACES this
-            // block's provisional preview — so drop the not-yet-flushed provisional buffer AND a
-            // just-flushed provisional text segment — instead of appending, which would duplicate the
-            // text ("메뉴 갔다오거나 sleep/wake 후 잠정+정본 둘 다 남는" 재연결 중복). Same fix as the tool path.
-            if (!d.provisional) {
-              if (pendingTextProvisional) pendingTextBuffer = '';
-              const last = segments[segments.length - 1];
-              if (last && last.type === 'text' && (last as { provisional?: boolean }).provisional) segments.pop();
-              pendingTextProvisional = undefined;
-            } else if (d.provisional && pendingTextBuffer.length === 0) {
-              pendingTextProvisional = true;
+            // Story 37.11 + reconnect parity: the buffer INTERLEAVES provisional (screen-scrape) and
+            // canonical (file) text across blocks. Accumulate same-state chunks; when the provisional
+            // flag flips, flush first so each flush is purely one or the other. flushText() then routes a
+            // canonical flush to REPLACE the oldest still-provisional text in place (drop its badge) —
+            // mirrors chatStore.appendStreamingContent. A plain "last segment" replace missed the right
+            // block when another block's provisional was interleaved after it, leaving the provisional +
+            // canonical copies BOTH alive ("sleep/wake 후 잠정+정본 둘 다 남는" 재연결 중복).
+            const incomingProv = d.provisional === false ? false : (d.provisional ? true : undefined);
+            if (pendingTextBuffer.length > 0 && pendingTextProvisional !== incomingProv) {
+              flushText();
             }
+            pendingTextProvisional = incomingProv;
             pendingTextBuffer += d.content;
             break;
           }
@@ -1224,18 +1234,30 @@ export function useStreaming() {
             const d = eventData as { content: string; provisional?: boolean };
             flushText();
             isCompacting = false;
-            const lastSeg = segments[segments.length - 1];
-            // reconnect parity (Story 37.11): a canonical thinking chunk FINALIZES the provisional
-            // ∴-scrape preview IN PLACE (replace + drop badge); same-state chunks merge; otherwise a
-            // new card. Without the finalize branch the buffer's provisional + canonical thinking both
-            // survived → duplicated thinking card after a menu switch / sleep-wake reconnect.
-            if (d.provisional === false && lastSeg && lastSeg.type === 'thinking' && (lastSeg as { provisional?: boolean }).provisional) {
-              (lastSeg as { type: 'thinking'; content: string }).content = d.content;
-              delete (lastSeg as { provisional?: boolean }).provisional;
-            } else if (lastSeg && lastSeg.type === 'thinking' && Boolean((lastSeg as { provisional?: boolean }).provisional) === Boolean(d.provisional)) {
-              (lastSeg as { type: 'thinking'; content: string }).content += d.content;
+            // reconnect parity (Story 37.11): a canonical thinking chunk FINALIZES the matching provisional
+            // ∴-scrape preview IN PLACE (replace + drop badge). Because the buffer interleaves blocks, the
+            // target is the OLDEST still-provisional thinking (findIndex) — not the last segment — mirroring
+            // chatStore.addStreamingThinking. Same-state chunks merge into the trailing thinking; else a new
+            // card. The old "last segment" check left the provisional + canonical thinking BOTH alive.
+            if (d.provisional === false) {
+              const idx = segments.findIndex((s) => s.type === 'thinking' && (s as { provisional?: boolean }).provisional);
+              if (idx >= 0) {
+                segments[idx] = { type: 'thinking', content: d.content };
+              } else {
+                const lastSeg = segments[segments.length - 1];
+                if (lastSeg && lastSeg.type === 'thinking' && !(lastSeg as { provisional?: boolean }).provisional) {
+                  (lastSeg as { type: 'thinking'; content: string }).content += d.content;
+                } else {
+                  segments.push({ type: 'thinking', content: d.content });
+                }
+              }
             } else {
-              segments.push({ type: 'thinking', content: d.content, ...(d.provisional ? { provisional: true } : {}) });
+              const lastSeg = segments[segments.length - 1];
+              if (lastSeg && lastSeg.type === 'thinking' && (lastSeg as { provisional?: boolean }).provisional) {
+                (lastSeg as { type: 'thinking'; content: string }).content += d.content;
+              } else {
+                segments.push({ type: 'thinking', content: d.content, provisional: true });
+              }
             }
             break;
           }
