@@ -1204,9 +1204,19 @@ export function useStreaming() {
             if (!sessionId && d.sessionId) sessionId = d.sessionId;
             if (!messageId && d.messageId) messageId = d.messageId;
             isCompacting = false;
-            // Story 37.11: a turn's chunks share one source; the latest flag wins for the merged segment.
-            if (d.provisional && pendingTextBuffer.length === 0) pendingTextProvisional = true;
-            else if (!d.provisional) pendingTextProvisional = undefined;
+            // Story 37.11 + reconnect parity: the buffer holds BOTH the provisional preview and the
+            // canonical text of each block. A canonical chunk (provisional === false) REPLACES this
+            // block's provisional preview — so drop the not-yet-flushed provisional buffer AND a
+            // just-flushed provisional text segment — instead of appending, which would duplicate the
+            // text ("메뉴 갔다오거나 sleep/wake 후 잠정+정본 둘 다 남는" 재연결 중복). Same fix as the tool path.
+            if (!d.provisional) {
+              if (pendingTextProvisional) pendingTextBuffer = '';
+              const last = segments[segments.length - 1];
+              if (last && last.type === 'text' && (last as { provisional?: boolean }).provisional) segments.pop();
+              pendingTextProvisional = undefined;
+            } else if (d.provisional && pendingTextBuffer.length === 0) {
+              pendingTextProvisional = true;
+            }
             pendingTextBuffer += d.content;
             break;
           }
@@ -1214,11 +1224,16 @@ export function useStreaming() {
             const d = eventData as { content: string; provisional?: boolean };
             flushText();
             isCompacting = false;
-            // Merge into last thinking segment
             const lastSeg = segments[segments.length - 1];
-            if (lastSeg && lastSeg.type === 'thinking') {
-              (lastSeg as { type: 'thinking'; content: string; provisional?: boolean }).content += d.content;
-              if (d.provisional) (lastSeg as { provisional?: boolean }).provisional = true;
+            // reconnect parity (Story 37.11): a canonical thinking chunk FINALIZES the provisional
+            // ∴-scrape preview IN PLACE (replace + drop badge); same-state chunks merge; otherwise a
+            // new card. Without the finalize branch the buffer's provisional + canonical thinking both
+            // survived → duplicated thinking card after a menu switch / sleep-wake reconnect.
+            if (d.provisional === false && lastSeg && lastSeg.type === 'thinking' && (lastSeg as { provisional?: boolean }).provisional) {
+              (lastSeg as { type: 'thinking'; content: string }).content = d.content;
+              delete (lastSeg as { provisional?: boolean }).provisional;
+            } else if (lastSeg && lastSeg.type === 'thinking' && Boolean((lastSeg as { provisional?: boolean }).provisional) === Boolean(d.provisional)) {
+              (lastSeg as { type: 'thinking'; content: string }).content += d.content;
             } else {
               segments.push({ type: 'thinking', content: d.content, ...(d.provisional ? { provisional: true } : {}) });
             }

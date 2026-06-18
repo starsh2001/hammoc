@@ -509,6 +509,133 @@ describe('useStreaming', () => {
     });
   });
 
+  describe('stream:buffer-replay text/thinking finalize (reconnect mid-turn)', () => {
+    it('text: canonical chunk replaces the provisional preview → ONE text segment (no duplicate)', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'message:chunk', data: { sessionId: 'session-1', messageId: 'cli-prov-text-1', content: 'Hello world', provisional: true }, ts: 1000 },
+          { event: 'message:chunk', data: { sessionId: 'session-1', messageId: 'cli-fin-text-1', content: 'Hello world', provisional: false }, ts: 1100 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-0', name: 'Read', input: {}, provisional: true }, ts: 1200 },
+        ],
+      });
+      const texts = useChatStore.getState().streamingSegments.filter((s) => s.type === 'text');
+      expect(texts).toHaveLength(1);
+      if (texts[0].type === 'text') expect(texts[0].content).toBe('Hello world');
+      expect(texts[0]).not.toHaveProperty('provisional');
+    });
+
+    it('thinking: canonical chunk replaces the provisional ∴ preview → ONE thinking segment', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          { event: 'thinking:chunk', data: { content: 'pondering the plan', provisional: true }, ts: 1000 },
+          { event: 'thinking:chunk', data: { content: 'pondering the plan', provisional: false }, ts: 1100 },
+        ],
+      });
+      const thinks = useChatStore.getState().streamingSegments.filter((s) => s.type === 'thinking');
+      expect(thinks).toHaveLength(1);
+      if (thinks[0].type === 'thinking') expect(thinks[0].content).toBe('pondering the plan');
+      expect(thinks[0]).not.toHaveProperty('provisional');
+    });
+  });
+
+  // Real harness capture (_harness_cli.ts, opus-4-8): 6 interleaved Read/Search tools in ONE live
+  // turn. The buffer mixes BOTH completion orders the server actually emits — pattern A
+  // (prov USE → prov RESULT → CANON USE) for tools 0/2/3/4/5 and pattern B
+  // (prov USE → CANON USE → prov RESULT) for tool 1 — plus the N:M friendly-name case
+  // (screen 'Search' → file 'Glob', same synthId). A reconnect mid-turn replays this whole buffer;
+  // every tool must finalize to a SINGLE completed card. A stuck 'pending' here = the "Read 초록인데
+  // 카드 spinner" reconnect symptom.
+  describe('stream:buffer-replay multi-tool live reconnect (real harness sequence)', () => {
+    it('6 interleaved Read/Search tools (mixed completion orders) all finalize to ONE completed card each', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1');
+
+      mockSocket.trigger('stream:buffer-replay', {
+        sessionId: 'session-1',
+        events: [
+          // tool-0: pattern A (prov USE → prov RESULT → CANON USE)
+          { event: 'tool:call', data: { id: 'cli-prov-tool-0', name: 'Read', input: {}, provisional: true }, ts: 1000 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-0', result: { success: true, output: '' }, provisional: true }, ts: 1010 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-0', name: 'Read', input: { file_path: 'package.json' }, provisional: false }, ts: 1020 },
+          // tool-1: pattern B (prov USE → CANON USE → prov RESULT)
+          { event: 'tool:call', data: { id: 'cli-prov-tool-1', name: 'Read', input: {}, provisional: true }, ts: 1030 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-1', name: 'Read', input: { file_path: 'tsconfig.json' }, provisional: false }, ts: 1040 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-1', result: { success: true, output: '' }, provisional: true }, ts: 1050 },
+          // tool-2: pattern A + N:M friendly name (screen 'Search' → file 'Glob')
+          { event: 'tool:call', data: { id: 'cli-prov-tool-2', name: 'Search', input: {}, provisional: true }, ts: 1060 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-2', result: { success: true, output: '' }, provisional: true }, ts: 1070 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-2', name: 'Glob', input: { pattern: '**/*' }, provisional: false }, ts: 1080 },
+          // tool-3/4/5: pattern A
+          { event: 'tool:call', data: { id: 'cli-prov-tool-3', name: 'Read', input: {}, provisional: true }, ts: 1090 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-3', result: { success: true, output: '' }, provisional: true }, ts: 1100 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-3', name: 'Read', input: { file_path: 'packages/client/package.json' }, provisional: false }, ts: 1110 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-4', name: 'Read', input: {}, provisional: true }, ts: 1120 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-4', result: { success: true, output: '' }, provisional: true }, ts: 1130 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-4', name: 'Read', input: { file_path: 'packages/server/package.json' }, provisional: false }, ts: 1140 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-5', name: 'Read', input: {}, provisional: true }, ts: 1150 },
+          { event: 'tool:result', data: { toolCallId: 'cli-prov-tool-5', result: { success: true, output: '' }, provisional: true }, ts: 1160 },
+          { event: 'tool:call', data: { id: 'cli-prov-tool-5', name: 'Read', input: { file_path: 'README.md' }, provisional: false }, ts: 1170 },
+        ],
+      });
+
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      expect(tools).toHaveLength(6); // one card per tool — no stuck duplicates
+      for (const t of tools) {
+        expect(t).toMatchObject({ status: 'completed' }); // none stuck on the pending spinner
+        expect(t).not.toHaveProperty('provisional'); // badge dropped
+      }
+      // The friendly screen name was overwritten by the canonical file name.
+      const names = tools.map((t) => (t.type === 'tool' ? t.toolCall.name : '')).sort();
+      expect(names).toEqual(['Glob', 'Read', 'Read', 'Read', 'Read', 'Read']);
+    });
+  });
+
+  // The LIVE path (real-time tool:call / tool:result events, NOT buffer-replay). This is what a user
+  // sees during a normal turn with no menu-switch / sleep. Same real harness sequence: pattern A
+  // (prov USE → prov RESULT → CANON USE), pattern B (prov USE → CANON USE → prov RESULT), and the
+  // N:M friendly name (Search → Glob). Every tool must end 'completed' — a stuck 'pending' here is the
+  // live "Read 초록인데 카드 spinner" the user reports.
+  describe('LIVE tool reconcile — real-time events (not buffer-replay)', () => {
+    it('6 tools (mixed completion orders + Search→Glob) all reach completed via live tool:call/tool:result', () => {
+      renderHook(() => useStreaming());
+      useChatStore.getState().restoreStreaming('session-1'); // isStreaming = true (live turn)
+
+      const live = (event: string, data: unknown) => mockSocket.trigger(event, data);
+
+      // tool-0: pattern A
+      live('tool:call', { id: 'cli-prov-tool-0', name: 'Read', input: {}, provisional: true });
+      live('tool:result', { toolCallId: 'cli-prov-tool-0', result: { success: true, output: '' }, provisional: true });
+      live('tool:call', { id: 'cli-prov-tool-0', name: 'Read', input: { file_path: 'package.json' }, provisional: false });
+      // tool-1: pattern B
+      live('tool:call', { id: 'cli-prov-tool-1', name: 'Read', input: {}, provisional: true });
+      live('tool:call', { id: 'cli-prov-tool-1', name: 'Read', input: { file_path: 'tsconfig.json' }, provisional: false });
+      live('tool:result', { toolCallId: 'cli-prov-tool-1', result: { success: true, output: '' }, provisional: true });
+      // tool-2: pattern A + N:M (Search → Glob)
+      live('tool:call', { id: 'cli-prov-tool-2', name: 'Search', input: {}, provisional: true });
+      live('tool:result', { toolCallId: 'cli-prov-tool-2', result: { success: true, output: '' }, provisional: true });
+      live('tool:call', { id: 'cli-prov-tool-2', name: 'Glob', input: { pattern: '**/*' }, provisional: false });
+      // tool-3/4/5: pattern A
+      for (const [slot, file] of [['3', 'a.ts'], ['4', 'b.ts'], ['5', 'c.ts']] as const) {
+        live('tool:call', { id: `cli-prov-tool-${slot}`, name: 'Read', input: {}, provisional: true });
+        live('tool:result', { toolCallId: `cli-prov-tool-${slot}`, result: { success: true, output: '' }, provisional: true });
+        live('tool:call', { id: `cli-prov-tool-${slot}`, name: 'Read', input: { file_path: file }, provisional: false });
+      }
+
+      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
+      expect(tools).toHaveLength(6);
+      for (const t of tools) {
+        expect(t).toMatchObject({ status: 'completed' });
+        expect(t).not.toHaveProperty('provisional');
+      }
+    });
+  });
+
   describe('cli:phase event (Story 36.2 — transient CLI boot/inject phase)', () => {
     it('stores the phase on a live cli:phase event', () => {
       renderHook(() => useStreaming());
