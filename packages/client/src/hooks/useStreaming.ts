@@ -19,7 +19,6 @@ import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { usePreferencesStore } from '../stores/preferencesStore';
 import { debugLog } from '../utils/debugLogger';
-import { createPresentationQueue } from '../utils/presentationQueue';
 
 // Module-scoped cache: SDK returns filesChanged=0 for actual rewind,
 // so we remember the count from the preceding dryRun for the success toast.
@@ -159,19 +158,12 @@ export function useStreaming() {
     // is. A frame's chunks share one source, so the latest chunk's flag is the segment's flag.
     let frameBufferProvisional: boolean | undefined;
 
-    // --- Synthetic typing (CLI mode, opt-in `cliSyntheticTyping`) ---
-    // CLI mode delivers assistant text one COMPLETED block at a time, so the frame
-    // coalescing below paints each block in a single shot (no typewriter feel). When the
-    // user opts in AND the effective engine is CLI, route chunks through a typewriter queue
-    // instead. SDK mode (real token streaming) and the toggle-off path stay untouched.
-    const isSyntheticTyping = (): boolean => {
-      const prefs = usePreferencesStore.getState().preferences;
-      if (!(prefs.cliSyntheticTyping ?? false)) return false;
-      const mode = useChatStore.getState().projectSettings?.engineModeOverride ?? prefs.engineMode ?? 'sdk';
-      return mode === 'cli';
-    };
-    const preso = createPresentationQueue({ append: appendStreamingContent });
-
+    // --- Frame coalescing (all CLI/SDK streaming text) ---
+    // CLI mode delivers assistant text one COMPLETED block at a time; SDK mode streams real
+    // tokens. Either way, chunks are coalesced into one state update per animation frame so
+    // rapid arrivals don't thrash React. (The old opt-in synthetic-typing/stagger layer was
+    // removed — the provisional-card algorithm already conveys live progress, and queueing the
+    // tool-completion behind a typing queue could leave a tool card spinning indefinitely.)
     const flushFrameBuffer = () => {
       frameRequestId = null;
       if (frameBuffer.length > 0) {
@@ -185,12 +177,6 @@ export function useStreaming() {
 
     /** Enqueue text content for coalesced rendering (one state update per frame) */
     const enqueueChunk = (content: string, provisional?: boolean) => {
-      // CLI synthetic typing: release this block character-by-character. SDK mode (and CLI
-      // with the toggle off) uses the original per-frame coalescing path below.
-      if (isSyntheticTyping()) {
-        preso.enqueueText(content, provisional);
-        return;
-      }
       frameBuffer += content;
       // Story 37.11: a frame's chunks share one source; the latest flag wins for the coalesced segment.
       frameBufferProvisional = provisional;
@@ -212,10 +198,6 @@ export function useStreaming() {
         frameBufferProvisional = undefined;
         appendStreamingContent(text, prov);
       }
-      // Commit any in-flight synthetic-typing text too, so a following thinking/tool/
-      // permission segment is ordered AFTER the typed text. In synthetic mode the segment
-      // handlers route through the presentation queue directly, so this is a safety net.
-      preso.flush();
     };
 
     /** Discard all pending text (for abort/error) */
@@ -226,35 +208,19 @@ export function useStreaming() {
         cancelAnimationFrame(frameRequestId);
         frameRequestId = null;
       }
-      preso.clear();
     };
 
-    /** Card-entrance gap (ms) for the CLI reveal animation; default 500, clamped to >= 0. */
-    const staggerMs = (): number => {
-      const v = usePreferencesStore.getState().preferences.cliCardStaggerMs;
-      return typeof v === 'number' && v >= 0 ? v : 500;
-    };
     /**
-     * Reveal-animation helpers (CLI synthetic typing). In synthetic mode, mutations to the
-     * streaming segment list go through the presentation queue so arrival order == reveal
-     * order: a NEW card bubbles in `cliCardStaggerMs` after the prior step finishes; an UPDATE
-     * lands in order with no gap. Outside synthetic mode they run immediately (buffered text is
-     * flushed first to keep segment ordering, exactly as before).
+     * Segment helpers. A NEW card (reveal) flushes any buffered text first so the card is ordered
+     * AFTER the text being typed; an UPDATE applies in place. Both run immediately — there is no
+     * typewriter/stagger to wait on.
      */
-    const revealSegment = (mutate: () => void, delayMs = staggerMs()) => {
-      if (isSyntheticTyping()) {
-        preso.enqueueReveal(mutate, delayMs);
-      } else {
-        flushChunkQueue();
-        mutate();
-      }
+    const revealSegment = (mutate: () => void) => {
+      flushChunkQueue();
+      mutate();
     };
     const updateSegment = (mutate: () => void) => {
-      if (isSyntheticTyping()) {
-        preso.enqueueReveal(mutate, 0);
-      } else {
-        mutate();
-      }
+      mutate();
     };
 
     // Handle user:message — server broadcasts to ALL sockets (including sender).
@@ -297,8 +263,7 @@ export function useStreaming() {
       if (state.isCompacting) {
         useChatStore.setState({ isCompacting: false });
       }
-      // Reveal the thinking card: staggered after prior text/cards in synthetic mode,
-      // flush-then-insert immediately otherwise. Story 37.11: propagate the provisional flag.
+      // Reveal the thinking card: flush any buffered text first, then insert. Story 37.11: provisional flag.
       revealSegment(() => addStreamingThinking(data.content, data.provisional));
     };
 
@@ -353,17 +318,11 @@ export function useStreaming() {
       // This is a safety net for reconnect replay scenarios.
       autoResolveStaleInteractiveSegments();
 
-      // Story 37.11: propagate the provisional flag. A canonical (provisional === false) block FINALIZES
-      // the provisional text segment in place. It must run AFTER the in-flight provisional text has been
-      // committed to a segment — the provisional rides the synthetic typer (first char lands a frame
-      // later) or the rAF frame buffer, so applying the canonical *immediately* finds no provisional to
-      // replace yet and spawns a DUPLICATE. Routing it through revealSegment puts the finalize on the SAME
-      // ordered chain as the provisional (and flushes the frame buffer in non-synthetic mode), so it lands
-      // right after the provisional segment exists → in-place replace, never a dup. Mirrors the thinking
-      // path, which already goes through revealSegment for both states. delayMs 0: a finalize is an
-      // in-place swap, not a new card, so it should not wait the card-entrance stagger.
+      // Story 37.11: a canonical (provisional === false) block FINALIZES the provisional text segment in
+      // place. It runs through revealSegment (which flushes buffered text first) so it lands right after
+      // the provisional segment exists → in-place replace, never a duplicate.
       if (data.provisional === false) {
-        revealSegment(() => appendStreamingContent(data.content, false), 0);
+        revealSegment(() => appendStreamingContent(data.content, false));
       } else {
         enqueueChunk(data.content, data.provisional);
       }
@@ -397,12 +356,8 @@ export function useStreaming() {
 
     // Handle stream completion
     const handleComplete = async (data: Message) => {
-      // Flush any buffered chunks before completing. With synthetic typing, the real
-      // completion + typer drain happens in stream:complete-messages — flushing here would
-      // cut the last block short, so skip it (frameBuffer is empty in synthetic mode).
-      if (!isSyntheticTyping()) {
-        flushChunkQueue();
-      }
+      // Flush any buffered chunks before completing.
+      flushChunkQueue();
 
       // Update streamingSessionId with the actual sessionId from result
       // (SDK doesn't send 'init' message, so sessionId only comes in 'result')
@@ -491,13 +446,9 @@ export function useStreaming() {
       // text finishes typing (staggered). Otherwise: flush buffered text first to prevent the
       // response from splitting, then insert immediately (original behavior).
       // Story 37.11/37.20: a CLI grid tool card is provisional (name-only, empty input until the file
-      // confirms it). The canonical re-sends with `provisional: false` to FINALIZE it (real name+input, badge
-      // dropped). It MUST ride the SAME reveal queue (delayMs 0 = no stagger, finalize-in-place once it's its
-      // turn), NOT apply immediately. In CLI mode the canonical id (toolu_) DIFFERS from the provisional id
-      // (cli-prov-tool-N) and binds by ORDER, so applying it immediately — while the provisional card is still
-      // waiting in the typing queue (rAF) — finds no provisional to finalize, spawns a DUPLICATE canonical
-      // card, and that card never receives the completion (which arrives on the synthId) → stuck spinner.
-      // Same fix as the text-canonical bypass (L366). `true`/`undefined` keep the normal staggered reveal.
+      // confirms it). The canonical re-sends with `provisional: false` to FINALIZE it in place (real
+      // name+input, badge dropped) — both go through revealSegment so the finalize lands on the same
+      // ordered chain as the provisional card (flush buffered text first, then apply).
       const applyTool = () => addStreamingToolCall({
         id: data.id,
         name: data.name,
@@ -505,8 +456,7 @@ export function useStreaming() {
         startedAt: data.startedAt,
         ...(data.provisional !== undefined ? { provisional: data.provisional } : {}),
       });
-      if (data.provisional === false) revealSegment(applyTool, 0);
-      else revealSegment(applyTool);
+      revealSegment(applyTool);
     };
 
     // Handle permission:request event — add interactive segment for permission or question (Story 7.1)
@@ -550,9 +500,8 @@ export function useStreaming() {
           // First question's choices as top-level for backward compat
           const firstQuestion = mappedQuestions[0];
           // Ride the presentation queue (delay 0 = no stagger) so the card lands AFTER any
-          // text/cards still queued for reveal — inserting it directly here let it jump ahead
-          // of its own preceding answer. flushChunkQueue() above already set the queue to
-          // flush, so this reveal fires immediately rather than waiting on the animation.
+          // Ride revealSegment so the question card lands AFTER any preceding text (flushed first),
+          // not ahead of its own answer.
           revealSegment(() => addInteractiveSegment({
             id: data.id,
             interactionType: 'question',
@@ -560,7 +509,7 @@ export function useStreaming() {
             choices: firstQuestion.choices,
             questions: mappedQuestions,
             multiSelect: firstQuestion.multiSelect,
-          }), 0);
+          }));
           return;
         }
       }
@@ -570,14 +519,13 @@ export function useStreaming() {
       // AskUserQuestion already uses. SDK mode leaves `standalone` falsy and keeps the
       // tool-attached behavior below.
       if (data.standalone) {
-        // Same queue-ordering fix as the question card above: ride the presentation queue so
-        // the standalone permission card lands after any preceding text/cards.
+        // Ride revealSegment so the standalone permission card lands after any preceding text/cards.
         revealSegment(() => addInteractiveSegment({
           id: data.id,
           interactionType: 'permission',
           toolCall: { id: data.toolCall.id, name: data.toolCall.name, input: data.toolCall.input },
           choices: [],
-        }), 0);
+        }));
         return;
       }
 
@@ -1741,16 +1689,6 @@ export function useStreaming() {
         // the next frame) fires after completeStreaming() and re-populates segments
         // via appendStreamingContent, creating an orphaned segment that renders as
         // a duplicate message bubble.
-        // Synthetic typing: the turn is DONE — the authoritative answer has already arrived, so there is no
-        // reason to WAIT for the typing animation. That await was the hang: while the tab is hidden (Win+L /
-        // lock / sleep / mobile background) the browser throttles requestAnimationFrame, so `drain()` (which
-        // loops until the typing chain settles) never resolves → the canonical swap below never runs → the
-        // provisional stays on screen forever. Instead collapse the animation INSTANTLY: `flush()` is
-        // synchronous and never blocks, so the canonical messages swap in right away. The typing effect is
-        // best-effort *during* streaming; once the turn ends the canonical wins. Aborted streams skip it too.
-        if (!data.aborted && isSyntheticTyping()) {
-          preso.flush();
-        }
         clearChunkQueue();
         useMessageStore.getState().setMessages(messages);
         completeStreaming();
@@ -1836,19 +1774,6 @@ export function useStreaming() {
     // Register keyboard event listener
     document.addEventListener('keydown', handleKeyDown);
 
-    // CLI synthetic-typing reveal vs. mobile sleep/wake (CLI card ordering, symptom 3).
-    // While the tab is hidden the browser pauses requestAnimationFrame (the typewriter) and
-    // throttles/pauses setTimeout (the card stagger). If a turn completes during that freeze,
-    // the completion path's `await preso.drain()` blocks indefinitely on those frozen timers —
-    // leaving half-revealed live segments on screen and letting the backed-up timers fire out of
-    // order on wake (the intermittent ordering glitch). Collapsing the animation the instant we go
-    // hidden lets drain() resolve immediately so the authoritative messages swap in right away;
-    // there's no point animating an invisible screen. The next turn's clear() re-enables it.
-    const handleVisibilityChange = () => {
-      if (document.hidden) preso.flush();
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     // Cleanup
     return () => {
       // Clear chunk smoothing timer
@@ -1900,7 +1825,6 @@ export function useStreaming() {
       socket.off('session:summary-result', handleSummaryResult);
       socket.io.off('reconnect_failed', handleReconnectFailed);
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [
     startStreaming,

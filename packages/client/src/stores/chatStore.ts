@@ -669,8 +669,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // area, which always renders BELOW the message list — an orphan tool card stuck under
     // the last answer until the session is re-entered ("뒤로 갔다 오면 재정렬"). The reload
     // already contains this tool in its correct position, so dropping the late live card is
-    // the correct, lossless fix. (Synthetic-typing reveals run this mutate from the preso
-    // queue, so the check lands at execution time, after completeStreaming has flipped the flag.)
+    // the correct, lossless fix. The reveal helpers run this mutate at execution time, after
+    // completeStreaming may have flipped the flag.
     if (!get().isStreaming) return;
     const segments = get().streamingSegments;
     // Story 37.11 (progressive finalize): a NON-provisional tool call FINALIZES the OLDEST still-provisional

@@ -42,11 +42,6 @@ export interface UserPreferences {
   // the interactive card so the user chooses; 'summary'/'full' auto-selects that option via the
   // menu keys so the turn never blocks. CLI mode only. (Story 37.6 follow-up.)
   cliResumeChoice?: 'ask' | 'summary' | 'full';
-  // Master toggle for the CLI-mode "reveal" animation. When ON: assistant text types out
-  // char-by-char, then non-text cards (thinking/tool/system) enter one-by-one with a stagger
-  // gap, instead of the whole turn appearing at once. CLI mode only; SDK mode and
-  // history/replay are unaffected. Default OFF. (Client-side only — the engine never reads it.)
-  cliSyntheticTyping?: boolean;
   cliBinaryPath?: string;               // manual claude binary path override ('' = auto-detect)
   // Mirror the raw claude TUI screen (ANSI) in a read-only panel during CLI-mode chats.
   // Default feature (default ON when unset, opt-out — Story 37.7 promoted it from a
@@ -69,10 +64,6 @@ export interface UserPreferences {
   // NOT auto-abort (the user decides). 0 disables it; unset = 20000. Clamped to 5s–10min. CLI mode
   // only, and only while the mirror is on (the screen-frame source). (Screen-stall watchdog.)
   cliScreenStallMs?: number;
-  // Delay in ms between non-text card entrances during the CLI reveal animation (above).
-  // Each thinking/tool/system card waits this long after the previous segment finishes
-  // before bubbling in. Text typing is continuous (not gated by this). Default 500.
-  cliCardStaggerMs?: number;
   commandFavorites?: Array<string | CommandFavoriteEntry>;
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default

@@ -16,7 +16,7 @@ import { usePreferencesStore } from '../../stores/preferencesStore';
 
 // Checkbox sub-settings (key 1:1 with the i18n segment — mirrors showThinkingBlocks ↔ advanced.showThinkingBlocks).
 const CLI_CHECKBOXES: {
-  key: 'cliShowThinkingSummaries' | 'cliShowGenerationProgress' | 'cliSyntheticTyping' | 'cliPtyMirror';
+  key: 'cliShowThinkingSummaries' | 'cliShowGenerationProgress' | 'cliPtyMirror';
   labelKey: string;
   descKey: string;
   defaultOn: boolean;
@@ -24,10 +24,6 @@ const CLI_CHECKBOXES: {
   { key: 'cliShowThinkingSummaries', labelKey: 'global.cliShowThinkingSummaries', descKey: 'global.cliShowThinkingSummariesDesc', defaultOn: true },
   { key: 'cliShowGenerationProgress', labelKey: 'global.cliShowGenerationProgress', descKey: 'global.cliShowGenerationProgressDesc', defaultOn: true },
   { key: 'cliPtyMirror', labelKey: 'global.cliPtyMirror', descKey: 'global.cliPtyMirrorDesc', defaultOn: true },
-  // Keep cliSyntheticTyping LAST: its "card stagger" sub-field renders right after this list, so the
-  // parent toggle must be the final row for the nested (left-rule) sub-field to read as ITS child —
-  // otherwise the sub-field hangs under whatever toggle follows (it looked like it belonged to PTY mirror).
-  { key: 'cliSyntheticTyping', labelKey: 'global.cliSyntheticTyping', descKey: 'global.cliSyntheticTypingDesc', defaultOn: false },
 ];
 
 /**
@@ -162,25 +158,8 @@ export function CliModeSettingsPanel() {
           </label>
         ))}
 
-        {/* Card reveal interval — a sub-option of "타이핑·카드 연출": a left rule under the parent
-            toggle reads as nesting (the bare indent looked orphaned). Only shown while it is on. */}
-        {(preferences.cliSyntheticTyping ?? false) && (
-          <div className="ml-7 border-l-2 border-gray-200 dark:border-[#455568] pl-3">
-            <NumberPrefField
-              id="cli-card-stagger"
-              label={t('global.cliCardStaggerMs')}
-              desc={t('global.cliCardStaggerMsDesc')}
-              value={preferences.cliCardStaggerMs ?? 500}
-              min={0}
-              max={5000}
-              step={50}
-              onCommit={(n) => updatePreference('cliCardStaggerMs', n)}
-            />
-          </div>
-        )}
-
         {/* Mirror refresh interval — shown only while the mirror is ON (cliPtyMirror default ON).
-            Lower = smoother, higher = calmer / less bandwidth. Same widget shape as cliCardStaggerMs. */}
+            Lower = smoother, higher = calmer / less bandwidth. */}
         {(preferences.cliPtyMirror ?? true) && (
           <NumberPrefField
             id="cli-mirror-throttle"

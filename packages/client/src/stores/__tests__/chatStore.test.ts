@@ -7,7 +7,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useChatStore } from '../chatStore';
 import { useMessageStore } from '../messageStore';
 import { usePreferencesStore } from '../preferencesStore';
-import { createPresentationQueue } from '../../utils/presentationQueue';
 
 // Mock socket
 const mockEmit = vi.fn();
@@ -808,98 +807,6 @@ describe('useChatStore', () => {
       useChatStore.getState().sendMessage('next', { workingDirectory: '/p', sessionId: 'sid', resume: true });
       // No pre-check block → the message reaches the server, where auto-compact (claude/SDK) handles it.
       expect(mockEmit).toHaveBeenCalledWith('chat:send', expect.objectContaining({ content: 'next', resume: true }));
-    });
-  });
-
-  describe('provisional→canonical text replace race (Story 37.11 duplicate)', () => {
-    const setup = () => {
-      useChatStore.setState({ streamingSegments: [], messages: [], isStreaming: true });
-      const rafQ: Array<() => void> = [];
-      const sched = (cb: () => void) => { rafQ.push(cb); return rafQ.length; };
-      const preso = createPresentationQueue({
-        append: (c: string, p?: boolean) => useChatStore.getState().appendStreamingContent(c, p),
-        typerOptions: { schedule: sched },
-      });
-      // Drive the preso promise chain (microtasks) and the synthetic typer's frames (captured
-      // rAF callbacks) in lock-step: a microtask first so the next chain step can schedule its
-      // frame, then pump one frame. Runs long enough for the whole chain to settle.
-      const flushRaf = async () => {
-        for (let i = 0; i < 100; i++) {
-          await Promise.resolve();
-          if (rafQ.length) {
-            const cb = rafQ.shift();
-            if (cb) cb();
-          }
-        }
-      };
-      return { preso, flushRaf };
-    };
-
-    it('REPRO: canonical applied immediately (current text path) cannot find the still-queued provisional → duplicate', async () => {
-      const { preso, flushRaf } = setup();
-      // handleChunk(363): a provisional text block enters the synthetic typer queue.
-      preso.enqueueText('the final answer', true);
-      await Promise.resolve();
-      await Promise.resolve();
-      // The typer hasn't pumped its first char yet (rAF not run) → nothing in segments.
-      expect(useChatStore.getState().streamingSegments).toHaveLength(0);
-
-      // handleChunk(361) CURRENT path: canonical applied immediately, bypassing the queue.
-      useChatStore.getState().appendStreamingContent('the final answer', false);
-
-      await flushRaf(); // now the provisional finally types in
-
-      const texts = useChatStore
-        .getState()
-        .streamingSegments.filter((s) => s.type === 'text')
-        .map((s) => (s as { content: string }).content);
-      // Bug signature: the answer is NOT a single clean 'the final answer' — it duplicated/fused.
-      expect(texts.join('')).not.toBe('the final answer');
-    });
-
-    it('FIX: canonical routed through the queue (chain-ordered) finalizes the provisional in place', async () => {
-      const { preso, flushRaf } = setup();
-      preso.enqueueText('the final answer', true);
-      // handleChunk(361) FIXED path: revealSegment → enqueueReveal, ordered AFTER the provisional.
-      preso.enqueueReveal(
-        () => useChatStore.getState().appendStreamingContent('the final answer', false),
-        0,
-      );
-
-      await flushRaf();
-
-      const texts = useChatStore
-        .getState()
-        .streamingSegments.filter((s) => s.type === 'text');
-      expect(texts).toHaveLength(1);
-      expect((texts[0] as { content: string }).content).toBe('the final answer');
-      // The surviving segment is canonical (not dimmed/badged) anymore.
-      expect((texts[0] as { provisional?: boolean }).provisional).not.toBe(true);
-    });
-
-    it('REPRO(tool): canonical tool applied immediately (old useStreaming L504) cannot find the still-queued provisional → duplicate stuck card', async () => {
-      const { preso, flushRaf } = setup();
-      // provisional tool card enters the reveal queue (revealSegment — same path the screen scrape uses)
-      preso.enqueueReveal(() => useChatStore.getState().addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Search', input: {}, provisional: true }), 0);
-      // OLD buggy path: the canonical (different toolu_ id) applied IMMEDIATELY, bypassing the queue, while
-      // the provisional is still waiting → findIndex(provisional) === -1 → fall-through spawns a 2nd card.
-      useChatStore.getState().addStreamingToolCall({ id: 'toolu_x', name: 'Glob', input: { pattern: 'a' }, provisional: false });
-      await flushRaf();
-      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
-      // Bug signature: a SECOND (canonical) card spawned instead of finalizing the provisional in place.
-      expect(tools.length).toBeGreaterThan(1);
-    });
-
-    it('FIX(tool): canonical routed through the queue (revealSegment delay 0) finalizes the provisional in place → single Glob card', async () => {
-      const { preso, flushRaf } = setup();
-      preso.enqueueReveal(() => useChatStore.getState().addStreamingToolCall({ id: 'cli-prov-tool-0', name: 'Search', input: {}, provisional: true }), 0);
-      // FIXED path (useStreaming L504): the canonical also rides the queue, ordered AFTER the provisional.
-      preso.enqueueReveal(() => useChatStore.getState().addStreamingToolCall({ id: 'toolu_x', name: 'Glob', input: { pattern: 'a' }, provisional: false }), 0);
-      await flushRaf();
-      const tools = useChatStore.getState().streamingSegments.filter((s) => s.type === 'tool');
-      expect(tools).toHaveLength(1); // finalized in place — no duplicate
-      if (tools[0].type === 'tool') expect(tools[0].toolCall.name).toBe('Glob');
-      expect(tools[0]).not.toHaveProperty('provisional');
     });
   });
 

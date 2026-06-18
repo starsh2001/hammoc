@@ -50,11 +50,6 @@
  * approved tools in default mode) emit live. No double-render: `stream:complete-messages`
  * replaces the live cards with the authoritative reload at turn end (same as SDK mode), so
  * client + `@hammoc/shared` are unchanged — the engine only *calls* the existing callbacks.
- * Synthetic typing (the client-side per-block typewriter effect for CLI mode) is now
- * implemented in the client render layer (`utils/syntheticTyper.ts`, wired into
- * `useStreaming`) — gated by the `cliSyntheticTyping` toggle AND the effective CLI engine,
- * with the shared SDK frame-coalescing path left untouched. The on/off toggles and
- * mode-selection UI shipped in Epic 33.
  *
  * [Source: docs/spike-32.1-cli-output-source.md#7.1; docs/prd/epic-32-cli-engine-core.md#Story 32.4+]
  */
