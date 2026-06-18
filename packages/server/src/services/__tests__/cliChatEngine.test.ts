@@ -2867,8 +2867,11 @@ describe('CliChatEngine', () => {
       h.fakePty._onData?.(genFrame([greenTool('Read(x.ts)'), '  ⎿  Read 5 lines']));
       await vi.waitFor(() => expect(onToolResult).toHaveBeenCalledTimes(1));
 
-      // JSONL then records the same tool's tool_use + tool_result. The backstop must NOT fire again — the grid
-      // already flipped this slot (gridResultFlippedSlots), so the file result is deduped, not doubled.
+      // JSONL then records the same tool's tool_use + tool_result. The backstop NOW fires regardless of the
+      // green flip: the green-flip onToolResult can be LOST when the canonical tool:call races ahead of the
+      // provisional (the client builds a fresh card off the canonical and the earlier flip never lands —
+      // confirmed via turn-end-stuck). So the file result re-completes the same synthId with the authoritative
+      // output; the client treats a duplicate completion on an already-completed card as a no-op.
       await writeSession(SID, [
         userLine('u1'),
         thinkingToolLine('a1', { thinking: '', tool: { id: 'toolu_read', name: 'Read', input: { file_path: 'x.ts' } } }),
@@ -2877,7 +2880,9 @@ describe('CliChatEngine', () => {
       ]);
       await turn;
 
-      expect(onToolResult).toHaveBeenCalledTimes(1); // deduped — NOT 2
+      // Green flip (1) + file backstop (2), both on the same synthId; the file copy is authoritative.
+      expect(onToolResult).toHaveBeenCalledTimes(2);
+      expect(onToolResult).toHaveBeenLastCalledWith('cli-prov-tool-0', { success: true, output: 'data', error: undefined }, true);
     });
 
     it('Story 37.18: the SAME gray tool repainted on two scrollback rows in one frame is ONE card, not two', async () => {
@@ -2989,7 +2994,10 @@ describe('CliChatEngine', () => {
       expect(finalizeCall.name).toBe('Write');
       expect(finalizeCall.input).toEqual({ file_path: 'probe.txt', content: 'x' }); // real input filled in
       expect(finalizeCall.provisional).toBe(false); // badge dropped
-      expect(onToolResult).toHaveBeenCalledTimes(1); // canonical result skipped (synthetic id owns the flip)
+      // Green flip (1, provisional screen output) + file backstop (2, authoritative output). The backstop now
+      // fires regardless of the flip (the flip's result can be lost to a canonical race); the client dedupes.
+      expect(onToolResult).toHaveBeenCalledTimes(2);
+      expect(onToolResult).toHaveBeenLastCalledWith(toolCall.id, { success: true, output: 'Wrote 5 lines to probe.txt', error: undefined }, true);
     });
 
     it('does NOT flip on ⎿ Waiting…/Running… while the bullet is GRAY (running) — flips only when GREEN (TOOL-RUNNING-PLACEHOLDER-FLIP)', async () => {
@@ -3023,7 +3031,9 @@ describe('CliChatEngine', () => {
         assistantLine('a2', { parentUuid: 'a1', text: 'done' }),
       ]);
       await turn;
-      expect(onToolResult).toHaveBeenCalledTimes(1); // canonical suppressed; the single green flip stands
+      // Green flip (1) + file backstop (2). The backstop fires regardless of the flip; the client dedupes.
+      expect(onToolResult).toHaveBeenCalledTimes(2);
+      expect(onToolResult).toHaveBeenLastCalledWith(id, { success: true, output: 'file.txt', error: undefined }, true);
     });
 
     it('does NOT scrape cards from a non-generating (paused / modal) frame', async () => {

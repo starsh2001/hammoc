@@ -2713,14 +2713,19 @@ export class CliChatEngine implements ChatEngine {
           if (block.type !== 'tool_result') continue;
           const trb = block as ToolResultContentBlock & { is_error?: boolean };
           const id = trb.tool_use_id;
-          // Story 37.16: a provisional (grid) tool kept its SYNTHETIC id on the client, so mirror its real-id
-          // result onto that synthetic id — but ONLY if the grid hasn't already flipped it green
-          // (gridResultFlippedSlots). This is the scroll-off backstop. A non-provisional (auto-approved) tool
-          // kept its real id and follows the original liveEmittedToolIds path below.
+          // Story 37.16 + fix: mirror the real-id file result onto the provisional card's SYNTHETIC id — the
+          // scroll-off backstop. It ORIGINALLY skipped a slot the grid had already flipped green
+          // (gridResultFlippedSlots), assuming the flip's onToolResult had reached the client. But that flip
+          // is LOST when the canonical tool:call races AHEAD of the provisional: the client builds a fresh card
+          // off the canonical and the earlier green-flip result never lands on it, so the card spins forever
+          // (confirmed via turn-end-stuck: slot flipped green server-side, card still pending). So fire the
+          // backstop REGARDLESS of the green flip — `resultEmittedToolIds` still dedupes per real id, and the
+          // client treats a duplicate result on an already-completed card as a no-op. A non-provisional
+          // (auto-approved) tool kept its real id and follows the original liveEmittedToolIds path below.
           const provSlot = provRealIdToSlot.get(id);
           if (provSlot !== undefined) {
             const synthId = provToolSlotIds[provSlot];
-            if (resultEmittedToolIds.has(id) || gridResultFlippedSlots.has(provSlot) || !synthId) {
+            if (resultEmittedToolIds.has(id) || !synthId) {
               trace(`backstop SKIP id=${id} provSlot=${provSlot} (alreadyResult=${resultEmittedToolIds.has(id)} alreadyFlipped=${gridResultFlippedSlots.has(provSlot)} noSynth=${!synthId})`);
               continue;
             }
