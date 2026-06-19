@@ -1586,7 +1586,8 @@ export class CliChatEngine implements ChatEngine {
         // scrapers (parsePrecedingText vs parseGridCards) wording slightly differently.
         if (needle && heldCards.some((h) => h.kind === 'text' && norm(h.sig).includes(needle))) return;
         provisionalBodyEmitsPending++;
-        liveTextSlots++; // cross-source guard: the post-answer grid re-scrape of this card is skipped
+        const bodySlot = liveTextSlots++;
+        heldCards.push({ kind: 'text', sig: cardSig({ kind: 'text', text: prose }), text: prose, slot: bodySlot });
         callbacks.onTextChunk({
           sessionId: resolvedSessionId,
           messageId: `cli-provisional-${++provisionalBodyCounter}`,
