@@ -92,7 +92,7 @@ export interface ResultErrorData {
  * sets it; CLI file-drain / reload leave it unset).
  */
 export type StreamingSegment =
-  | { type: 'text'; content: string; provisional?: boolean }
+  | { type: 'text'; content: string; provisional?: boolean; messageId?: string }
   | { type: 'thinking'; content: string; provisional?: boolean }
   | { type: 'system'; subtype: 'compact' | 'info' | 'abort'; message: string }
   | { type: 'tool'; toolCall: StreamingToolCall; status: 'pending' | 'completed' | 'error'; permissionId?: string; permissionStatus?: 'waiting' | 'approved' | 'denied'; provisional?: boolean }
@@ -269,7 +269,7 @@ interface ChatActions {
   /** Start streaming a new message */
   startStreaming: (sessionId: string, messageId: string) => void;
   /** Append content to the current streaming text segment. Story 37.11: `provisional` marks a CLI grid screen-scrape (dimmed + live-badged). */
-  appendStreamingContent: (content: string, provisional?: boolean) => void;
+  appendStreamingContent: (content: string, provisional?: boolean, messageId?: string) => void;
   /** Append content to the current streaming thinking segment. Story 37.11: `provisional` per above. */
   addStreamingThinking: (content: string, provisional?: boolean) => void;
   /** Add a streaming tool call segment */
@@ -568,7 +568,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
-  appendStreamingContent: (content: string, provisional?: boolean) => {
+  appendStreamingContent: (content: string, provisional?: boolean, messageId?: string) => {
     // Ignore empty strings to prevent unnecessary empty segments
     if (!content) return;
 
@@ -601,20 +601,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
 
     const lastSegment = segments[segments.length - 1];
-    if (lastSegment?.type === 'text') {
-      // Append to existing text segment. Story 37.11: the segment's provisional state follows the
-      // latest chunk — a CLI text segment stays provisional while the grid is the live source and
-      // turns authoritative if the file-drain backstop appends (or on reload, which clears segments).
+    const lastId = lastSegment && (lastSegment as { messageId?: string }).messageId;
+    if (lastSegment?.type === 'text' && (!messageId || !lastId || messageId === lastId)) {
       const updated = [...segments];
       updated[updated.length - 1] = {
         type: 'text',
         content: lastSegment.content + content,
         ...(provisional ? { provisional: true } : {}),
+        ...(messageId ? { messageId } : {}),
       };
       set({ streamingSegments: updated });
     } else {
-      // Create new text segment (first segment or after tool segment)
-      set({ streamingSegments: [...segments, { type: 'text', content, ...(provisional ? { provisional: true } : {}) }] });
+      set({ streamingSegments: [...segments, { type: 'text', content, ...(provisional ? { provisional: true } : {}), ...(messageId ? { messageId } : {}) }] });
     }
   },
 

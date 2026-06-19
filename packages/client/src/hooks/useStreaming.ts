@@ -157,6 +157,7 @@ export function useStreaming() {
     // provisional (grid screen-scrape) until the authoritative file-drain / reload; SDK text never
     // is. A frame's chunks share one source, so the latest chunk's flag is the segment's flag.
     let frameBufferProvisional: boolean | undefined;
+    let frameBufferMessageId: string | undefined;
 
     // --- Frame coalescing (all CLI/SDK streaming text) ---
     // CLI mode delivers assistant text one COMPLETED block at a time; SDK mode streams real
@@ -169,17 +170,23 @@ export function useStreaming() {
       if (frameBuffer.length > 0) {
         const text = frameBuffer;
         const prov = frameBufferProvisional;
+        const mid = frameBufferMessageId;
         frameBuffer = '';
         frameBufferProvisional = undefined;
-        appendStreamingContent(text, prov);
+        frameBufferMessageId = undefined;
+        appendStreamingContent(text, prov, mid);
       }
     };
 
     /** Enqueue text content for coalesced rendering (one state update per frame) */
-    const enqueueChunk = (content: string, provisional?: boolean) => {
+    const enqueueChunk = (content: string, provisional?: boolean, messageId?: string) => {
+      if (frameBuffer.length > 0 && frameBufferMessageId !== messageId) {
+        flushChunkQueue();
+      }
       frameBuffer += content;
       // Story 37.11: a frame's chunks share one source; the latest flag wins for the coalesced segment.
       frameBufferProvisional = provisional;
+      frameBufferMessageId = messageId;
       if (frameRequestId === null) {
         frameRequestId = requestAnimationFrame(flushFrameBuffer);
       }
@@ -194,9 +201,11 @@ export function useStreaming() {
       if (frameBuffer.length > 0) {
         const text = frameBuffer;
         const prov = frameBufferProvisional;
+        const mid = frameBufferMessageId;
         frameBuffer = '';
         frameBufferProvisional = undefined;
-        appendStreamingContent(text, prov);
+        frameBufferMessageId = undefined;
+        appendStreamingContent(text, prov, mid);
       }
     };
 
@@ -204,6 +213,7 @@ export function useStreaming() {
     const clearChunkQueue = () => {
       frameBuffer = '';
       frameBufferProvisional = undefined;
+      frameBufferMessageId = undefined;
       if (frameRequestId !== null) {
         cancelAnimationFrame(frameRequestId);
         frameRequestId = null;
@@ -322,9 +332,9 @@ export function useStreaming() {
       // place. It runs through revealSegment (which flushes buffered text first) so it lands right after
       // the provisional segment exists → in-place replace, never a duplicate.
       if (data.provisional === false) {
-        revealSegment(() => appendStreamingContent(data.content, false));
+        revealSegment(() => appendStreamingContent(data.content, false, data.messageId));
       } else {
-        enqueueChunk(data.content, data.provisional);
+        enqueueChunk(data.content, data.provisional, data.messageId);
       }
     };
 

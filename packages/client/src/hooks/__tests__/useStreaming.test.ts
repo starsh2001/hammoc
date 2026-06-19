@@ -81,7 +81,7 @@ describe('useStreaming', () => {
       const state = useChatStore.getState();
       expect(state.isStreaming).toBe(true);
       expect(state.streamingSegments).toHaveLength(1);
-      expect(state.streamingSegments[0]).toEqual({ type: 'text', content: 'Hello' });
+      expect(state.streamingSegments[0]).toMatchObject({ type: 'text', content: 'Hello' });
     });
 
     it('appends content on subsequent chunks', async () => {
@@ -107,7 +107,7 @@ describe('useStreaming', () => {
 
       const segments = useChatStore.getState().streamingSegments;
       expect(segments).toHaveLength(1);
-      expect(segments[0]).toEqual({ type: 'text', content: 'Hello World!' });
+      expect(segments[0]).toMatchObject({ type: 'text', content: 'Hello World!' });
     });
   });
 
@@ -176,7 +176,7 @@ describe('useStreaming', () => {
 
       const segments = useChatStore.getState().streamingSegments;
       expect(segments).toHaveLength(2);
-      expect(segments[0]).toEqual({ type: 'text', content: 'Let me check that file.' });
+      expect(segments[0]).toMatchObject({ type: 'text', content: 'Let me check that file.' });
       expect(segments[1]).toMatchObject({
         type: 'tool',
         toolCall: { id: 'tool-1', name: 'Read', input: { file_path: '/test.ts' } },
