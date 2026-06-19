@@ -196,7 +196,7 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
     // merely contains a spinner glyph (indented) from being dropped; `atBlockStart` is NOT required
     // because a frozen spinner (`✻ Churned for 20s`) can appear flush after content with no blank
     // separator, and must still be dropped rather than folded into the card above.
-    if (indent === 0 && SPINNER_HEADER_RE.test(trimmed)) {
+    if ((atBlockStart || !current) && indent <= MAX_CARD_INDENT && SPINNER_HEADER_RE.test(trimmed)) {
       flush();
       droppingSpinner = true;
       atBlockStart = false;
