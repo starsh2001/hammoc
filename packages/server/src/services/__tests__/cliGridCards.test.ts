@@ -112,6 +112,29 @@ describe('parseGridCards (hand-built rows)', () => {
     expect(cards).toEqual([{ kind: 'text', text: 'The spinner animates through ✶ and ✻ star glyphs.' }]);
   });
 
+  it('does NOT fold an input-prompt (❯) row into the card above — interrupt-layout user message (실측 2026-06-19)', () => {
+    // dump replay: after an interrupt, claude paints `⎿ Interrupted · …` then the input box `❯ <the next
+    // message the user typed>` directly below, and the footer-strip can miss the box (its cluster is broken
+    // by a content row between the box and the regenerating spinner). The bare `❯` line must NOT fold into
+    // the card above as a continuation — that glued the user's typed message onto an assistant card.
+    const cards = parseGridCards([
+      '⎿ Interrupted · What should Claude do instead?',
+      '❯ 아까 대화 로그 보면 되는거 아냐 그냥?',
+    ]);
+    expect(cards).toEqual([{ kind: 'result', text: 'Interrupted · What should Claude do instead?' }]);
+  });
+
+  it('swallows a WRAPPED input-prompt message without folding it into the prior card', () => {
+    // A long typed message wraps under the `❯`; the `❯` flushes the open card and its wrapped rows are
+    // swallowed (like a spinner block), so the assistant text card above keeps only its own content.
+    const cards = parseGridCards([
+      '● 답변입니다.',
+      '❯ 사용자가 입력 중인 아주 긴 메시지의',
+      '  둘째 줄로 이어지는 부분',
+    ]);
+    expect(cards).toEqual([{ kind: 'text', text: '답변입니다.' }]);
+  });
+
   it('drops the SMALL spinner frames `·` (middle-dot) and `*` (asterisk) — not just the star frames', () => {
     // claude's spinner pulses ·→*→✢→✶→✻→✽ (a star growing from a dot). The small frames (`·`/`*`) were
     // missed by a star-only glyph match, so the ticking counter folded into the card above and re-emitted

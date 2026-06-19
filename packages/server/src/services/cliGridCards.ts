@@ -85,6 +85,15 @@ const THINKING_DETAIL_GLYPH = '∴';
  * of these glyphs QUOTED inside prose (a continuation row) stays folded into its real card. If a future
  * claude revision changes the animation, re-enumerate from a capture — do not guess. */
 const SPINNER_HEADER_RE = /^[·*✢✶✻✽]/;
+/**
+ * The interactive input-prompt glyph (U+276F ❯) opening claude's input BOX — the line echoes the
+ * USER's typed message, never assistant content. The upstream footer-strip (`scrollbackBodyRows`)
+ * normally removes the box, but an INTERRUPT layout paints it ABOVE the regenerating spinner with a
+ * content row between, breaking the footer cluster so the `❯ …` line survives into the body. Guarding
+ * it here (flush + drop, like the spinner) stops the bare line from folding into the card above and
+ * gluing the user's typed message onto an assistant card (실측 2026-06-19 dump replay).
+ */
+const INPUT_PROMPT_RE = /^❯/;
 /** A tool-use header body: a tool name immediately followed by `(` — "Write(", "PowerShell(", and
  *  HYPHENATED sub-agent names like "claude-code-guide(" (실측: the bullet is a tool, but the strict
  *  identifier set dropped the `-`). Used as the tool-NAME extractor + the no-color FALLBACK classifier. */
@@ -164,6 +173,18 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       if (current) pendingBreak = true; // blank row inside an open card = a paragraph break (\n\n)
       atBlockStart = true; // a blank spacer opens a new paragraph and ends a spinner block's span
       droppingSpinner = false;
+      continue;
+    }
+
+    // Input-prompt row (`❯ …`): claude's input BOX echoing the USER's typed message — never an assistant
+    // card. Guarded REGARDLESS of `atBlockStart`: an interrupt layout paints it right after a
+    // `⎿ Interrupted` content row (so it is NOT at a block start), and the bare `❯` line would otherwise
+    // fall to the continuation branch and fold into the card above, gluing the user's message onto it.
+    // Treat it like the spinner — flush the open card and swallow it (+ any wrapped rows of the message).
+    if (INPUT_PROMPT_RE.test(trimmed)) {
+      flush();
+      droppingSpinner = true;
+      atBlockStart = false;
       continue;
     }
 
