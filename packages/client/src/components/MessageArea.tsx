@@ -390,6 +390,22 @@ function useAutoScroll(
     };
   }, [threshold, scheduleGuardReset]);
 
+  // On mobile sleep/wake the browser suspends JS. When the page becomes visible again,
+  // the scroll position can land mid-content (the container resized or content reflowed
+  // while suspended). Reset to the bottom so the user sees the latest messages.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      const container = containerRef.current;
+      if (!container) return;
+      scheduleGuardReset(false);
+      container.scrollTop = container.scrollHeight;
+      setIsUserScrolledUp(false);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [scheduleGuardReset]);
+
   return {
     containerRef,
     bottomRef,
