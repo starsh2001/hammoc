@@ -2230,7 +2230,12 @@ export class CliChatEngine implements ChatEngine {
         // but it's an explicit error string so no corroboration is needed — end the turn at once so the
         // user can retry. Coded RATE_LIMIT_EXCEEDED like the usage limit (parseSDKError forwards it verbatim,
         // the resume-retry path skips it). POST-INJECTION-gated by this same enclosing block.
-        const rateLimitMsg = detectRateLimit(text);
+        //
+        // Scope to the LIVE FOOTER (the last few non-empty rows — the current generation's tail), exactly
+        // like the permission/question detectors below. The error is only meaningful as the CURRENT turn's
+        // outcome; with no corroboration to lean on (unlike the usage limit above), scanning the whole grid
+        // would let any quoted/scrollback mention of the string from a PRIOR turn stop a healthy new turn.
+        const rateLimitMsg = detectRateLimit(liveFooterText(grid));
         if (rateLimitMsg) {
           fail(new SDKError(rateLimitMsg, SDKErrorCode.RATE_LIMIT_EXCEEDED));
           return;

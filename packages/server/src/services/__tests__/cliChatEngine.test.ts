@@ -2345,6 +2345,32 @@ describe('CliChatEngine', () => {
       expect(h.cliSessionPool.dispose).toHaveBeenCalled();
     });
 
+    it('does NOT fail when the rate-limit string is only in scrollback, pushed out of the live footer', async () => {
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const onError = vi.fn();
+      const onComplete = vi.fn();
+      const { turn } = await injectThenReady(engine, { onError, onComplete });
+
+      // The error string sits in PRIOR-turn scrollback (a quoted mention); the current generation's
+      // tail (the live footer = last few non-empty rows) holds other content. Detection is scoped to
+      // the footer, so this stale occurrence must NOT stop the turn — only the string appearing as the
+      // CURRENT turn's outcome should. (Without footer scoping, any past mention would kill every turn.)
+      h.fakePty._onData?.(
+        drawModal([
+          'API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited',
+          'filler 1', 'filler 2', 'filler 3', 'filler 4',
+          'filler 5', 'filler 6', 'filler 7', 'filler 8', '❯ ready',
+        ]),
+      );
+      await wait(40);
+      expect(onError).not.toHaveBeenCalled();
+
+      // A normal end_turn still completes the turn afterwards.
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await turn;
+      expect(onComplete).toHaveBeenCalled();
+    });
+
     it('does NOT fail on the limit sentence painted BEFORE injection (resumed-transcript repaint)', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const onError = vi.fn();
