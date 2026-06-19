@@ -399,7 +399,7 @@ describe('CliChatEngine', () => {
       await promise;
     });
 
-    it('injects --settings with a background-block PreToolUse hook + thinking summaries by default', async () => {
+    it('injects --settings with thinking summaries + verbose by default', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
       await wait(30);
@@ -407,21 +407,13 @@ describe('CliChatEngine', () => {
       const i = (spawnArg.args as string[]).indexOf('--settings');
       expect(i).toBeGreaterThanOrEqual(0);
       const settings = JSON.parse((spawnArg.args as string[])[i + 1]);
-      // Story 36.1: the background-block command hook is ALWAYS injected, matching ALL tools
-      // ('.*') — the block keys off run_in_background, not the tool name (Bash/PowerShell/etc.).
-      expect(settings.hooks.PreToolUse[0].matcher).toBe('.*');
-      expect(settings.hooks.PreToolUse[0].hooks[0].type).toBe('command');
-      expect(settings.hooks.PreToolUse[0].hooks[0].command).toContain('block-background.cjs');
-      // thinking summaries ON by default
       expect(settings.showThinkingSummaries).toBe(true);
-      // Story 37.9 (AC1): expanded-mode spawn injects the session-scoped `verbose` key (the config
-      // key `--verbose` overrides — confirmed via `claude --help`) so the screen renders un-collapsed.
       expect(settings.verbose).toBe(true);
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;
     });
 
-    it('keeps the background-block hook but omits showThinkingSummaries when cliShowThinkingSummaries is false', async () => {
+    it('omits showThinkingSummaries when cliShowThinkingSummaries is false', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj', cliShowThinkingSummaries: false });
       const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
       await wait(30);
@@ -429,8 +421,6 @@ describe('CliChatEngine', () => {
       const i = (spawnArg.args as string[]).indexOf('--settings');
       expect(i).toBeGreaterThanOrEqual(0);
       const settings = JSON.parse((spawnArg.args as string[])[i + 1]);
-      // background-block hook still present (always-on), only thinking is gated off
-      expect(settings.hooks.PreToolUse[0].hooks[0].command).toContain('block-background.cjs');
       expect(settings.showThinkingSummaries).toBeUndefined();
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;

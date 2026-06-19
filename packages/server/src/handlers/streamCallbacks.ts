@@ -19,6 +19,7 @@ import type {
 // Type-only import — erased at runtime, so no circular dep with the service
 // (consistent with the "injected, not imported" dependency convention below).
 import type { McpCallRecorder } from '../services/observabilityService.js';
+import type { BackgroundTaskTracker } from '../utils/backgroundTaskTracker.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('streamCallbacks');
@@ -65,6 +66,7 @@ export interface CallbackBuilderDeps {
    * out (no behavior change when undefined).
    */
   mcpRecorder?: McpCallRecorder;
+  backgroundTracker?: BackgroundTaskTracker;
 }
 
 export interface CallbackBuilderHooks {
@@ -139,6 +141,7 @@ export function buildStreamCallbacks(
     onToolUse: (toolCall: TrackedToolCall) => {
       activity?.('onToolUse');
       log.debug(`onToolUse: tool=${toolCall.name}, id=${toolCall.id}`);
+      deps.backgroundTracker?.trackToolUse(toolCall.input);
       emit('tool:call', {
         id: toolCall.id,
         name: toolCall.name,
@@ -180,6 +183,7 @@ export function buildStreamCallbacks(
 
     onTaskNotification: (data: TaskNotificationData) => {
       activity?.('onTaskNotification');
+      deps.backgroundTracker?.trackTaskDone();
       emit('system:task-notification', data);
     },
 

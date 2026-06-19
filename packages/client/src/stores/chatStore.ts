@@ -191,6 +191,10 @@ interface ChatState {
    * Cleared alongside cliPhase. (CLI mode only; SDK never sets it.)
    */
   cliScreenStalled: boolean;
+  /** True while the main response ended but background tasks are still pending. */
+  backgroundWaiting: boolean;
+  backgroundWaitingSince: number | null;
+  backgroundPendingCount: number;
   /** Current permission mode for Agent SDK */
   permissionMode: PermissionMode;
   /** Current context usage data from last SDK response */
@@ -356,6 +360,8 @@ interface ChatActions {
   setCliPhase: (phase: 'launching' | 'submitting' | 'waiting' | null) => void;
   /** Set/clear the soft CLI screen-stall flag (from the cli:screen-stall signal). */
   setCliScreenStalled: (stalled: boolean) => void;
+  /** Set/clear the background-waiting state (main response done, background tasks pending). */
+  setBackgroundWaiting: (waiting: boolean, pendingCount: number) => void;
   /** Set last dryRun result for confirmation dialog */
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => void;
   /** Clear last dryRun result (dialog close/cancel) */
@@ -392,6 +398,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   generationProgress: null,
   cliPhase: null,
   cliScreenStalled: false,
+  backgroundWaiting: false,
+  backgroundWaitingSince: null,
+  backgroundPendingCount: 0,
   lastResultError: null,
   selectedModel: '',
   // Seed from cached preferences so a fresh chatStore (page reload, first mount) immediately
@@ -564,6 +573,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       generationProgress: null,
       cliPhase: null,
       cliScreenStalled: false,
+      backgroundWaiting: false,
+      backgroundWaitingSince: null,
+      backgroundPendingCount: 0,
       lastResultError: null,
     });
   },
@@ -802,6 +814,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       generationProgress: null,
       cliPhase: null,
       cliScreenStalled: false,
+      backgroundWaiting: false,
+      backgroundWaitingSince: null,
+      backgroundPendingCount: 0,
       streamCompleteCount: get().streamCompleteCount + 1,
     });
   },
@@ -829,6 +844,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       generationProgress: null,
       cliPhase: null,
       cliScreenStalled: false,
+      backgroundWaiting: false,
+      backgroundWaitingSince: null,
+      backgroundPendingCount: 0,
     });
   },
 
@@ -1112,6 +1130,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       // reconnect / tab-switch can't linger. The server re-sends the CURRENT flag on session:join
       // (only when actually stalled), so a genuine ongoing stall reappears and a resolved one stays gone.
       cliScreenStalled: false,
+      backgroundWaiting: false,
+      backgroundWaitingSince: null,
+      backgroundPendingCount: 0,
     });
   },
 
@@ -1170,6 +1191,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setCliPhase: (phase) => set({ cliPhase: phase }),
 
   setCliScreenStalled: (stalled) => set({ cliScreenStalled: stalled }),
+
+  setBackgroundWaiting: (waiting, pendingCount) => set({
+    backgroundWaiting: waiting,
+    backgroundWaitingSince: waiting ? (get().backgroundWaitingSince ?? Date.now()) : null,
+    backgroundPendingCount: pendingCount,
+  }),
 
   setLastDryRunResult: (result: ChatState['lastDryRunResult']) => set({ lastDryRunResult: result }),
 

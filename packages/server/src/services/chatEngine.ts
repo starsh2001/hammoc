@@ -1,5 +1,6 @@
 import type { CanUseTool, RewindFilesResult } from '@anthropic-ai/claude-agent-sdk';
 import type { StreamCallbacks, ChatOptions, ChatResponse, PermissionMode } from '@hammoc/shared';
+import type { BackgroundTaskTracker } from '../utils/backgroundTaskTracker.js';
 
 /**
  * ChatEngine — the SDK-independent seam for the conversation streaming engine (Epic 32).
@@ -59,7 +60,9 @@ export interface ChatEngine {
      */
     onScreenFrame?: (frame: string) => void,
     /** Story 37.8: CLI mirror refresh interval (ms) for the trailing throttle. CLI-only; default 200. */
-    screenFrameThrottleMs?: number
+    screenFrameThrottleMs?: number,
+    /** Background task tracker — keeps the turn alive while background tasks are pending. */
+    backgroundTracker?: BackgroundTaskTracker
   ): Promise<ChatResponse>;
 
   /** Update the permission mode mid-conversation (propagates to the live query). */

@@ -15,7 +15,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Send, Square, Paperclip, X, Lock, Link2, Plus, Mic } from 'lucide-react';
+import { Send, Square, Loader2, Paperclip, X, Lock, Link2, Plus, Mic } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useChatStore } from '../stores/chatStore';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -262,6 +262,12 @@ export function ChatInput({
 
   // WebSocket connection status
   const { isConnected } = useWebSocket();
+
+  // Abort feedback state
+  const [isAborting, setIsAborting] = useState(false);
+  useEffect(() => {
+    if (!isStreaming) setIsAborting(false);
+  }, [isStreaming]);
 
   // Speech recognition (voice-to-text)
   const handleSpeechTranscript = useCallback((text: string) => {
@@ -901,7 +907,7 @@ export function ChatInput({
   }, []);
 
   const isChainFull = chainMode && chainCount >= chainMax;
-  const isButtonDisabled = !content.trim() || isChainFull;
+  const isButtonDisabled = !content.trim() || isChainFull || !isConnected;
 
   const isAttachDisabled = attachments.length >= IMAGE_CONSTRAINTS.MAX_COUNT;
 
@@ -1284,9 +1290,9 @@ export function ChatInput({
         ) : isStreaming && onAbort && !chainMode ? (
           <button
             type="button"
-            onClick={onAbort}
+            onClick={() => { setIsAborting(true); onAbort!(); }}
             onPointerDown={preventFocusLoss}
-            disabled={queueLocked || actionsDisabled}
+            disabled={isAborting || queueLocked || actionsDisabled}
             aria-label={t('input.abort')}
             className="p-1 rounded-md flex-shrink-0 flex items-center justify-center
                        bg-red-600 hover:bg-red-700
@@ -1297,7 +1303,9 @@ export function ChatInput({
                        transition-all duration-150"
             style={{ height: '28px', width: '28px' }}
           >
-            <Square size={16} aria-hidden="true" />
+            {isAborting
+              ? <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              : <Square size={16} aria-hidden="true" />}
           </button>
         ) : (
           <button

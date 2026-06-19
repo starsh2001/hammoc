@@ -12,6 +12,7 @@ import { StreamingErrorBoundary } from './StreamingErrorBoundary';
 import { MessageListSkeleton } from './MessageListSkeleton';
 import { StreamingIndicator, SPARKLE_FRAMES } from './StreamingIndicator';
 import { CliScreenStallNotice } from './CliScreenStallNotice';
+import { BackgroundWaitNotice } from './BackgroundWaitNotice';
 import { ToolCard } from './ToolCard';
 import { InteractiveResponseCard } from './InteractiveResponseCard';
 import { ThinkingBlock } from './ThinkingBlock';
@@ -931,6 +932,8 @@ export const MessageArea = forwardRef<MessageAreaHandle, MessageAreaProps>(funct
 
         {/* Soft "CLI screen looks frozen" affordance — self-gates on stalled + streaming. */}
         <CliScreenStallNotice />
+        {/* Background task wait card — self-gates on backgroundWaiting + streaming. */}
+        <BackgroundWaitNotice />
 
         <div ref={bottomRef} aria-hidden="true" />
       </div>

@@ -170,6 +170,10 @@ export interface ServerToClientEvents {
   // awaited input); `stalled:false` when it moves again or the turn ends. Advisory only — the client
   // surfaces a "looks stuck — Stop?" affordance; the server never auto-aborts. Transient, live-only.
   'cli:screen-stall': (data: { sessionId: string; stalled: boolean }) => void;
+  // Background-wait state. Emitted when the main assistant response ended but background
+  // tasks are still pending. waiting:true enters the wait, waiting:false when all tasks
+  // complete. pendingCount tracks how many background tasks remain.
+  'background:waiting': (data: { sessionId: string; waiting: boolean; pendingCount: number }) => void;
   'system:task-notification': (data: TaskNotificationData) => void;
   'tool:summary': (data: { summary: string; precedingToolUseIds: string[] }) => void;
   'result:error': (data: { subtype: string; errors?: string[]; totalCostUSD?: number; numTurns?: number; result: string }) => void;

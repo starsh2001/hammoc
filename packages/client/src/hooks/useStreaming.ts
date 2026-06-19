@@ -678,6 +678,10 @@ export function useStreaming() {
       useChatStore.getState().setCliScreenStalled(data.stalled);
     };
 
+    const handleBackgroundWaiting = (data: { sessionId: string; waiting: boolean; pendingCount: number }) => {
+      useChatStore.getState().setBackgroundWaiting(data.waiting, data.pendingCount);
+    };
+
     // Handle system:task-notification — add task notification segment
     const handleTaskNotification = (data: TaskNotificationData) => {
       revealSegment(() => addTaskNotification(data));
@@ -1646,6 +1650,7 @@ export function useStreaming() {
     socket.on('generation:progress', handleGenerationProgress);
     socket.on('cli:phase', handleCliPhase);
     socket.on('cli:screen-stall', handleScreenStall);
+    socket.on('background:waiting', handleBackgroundWaiting);
     socket.on('system:task-notification', handleTaskNotification);
     socket.on('tool:summary', handleToolSummary);
     socket.on('result:error', handleResultError);
@@ -1853,6 +1858,7 @@ export function useStreaming() {
       socket.off('generation:progress', handleGenerationProgress);
       socket.off('cli:phase', handleCliPhase);
       socket.off('cli:screen-stall', handleScreenStall);
+      socket.off('background:waiting', handleBackgroundWaiting);
       socket.off('system:task-notification', handleTaskNotification);
       socket.off('tool:summary', handleToolSummary);
       socket.off('result:error', handleResultError);

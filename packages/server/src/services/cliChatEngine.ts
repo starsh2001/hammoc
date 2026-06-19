@@ -110,9 +110,10 @@ import {
 import { liveFooterText, scrollbackBodyRows } from './cliGridRegion.js';
 import { parseGridCards, collectToolHeaderKeys, restoreFlickeredToolBullets, type GridCard, type GridCardKind } from './cliGridCards.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
-import { parseJSONLFile } from './historyParser.js';
+import { parseJSONLFile, parseTaskNotification } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, resolveTemplateVariables } from './workspaceContext.js';
+import type { BackgroundTaskTracker } from '../utils/backgroundTaskTracker.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
 import { SDKError, SDKErrorCode } from '../utils/errors.js';
@@ -155,22 +156,6 @@ function appendAttachmentInstruction(content: string, paths?: string[]): string 
  */
 const POLL_MS = 60;
 
-/**
- * Path to the bundled CLI PreToolUse command-hook script (Story 36.1 — background
- * block). Resolves to packages/server/resources/hooks/block-background.cjs in both
- * dev (src) and prod (dist) — resources/ ships via npm `files` (same pattern as
- * manualSyncService). Forward-slashed so the `node "..."` command is shell-safe.
- */
-const BACKGROUND_HOOK_SCRIPT = path
-  .resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '..',
-    '..',
-    'resources',
-    'hooks',
-    'block-background.cjs'
-  )
-  .replace(/\\/g, '/');
 
 /**
  * Prompt-injection timing (all empirically tuned against claude v2.1.162 — verified
@@ -458,19 +443,21 @@ export function buildMultiQuestionKeys(
  * the turn). Matched STRICTLY — the whole text must BE the bracketed marker — so a user PROMPT that
  * merely *mentions* an interrupt (a question about this very behavior) cannot false-trigger it.
  */
+function extractUserTextContent(raw: RawJSONLMessage): string {
+  const content = raw.message?.content as unknown;
+  return typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content
+          .filter((b) => (b as { type?: string }).type === 'text')
+          .map((b) => (b as { text?: string }).text ?? '')
+          .join(' ')
+      : '';
+}
+
 function isCliInterruptLine(raw: RawJSONLMessage): boolean {
   if (raw.type !== 'user') return false;
-  const content = raw.message?.content as unknown;
-  const text =
-    typeof content === 'string'
-      ? content
-      : Array.isArray(content)
-        ? content
-            .filter((b) => (b as { type?: string }).type === 'text')
-            .map((b) => (b as { text?: string }).text ?? '')
-            .join(' ')
-        : '';
-  return /^\s*\[Request interrupted[^\]]*\]\s*$/i.test(text);
+  return /^\s*\[Request interrupted[^\]]*\]\s*$/i.test(extractUserTextContent(raw));
 }
 
 /** Map the cliResumeChoice auto-pick ('summary' | 'full') to the matching resume-menu option label.
@@ -744,6 +731,7 @@ export class CliChatEngine implements ChatEngine {
     onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
     onScreenFrame?: (frame: string) => void,
     screenFrameThrottleMs?: number,
+    backgroundTracker?: BackgroundTaskTracker,
   ): Promise<ChatResponse> {
     const cwd = this.workingDirectory;
     if (!cwd) {
@@ -804,27 +792,8 @@ export class CliChatEngine implements ChatEngine {
     const appendTemplate = options.customSystemPrompt || DEFAULT_WORKSPACE_TEMPLATE;
     args.push('--append-system-prompt', resolveTemplateVariables(appendTemplate, cwd));
     // Session-scoped `--settings` JSON (the global ~/.claude/settings.json is never
-    // modified). Two things ride on it:
-    //  - Story 36.1: a PreToolUse command hook that denies ANY background tool call
-    //    (run_in_background) — ALWAYS injected, since turn-per-process makes a backgrounded
-    //    task doomed. The deny bypasses canUseTool, so it also blocks auto-approved calls
-    //    (mirrors the SDK engine's inline hook in chatService). matcher '.*' so the hook
-    //    fires for EVERY tool — it keys off the input flag, not a tool-name list (which
-    //    silently misses tools, e.g. the earlier Windows PowerShell gap). The script passes
-    //    through (no-op) for foreground calls, so parallel-foreground-and-await still works.
-    //  - thinking summaries (default ON): Opus 4.7+ omit summaries unless asked; this
-    //    requests them. Effect under subscription auth must be confirmed in a real
-    //    CLI-mode chat (see field doc).
-    const settingsObj: Record<string, unknown> = {
-      hooks: {
-        PreToolUse: [
-          {
-            matcher: '.*',
-            hooks: [{ type: 'command', command: `node "${BACKGROUND_HOOK_SCRIPT}"` }],
-          },
-        ],
-      },
-    };
+    // modified). Thinking summaries (default ON): Opus 4.7+ omit summaries unless asked.
+    const settingsObj: Record<string, unknown> = {};
     if (this.cliShowThinkingSummaries) {
       settingsObj.showThinkingSummaries = true;
     }
@@ -2839,8 +2808,12 @@ export class CliChatEngine implements ChatEngine {
             if (raw.type === 'assistant') {
               if (emittedUuids.has(raw.uuid)) continue;
               if (handleAssistantLine(raw)) {
-                finishTurn();
-                return;
+                backgroundTracker?.markMainEnded();
+                if (!backgroundTracker || backgroundTracker.isFullyDone) {
+                  finishTurn();
+                  return;
+                }
+                log.info(`[CLI] end_turn with ${backgroundTracker.pending} background task(s) pending — keeping turn alive`);
               }
             } else if (raw.type === 'user') {
               // An interrupt ("[Request interrupted by user]") writes NO end_turn assistant line, so
@@ -2852,6 +2825,23 @@ export class CliChatEngine implements ChatEngine {
                 log.info('[CLI] interrupt marker in JSONL (no end_turn will follow) — finishing turn');
                 finishTurn();
                 return;
+              }
+              // Detect task-notification user messages (background task completions)
+              if (!emittedUuids.has(raw.uuid)) {
+                const textContent = extractUserTextContent(raw);
+                if (textContent) {
+                  const taskNotif = parseTaskNotification(textContent);
+                  if (taskNotif) {
+                    emittedUuids.add(raw.uuid);
+                    backgroundTracker?.trackTaskDone();
+                    callbacks.onTaskNotification?.({
+                      taskId: taskNotif.taskId,
+                      status: taskNotif.status,
+                      summary: taskNotif.summary,
+                      toolUseId: taskNotif.toolUseId,
+                    });
+                  }
+                }
               }
               emitToolResults(raw);
             } else if (raw.type === 'system' && raw.subtype === 'compact_boundary') {

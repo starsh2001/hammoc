@@ -64,6 +64,10 @@ export interface UserPreferences {
   // NOT auto-abort (the user decides). 0 disables it; unset = 20000. Clamped to 5s–10min. CLI mode
   // only, and only while the mirror is on (the screen-frame source). (Screen-stall watchdog.)
   cliScreenStallMs?: number;
+  // Delay (ms) before the Stop button appears on the background-wait card. When the main
+  // response ends but background tasks are still pending, a card shows elapsed time; after
+  // this delay the Stop button materializes. Default 60000 (1 min). 0 = immediate.
+  backgroundStopDelayMs?: number;
   commandFavorites?: Array<string | CommandFavoriteEntry>;
   starFavorites?: Record<string, string[]>; // agentId → commands
   defaultModel?: string; // model ID (e.g. 'sonnet', 'claude-opus-4-6') or '' for CLI default

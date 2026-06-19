@@ -304,6 +304,8 @@
     "compactionHint": "컨텍스트 압축 중일 수 있음",
     "screenStalled": "claude 화면이 한동안 멈춰 있어요",
     "screenStallStop": "중단",
+    "backgroundWaiting": "백그라운드 작업 진행 중 ({{count}}) — {{time}}",
+    "backgroundStop": "중단",
     "generationProgress": "{{time}} · ↓ {{tokens}} 토큰",
     "thinking": "생각 중",
     "cliPhase": {

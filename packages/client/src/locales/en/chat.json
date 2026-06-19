@@ -304,6 +304,8 @@
     "compactionHint": "context compaction may be in progress",
     "screenStalled": "Claude's screen has been still for a while",
     "screenStallStop": "Stop",
+    "backgroundWaiting": "Background tasks running ({{count}}) — {{time}}",
+    "backgroundStop": "Stop",
     "generationProgress": "{{time}} · ↓ {{tokens}} tokens",
     "thinking": "Thinking",
     "cliPhase": {

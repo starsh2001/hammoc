@@ -45,6 +45,7 @@ import { getCliScreen, getCliScreenStall, setCliScreenStall, deleteCliScreen } f
 import { createScreenStallWatchdog, type ScreenStallWatchdog } from '../services/cliScreenStallWatchdog.js';
 import { modelMissingNative1MSupport } from '../utils/bundledBinaryModelSupport.js';
 import { buildStreamCallbacks } from './streamCallbacks.js';
+import { BackgroundTaskTracker } from '../utils/backgroundTaskTracker.js';
 import { createMcpCallRecorder } from '../services/observabilityService.js';
 import { rateLimitProbeService } from '../services/rateLimitProbeService.js';
 import { ptyService } from '../services/ptyService.js';
@@ -2978,6 +2979,14 @@ async function handleChatSend(
     // trailing-throttle interval. undefined → engine default (200ms). Harmless when the mirror is off.
     const mirrorThrottleMs = effectivePrefs.cliMirrorThrottleMs;
 
+    const backgroundTracker = new BackgroundTaskTracker((state) => {
+      emit('background:waiting', {
+        sessionId: sessionIdRef.current ?? sessionId,
+        waiting: state.waiting,
+        pendingCount: state.pending,
+      });
+    });
+
     // Build shared callbacks (common logic for browser & queue paths)
     const { callbacks, sessionIdRef } = buildStreamCallbacks(
       {
@@ -2995,6 +3004,7 @@ async function handleChatSend(
         mcpRecorder: createMcpCallRecorder(() =>
           projectService.findProjectByPath(workingDirectory).then((p) => p?.projectSlug),
         ),
+        backgroundTracker,
       },
       {
         onCallbackActivity: (source) => resetTimeout(source),
@@ -3120,7 +3130,7 @@ async function handleChatSend(
     try {
       const sendResult = await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
-      }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
+      }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs, backgroundTracker);
       // SDK may return "No conversation found" as an error result (not a thrown exception).
       // Convert to a thrown error so the retry logic below can handle it.
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {

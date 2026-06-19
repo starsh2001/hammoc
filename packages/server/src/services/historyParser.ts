@@ -298,7 +298,7 @@ function extractImages(content: ContentBlock[] | undefined, projectSlug?: string
  * @param content The raw message content
  * @returns Parsed task notification data, or null if not a task notification
  */
-function parseTaskNotification(content: string): { status: 'completed' | 'failed' | 'stopped'; summary: string; toolUseId?: string } | null {
+export function parseTaskNotification(content: string): { taskId: string; status: 'completed' | 'failed' | 'stopped'; summary: string; toolUseId?: string } | null {
   const trimmed = content.trim();
   if (!trimmed.startsWith('<task-notification>')) return null;
 
@@ -309,10 +309,12 @@ function parseTaskNotification(content: string): { status: 'completed' | 'failed
   const statusMatch = trimmed.match(/<status>(completed|failed|stopped)<\/status>/);
   const summaryMatch = trimmed.match(/<summary>([\s\S]*?)<\/summary>/);
   const toolUseIdMatch = trimmed.match(/<tool-use-id>([\s\S]*?)<\/tool-use-id>/);
+  const taskIdMatch = trimmed.match(/<task-id>([\s\S]*?)<\/task-id>/);
 
   if (!statusMatch) return null;
 
   return {
+    taskId: taskIdMatch?.[1]?.trim() ?? '',
     status: statusMatch[1] as 'completed' | 'failed' | 'stopped',
     summary: summaryMatch?.[1] ?? '',
     toolUseId: toolUseIdMatch?.[1]?.trim() || undefined,
