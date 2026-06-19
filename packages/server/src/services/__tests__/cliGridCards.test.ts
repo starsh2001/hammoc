@@ -23,7 +23,7 @@ describe('parseGridCards (hand-built rows)', () => {
   });
 
   it('classifies a tool-use card and extracts the tool name from `● Tool(…)`', () => {
-    const cards = parseGridCards([' ● Write(probe.txt)']);
+    const cards = parseGridCards(['● Write(probe.txt)']);
     expect(cards).toEqual([{ kind: 'tool', text: 'Write(probe.txt)', toolName: 'Write' }]);
   });
 
@@ -98,7 +98,7 @@ describe('parseGridCards (hand-built rows)', () => {
   it('drops a FROZEN completed spinner left over from a prior turn (`✻ Brewed for …`)', () => {
     // After a turn ends the spinner freezes (the glyph stays) — still a spinner-headed block ⇒ dropped,
     // so a resume-repainted prior turn never injects a stray status line into a card.
-    const cards = parseGridCards(['● real answer', '', '✻ Brewed for 24m 9s', '', '⎿ some result']);
+    const cards = parseGridCards(['● real answer', '', '✻ Brewed for 24m 9s', '', '  ⎿ some result']);
     expect(cards).toEqual([
       { kind: 'text', text: 'real answer' },
       { kind: 'result', text: 'some result' },
@@ -118,7 +118,7 @@ describe('parseGridCards (hand-built rows)', () => {
     // by a content row between the box and the regenerating spinner). The bare `❯` line must NOT fold into
     // the card above as a continuation — that glued the user's typed message onto an assistant card.
     const cards = parseGridCards([
-      '⎿ Interrupted · What should Claude do instead?',
+      '  ⎿ Interrupted · What should Claude do instead?',
       '❯ 아까 대화 로그 보면 되는거 아냐 그냥?',
     ]);
     expect(cards).toEqual([{ kind: 'result', text: 'Interrupted · What should Claude do instead?' }]);

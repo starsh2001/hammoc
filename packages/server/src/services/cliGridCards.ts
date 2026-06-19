@@ -164,11 +164,10 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
   for (let i = 0; i < rows.length; i++) {
     const raw = rows[i];
     const trimmed = raw.trim();
-    // Story 37.17: a header glyph counts as a CARD opener only near the left margin (see MAX_CARD_INDENT).
-    // A `●`/`⎿`/`∴` deeper than that is a tool's indented verbose output, NOT a header — it falls through
-    // to the continuation branch and folds into the open card instead of spawning a spurious one.
+    // Header glyphs open cards ONLY at their fixed left margin (실측: ● col 0, ⎿ col 2, ∴ col 0,
+    // `Thought for` col 2). The SAME glyph at a different indent is tool verbose output or a footer
+    // widget — it falls through to the continuation branch instead of spawning a spurious card.
     const indent = raw.length - raw.trimStart().length;
-    const atHeaderIndent = indent <= MAX_CARD_INDENT;
     if (trimmed.length === 0) {
       if (current) pendingBreak = true; // blank row inside an open card = a paragraph break (\n\n)
       atBlockStart = true; // a blank spacer opens a new paragraph and ends a spinner block's span
@@ -181,7 +180,7 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
     // `⎿ Interrupted` content row (so it is NOT at a block start), and the bare `❯` line would otherwise
     // fall to the continuation branch and fold into the card above, gluing the user's message onto it.
     // Treat it like the spinner — flush the open card and swallow it (+ any wrapped rows of the message).
-    if (INPUT_PROMPT_RE.test(trimmed)) {
+    if (indent === 0 && INPUT_PROMPT_RE.test(trimmed)) {
       flush();
       droppingSpinner = true;
       atBlockStart = false;
@@ -191,7 +190,7 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
     // A SPINNER-headed paragraph is claude's live generation indicator, never content — drop the whole
     // block (header + its wrapped rows). Gated on `atBlockStart` so a spinner glyph quoted mid-prose (a
     // continuation row) is NOT mistaken for a spinner and instead folds into its real card below.
-    if (atBlockStart && SPINNER_HEADER_RE.test(trimmed)) {
+    if (atBlockStart && indent === 0 && SPINNER_HEADER_RE.test(trimmed)) {
       flush();
       droppingSpinner = true;
       atBlockStart = false;
@@ -202,7 +201,7 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       continue;
     }
 
-    if (atHeaderIndent && trimmed.startsWith(CARD_BULLET)) {
+    if (indent === 0 && trimmed.startsWith(CARD_BULLET)) {
       flush();
       const body = clean(trimmed.slice(CARD_BULLET.length).trim());
       const bulletColor = bulletColors?.[i];
@@ -227,13 +226,13 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       } else {
         current = { kind: 'text', text: body, ...(bulletColor ? { bulletColor } : {}) };
       }
-    } else if (atHeaderIndent && trimmed.startsWith(RESULT_BULLET)) {
+    } else if (indent === 2 && trimmed.startsWith(RESULT_BULLET)) {
       flush();
       current = { kind: 'result', text: clean(trimmed.slice(RESULT_BULLET.length).trim()) };
-    } else if (atHeaderIndent && THOUGHT_RE.test(trimmed)) {
+    } else if (indent === 2 && THOUGHT_RE.test(trimmed)) {
       flush();
       current = { kind: 'thinking', text: clean(trimmed) };
-    } else if (atHeaderIndent && trimmed.startsWith(THINKING_DETAIL_GLYPH)) {
+    } else if (indent === 0 && trimmed.startsWith(THINKING_DETAIL_GLYPH)) {
       // Story 37.11: a verbose-mode expanded reasoning block opens with `∴`; its wrapped continuation
       // rows fold into this thinking card. The block STREAMS (grows each frame) — the engine emits the
       // delta, not the full text, to avoid the live re-emit storm.
@@ -286,7 +285,7 @@ export function collectToolHeaderKeys(rows: string[], includeBulletless = false)
   for (const row of rows) {
     const t = row.trim();
     if (t.length === 0) continue;
-    if (row.length - row.trimStart().length > MAX_CARD_INDENT) continue; // deep glyph = tool output, not a header
+    if (row.length - row.trimStart().length !== 0) continue; // ● headers sit at col 0 only
     if (!t.startsWith(CARD_BULLET) && !includeBulletless) continue;
     const key = toolHeaderKey(t);
     if (key) out.add(key);
@@ -308,7 +307,7 @@ export function restoreFlickeredToolBullets(rows: string[], recentKeys: Readonly
     // Story 37.17: don't resurrect a `●` on a DEEPLY indented row — that's a tool's verbose output, not a
     // flickered header. Restoring it would strip the indent (`● ${t}` lands at col 0) and bypass the parser's
     // indent gate, re-introducing the exact misdetection the gate prevents.
-    if (row.length - row.trimStart().length > MAX_CARD_INDENT) return row;
+    if (row.length - row.trimStart().length !== 0) return row; // only restore col-0 headers
     const key = toolHeaderKey(t);
     return key && recentKeys.has(key) ? `${CARD_BULLET} ${t}` : row;
   });
