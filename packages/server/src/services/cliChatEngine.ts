@@ -2587,11 +2587,15 @@ export class CliChatEngine implements ChatEngine {
                 //   (c) neither pending → authoritative emit; advance `liveTextSlots` so a later grid
                 //       scrape of this same card falls below the high-water and is skipped.
                 if (suppressBlockText) {
-                  // (a) 37.9 modal lead-in: FINALIZE the provisional prose IN PLACE now instead of waiting for
-                  // the turn-end reload. An AskUserQuestion modal parks the turn on the user's input, so that
-                  // reload can be far off — the lead-in would otherwise sit dimmed/badged the whole time the
-                  // choices are on screen. maybeFinalize swaps the canonical markdown onto the oldest still-
-                  // provisional text (the client replaces it in place — no double render). Counted above.
+                  // (a) 37.9 modal lead-in: same-block text+tool_use — finalize in place.
+                  maybeFinalize('text', text);
+                } else if (provisionalBodyEmitsPending > 0) {
+                  // (a2) The modal lead-in text arrived as a SEPARATE JSONL entry (실측: text and
+                  // tool_use are distinct entries, not one block). emitProvisionalBody counted it
+                  // on provisionalBodyEmitsPending, but suppressBlockText only fires when the text
+                  // and tool_use share one block. Finalize via the body counter so the provisional
+                  // is replaced immediately, not left badged until the turn-end reload.
+                  provisionalBodyEmitsPending--;
                   maybeFinalize('text', text);
                 } else if (provisionalTextEmitsPending > 0) {
                   // (b) general grid provisional holds this slot.
