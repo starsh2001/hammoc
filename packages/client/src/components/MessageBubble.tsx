@@ -195,11 +195,7 @@ export function MessageBubble({
         ) : isUser ? (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         ) : (
-          message.content && (
-            provisional
-              ? <p className="whitespace-pre-wrap break-words font-bold">{message.content}</p>
-              : <MarkdownRenderer content={message.content} isStreaming={isStreaming} />
-          )
+          message.content && <MarkdownRenderer content={message.content} isStreaming={isStreaming} />
         )}
 
         {/* Timestamp */}
