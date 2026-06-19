@@ -285,7 +285,7 @@ export function collectToolHeaderKeys(rows: string[], includeBulletless = false)
   for (const row of rows) {
     const t = row.trim();
     if (t.length === 0) continue;
-    if (row.length - row.trimStart().length !== 0) continue; // ● headers sit at col 0 only
+    if (row.length - row.trimStart().length > MAX_CARD_INDENT) continue; // deep = tool output, not a header
     if (!t.startsWith(CARD_BULLET) && !includeBulletless) continue;
     const key = toolHeaderKey(t);
     if (key) out.add(key);
@@ -307,7 +307,7 @@ export function restoreFlickeredToolBullets(rows: string[], recentKeys: Readonly
     // Story 37.17: don't resurrect a `●` on a DEEPLY indented row — that's a tool's verbose output, not a
     // flickered header. Restoring it would strip the indent (`● ${t}` lands at col 0) and bypass the parser's
     // indent gate, re-introducing the exact misdetection the gate prevents.
-    if (row.length - row.trimStart().length !== 0) return row; // only restore col-0 headers
+    if (row.length - row.trimStart().length > MAX_CARD_INDENT) return row; // deep = tool output, not a header
     const key = toolHeaderKey(t);
     return key && recentKeys.has(key) ? `${CARD_BULLET} ${t}` : row;
   });
