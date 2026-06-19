@@ -94,6 +94,10 @@ const SPINNER_HEADER_RE = /^[·*✢✶✻✽]/;
  * gluing the user's typed message onto an assistant card (실측 2026-06-19 dump replay).
  */
 const INPUT_PROMPT_RE = /^❯/;
+/** CLI chrome lines painted with a white `●` bullet that are NOT assistant prose — e.g.
+ *  `● User answered Claude's questions:` (the AskUserQuestion response echo). Dropped so
+ *  they don't spawn a spurious text card. */
+const UI_CHROME_BODY_RE = /^User answered/;
 /** A tool-use header body: a tool name immediately followed by `(` — "Write(", "PowerShell(", and
  *  HYPHENATED sub-agent names like "claude-code-guide(" (실측: the bullet is a tool, but the strict
  *  identifier set dropped the `-`). Used as the tool-NAME extractor + the no-color FALLBACK classifier. */
@@ -187,10 +191,12 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       continue;
     }
 
-    // A SPINNER-headed paragraph is claude's live generation indicator, never content — drop the whole
-    // block (header + its wrapped rows). Gated on `atBlockStart` so a spinner glyph quoted mid-prose (a
-    // continuation row) is NOT mistaken for a spinner and instead folds into its real card below.
-    if (atBlockStart && indent === 0 && SPINNER_HEADER_RE.test(trimmed)) {
+    // A SPINNER-headed row is claude's generation indicator or a frozen prior-turn status line — never
+    // content. Drop it and any wrapped continuation rows. The col-0 gate prevents a prose line that
+    // merely contains a spinner glyph (indented) from being dropped; `atBlockStart` is NOT required
+    // because a frozen spinner (`✻ Churned for 20s`) can appear flush after content with no blank
+    // separator, and must still be dropped rather than folded into the card above.
+    if (indent === 0 && SPINNER_HEADER_RE.test(trimmed)) {
       flush();
       droppingSpinner = true;
       atBlockStart = false;
@@ -223,6 +229,8 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
         const parenIdx = body.indexOf('(');
         const toolName = (toolMatch ? toolMatch[1] : parenIdx > 0 ? body.slice(0, parenIdx) : body).trim() || 'Tool';
         current = { kind: 'tool', text: body, toolName, ...(bulletColor ? { bulletColor } : {}) };
+      } else if (UI_CHROME_BODY_RE.test(body)) {
+        droppingSpinner = true; // drop this line + any continuation rows below it
       } else {
         current = { kind: 'text', text: body, ...(bulletColor ? { bulletColor } : {}) };
       }
