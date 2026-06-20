@@ -60,6 +60,8 @@ Click the **Agent Button** (Users icon, in the chat bottom bar right of the mode
 
 For BMad projects, the overview page displays additional sections above the standard project overview (see §5.5):
 
+**QA gate parse warning** — If any QA gate file has formatting errors, an amber warning banner lists the affected files at the top of the overview so you can fix them.
+
 **BMad Summary Card:**
 - Overall **completion percentage** with a progress bar
 - **Done/total epics** and **done/total stories** counts

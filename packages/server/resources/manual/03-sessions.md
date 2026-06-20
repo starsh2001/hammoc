@@ -13,6 +13,7 @@ Access the session list via the sidebar or quick panel:
 - **Streaming indicator** — Green dot with animation when streaming
 - **Waiting indicator** — Amber pulsing dot with "Waiting" badge when a session is connected but not yet streaming
 - **Queue badge** — Shown when queue runner is active on the session
+- **Early visibility** — New sessions appear in the list as soon as a message is sent, with no brief delay
 - Empty sessions are hidden by default (toggle with the eye icon)
 
 ### 3.2 Creating a New Session

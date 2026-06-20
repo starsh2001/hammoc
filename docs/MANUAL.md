@@ -259,7 +259,7 @@ Monitor token usage in real-time:
 - **Rate limit dots** — 5h/7d utilization indicators in the input area
 - **Color thresholds** — Green (normal), Yellow (moderate), Red (high usage)
 - **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. At critical usage levels, clicking instead creates a new session
-- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session
+- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session. A master switch in Advanced Settings (see §13.17) lets you disable auto-compaction entirely and manage compaction manually instead
 
 ### 2.11 Aborting Responses
 
@@ -305,6 +305,7 @@ The model selector button is located in the chat input toolbar. It displays the 
 
 - **Opus** — Locked on. The 1M window is included with your Max subscription at no extra cost, so it is always engaged and cannot be switched off (the toggle shows "Included with Max").
 - **Sonnet** (and other non-Opus 1M-capable models) — Off by default. Sonnet's 1M window bills to usage credits rather than your subscription, so you opt in explicitly. The toggle shows a "Requires usage credits" hint that turns amber once enabled. Left off, Sonnet runs at the standard 200K context window.
+- **Fable 5** — Opt-in, same as Sonnet. The toggle appears and defaults to off.
 
 The toggle only appears for 1M-capable models; every other model uses its native context window and shows no toggle.
 
@@ -314,7 +315,7 @@ Control how much Claude "thinks" before responding. The intensity bar appears in
 
 - **Low / Medium / High** — 3 levels, available for all models
 - **Max** — 4th level, added for Opus 4.6 / Sonnet 4.6
-- **XHigh** — 5th level, added for **Opus 4.7+** (the default effort for these models is XHigh)
+- **XHigh** — 5th level, added for **Opus 4.7+** and **Fable 5** (the default effort for these models is XHigh)
 
 Behavior:
 
@@ -422,6 +423,16 @@ When the **Max Budget (USD)** advanced setting (see §13.17) is configured, a st
 
 The banner disappears automatically once the running cost falls back below the warning threshold (for example, after starting a new session).
 
+### 2.25 Background Task Wait Card
+
+When Claude launches background tasks (e.g., background `Agent` sub-tasks), an amber notification card appears below the message stream showing:
+
+- **Elapsed timer** — A running clock (mm:ss) counting how long the background work has been running
+- **Pending count** — Number of background tasks still in progress
+- **Stop button** — Appears after a configurable delay (default 60 seconds) to let you abort if something seems stuck
+
+The card disappears automatically once all background tasks complete.
+
 ---
 
 ## 3. Sessions
@@ -439,6 +450,7 @@ Access the session list via the sidebar or quick panel:
 - **Streaming indicator** — Green dot with animation when streaming
 - **Waiting indicator** — Amber pulsing dot with "Waiting" badge when a session is connected but not yet streaming
 - **Queue badge** — Shown when queue runner is active on the session
+- **Early visibility** — New sessions appear in the list as soon as a message is sent, with no brief delay
 - Empty sessions are hidden by default (toggle with the eye icon)
 
 ### 3.2 Creating a New Session
@@ -1488,6 +1500,8 @@ Click the **Agent Button** (Users icon, in the chat bottom bar right of the mode
 
 For BMad projects, the overview page displays additional sections above the standard project overview (see §5.5):
 
+**QA gate parse warning** — If any QA gate file has formatting errors, an amber warning banner lists the affected files at the top of the overview so you can fix them.
+
 **BMad Summary Card:**
 - Overall **completion percentage** with a progress bar
 - **Done/total epics** and **done/total stories** counts
@@ -1830,6 +1844,8 @@ Access settings via the gear icon or the Settings page. The page has **8 tabs**:
 - **Light** — Warm gray background, dark text
 - **System** — Follows your OS/browser preference
 
+Theme is stored locally per device (a "this device only" badge is shown next to the picker), so each browser/device can use a different theme even though other settings sync across devices (see multi-device sync above).
+
 ### 13.2 Language
 
 Hammoc supports 6 languages:
@@ -1854,6 +1870,9 @@ Choose the default Claude model:
 - **Sonnet** — Latest Sonnet
 - **Opus** — Latest Opus
 - **Haiku** — Latest Haiku
+
+**Mythos-class:**
+- Fable 5 (1M opt-in)
 
 **Claude 4.x:**
 - Opus 4.8 (most capable, 1M context), 4.7, 4.6, 4.5, 4.1, 4
@@ -2022,32 +2041,30 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 ### 13.16 Conversation Engine
 
-Hammoc can run conversations through one of two engines:
+Hammoc can run conversations through one of two engines. The engine picker in Settings shows them as **side-by-side comparison cards** with a Recommended / Beta badge:
 
-- **SDK** (default) — The Claude Agent SDK. Responses stream token-by-token as they're generated. This is the standard engine.
-- **CLI** — Routes your conversation through the Claude Code command-line tool instead. Its main draw is billing: it draws on your Claude **subscription** rather than separate API credits.
+- **SDK** (default, Recommended) — The Claude Agent SDK. Responses stream token-by-token. Every model and feature is supported.
+- **CLI** (Beta) — Routes your conversation through the Claude Code CLI. Its main draw is billing: it draws on your Claude **subscription** rather than separate API credits. Responses arrive block-by-block.
 
-**Trade-offs of CLI mode:**
+**Trade-offs:**
 
 | | SDK | CLI |
 |---|---|---|
 | Billing | API credits | Subscription pool |
-| Response rendering | Token-by-token streaming | **Block-by-block** — each completed block appears at once. An optional "synthetic typing" effect can re-animate each block character-by-character (see CLI Mode Settings below) |
+| Response rendering | Token-by-token streaming | **Block-by-block** — each completed block appears at once |
 | Progress feedback | Live token stream | Optional "↓ N tokens · Ns" counter while generating |
 
 Your conversation history is identical either way — both engines write the same session files, so a chat created in CLI mode reloads and renders exactly like an SDK chat, and you can switch engines between sessions without losing or garbling history. The engine is chosen per session at the moment you send; there is no live mid-conversation switch.
 
-Everything interactive works the same in CLI mode as in SDK mode: live tool-call cards, permission prompts, `AskUserQuestion` selection cards, extended thinking, image attachments (see §2.4), and code rewind all behave identically. One subtle difference: in CLI mode a permission prompt appears as its own standalone card rather than attached to the tool card that triggered it.
+Everything interactive works the same in CLI mode as in SDK mode: live tool-call cards, permission prompts, selection cards, extended thinking, image attachments (see §2.4), and code rewind all behave identically. Claude is equally Hammoc-aware in both engines.
 
-**CLI Mode Settings** appear alongside the toggle, and apply only while the CLI engine is active:
+**Live permission mode switch** — During a CLI chat, clicking the permission mode button (or pressing `Shift+Tab`) changes the mode immediately, not just for the next session.
 
-- **Show thinking summaries** — Surface Claude's thinking summaries while the CLI engine generates a response (default on). It is requested per session and never edits your global Claude config; whether summaries actually appear can also depend on your Claude version and authentication.
-- **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
-- **Synthetic typing** — Re-animate each completed block character-by-character as it arrives, mimicking the SDK's token-by-token feel. Purely cosmetic; off by default.
-- **PTY mirror (debug)** — Show a read-only terminal that mirrors claude's raw screen (ANSI intact) during CLI-mode chats; off by default. A diagnostic aid for when a card is slow to arrive or the progress counter freezes — it lets you watch what the otherwise-windowless CLI engine is actually doing. A copy button grabs the whole buffer so you can share it.
-- **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path you enter is invalid, Hammoc logs a warning and falls back to auto-detect rather than failing the turn.
+CLI engine settings have moved to **Advanced Settings** (see §13.17) under the "CLI engine only" group.
 
 ### 13.17 Advanced Settings
+
+Settings in the Advanced tab are organized into groups by which conversation engine they apply to.
 
 **Server Management (mode-dependent):**
 
@@ -2058,12 +2075,27 @@ Everything interactive works the same in CLI mode as in SDK mode: live tool-call
 - **Chat sessions** — Save file snapshots during chat for rewind/restore (default: on). Disabling this prevents the Code Rewind feature (see §2.20) from working
 - **Queue runner** — Save file snapshots during queue execution (default: off). Enabling increases JSONL session file size
 
-**SDK Parameters:**
+**Common (both engines):**
+- **Auto-compact when context fills** — Master switch for automatic context compaction (default: on). When enabled, conversations are automatically summarized when the context window fills up, so the session keeps going instead of stalling. When disabled, you manage compaction manually via `/compact` or the usage donut (see §2.10). Applies to both SDK and CLI engines.
+
+**SDK Parameters (SDK engine only):**
 - **Max Thinking Tokens** — Limit Claude's extended thinking tokens (1,024–128,000)
 - **Max Turns** — Limit conversation turns per query (1–100)
 - **Max Budget (USD)** — Set cost limit per query ($0.01–$100)
 
 > **Scope (as of v1.3.0)**: these SDK parameters now apply to **both** direct chat sends and Queue Runner executions. Earlier releases silently dropped them in the queue path — if your queue runs started honoring Max Turns or Max Thinking Tokens after upgrading, this is why. Adjust the values if the new behavior surprises you.
+
+**CLI engine settings:**
+
+These settings apply only while the CLI engine is active (see §13.16):
+
+- **Show thinking summaries** — Surface Claude's thinking summaries while generating a response (default on). Whether summaries actually appear can also depend on your Claude version.
+- **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
+- **Synthetic typing** — Re-animate each completed block character-by-character as it arrives, mimicking the SDK's token-by-token feel. Purely cosmetic; off by default.
+- **Resume confirm** — When resuming a large or old session, Claude may show a confirm menu asking whether to "resume from summary" or "resume the full session". This setting controls how Hammoc handles that menu: **Ask each time** (default) shows an interactive card so you choose; **Auto: resume from summary** or **Auto: resume full session** auto-picks without blocking the turn.
+- **Screen-stall detection** — If generation appears stuck for a configurable duration (default 20 seconds), a soft amber warning appears with a "Stop" button. Advisory only — Hammoc never auto-aborts. Set to 0 to disable.
+- **Claude screen mirror** — Show a read-only terminal mirroring Claude's raw output during CLI-mode chats; on by default. Useful when a card is slow to arrive or the progress counter freezes. The panel is draggable and resizable, with a copy button for the full buffer. Turn it off if you find it distracting.
+- **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path is invalid, Hammoc falls back to auto-detect.
 
 **Display:**
 - **Card entrance animation** — While a response streams, each message and tool card fades and slides up one at a time as it appears, instead of the whole batch popping in at once. Applies to both engines and affects live streaming only (reloaded history renders statically). Purely cosmetic; on by default.

@@ -137,7 +137,8 @@ Real-time conversations with Claude through a rich web UI.
 - **Prompt history** — Navigate previous inputs with arrow keys
 - **Prompt chaining** — Queue up to 10 prompts for sequential execution (server-synced, multi-browser, drag-to-reorder)
 - **Voice input** — Dictate messages using browser speech recognition (Chrome, Edge, Safari)
-- **Context usage monitor** — Track token usage and cost in real-time, with auto-compact on context overflow
+- **Context usage monitor** — Track token usage and cost in real-time, with auto-compact on context overflow (master switch in Settings)
+- **Background task wait card** — When Claude runs background tasks, an amber card shows elapsed time and pending count with an optional Stop button
 - **Abort generation** — Stop responses with the abort button or ESC key
 
 ### Session Management
@@ -160,10 +161,10 @@ Real-time conversations with Claude through a rich web UI.
 
 ### Model & Permission Control
 
-- **Model selector** — Choose between Claude Sonnet, Opus, and Haiku variants with the model name on the button, plus a **1M context** toggle (auto-on for Opus, opt-in for Sonnet)
-- **Thinking effort** — Adjust reasoning intensity (Low / Medium / High, plus Max on 4.6 models and XHigh on Opus 4.7 / 4.8)
+- **Model selector** — Choose between Claude Sonnet, Opus, Haiku, and Fable variants with the model name on the button, plus a **1M context** toggle (auto-on for Opus, opt-in for Sonnet and Fable)
+- **Thinking effort** — Adjust reasoning intensity (Low / Medium / High, plus Max on 4.6 models and XHigh on Opus 4.7+ / Fable 5)
 - **Permission modes** — Plan, Ask (default), Auto, or Bypass
-- **Conversation engine** — Run chats through the Claude Agent SDK (API credits) or the Claude Code CLI (subscription billing), switchable globally or per-project
+- **Conversation engine** — Run chats through the Claude Agent SDK (API credits, Recommended) or the Claude Code CLI (subscription billing, Beta), switchable globally or per-project with side-by-side comparison
 - **Per-project overrides** — Different settings per project
 
 ### Project Management

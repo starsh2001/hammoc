@@ -128,7 +128,7 @@ Monitor token usage in real-time:
 - **Rate limit dots** — 5h/7d utilization indicators in the input area
 - **Color thresholds** — Green (normal), Yellow (moderate), Red (high usage)
 - **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. At critical usage levels, clicking instead creates a new session
-- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session
+- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session. A master switch in Advanced Settings (see §13.17) lets you disable auto-compaction entirely and manage compaction manually instead
 
 ### 2.11 Aborting Responses
 
@@ -174,6 +174,7 @@ The model selector button is located in the chat input toolbar. It displays the 
 
 - **Opus** — Locked on. The 1M window is included with your Max subscription at no extra cost, so it is always engaged and cannot be switched off (the toggle shows "Included with Max").
 - **Sonnet** (and other non-Opus 1M-capable models) — Off by default. Sonnet's 1M window bills to usage credits rather than your subscription, so you opt in explicitly. The toggle shows a "Requires usage credits" hint that turns amber once enabled. Left off, Sonnet runs at the standard 200K context window.
+- **Fable 5** — Opt-in, same as Sonnet. The toggle appears and defaults to off.
 
 The toggle only appears for 1M-capable models; every other model uses its native context window and shows no toggle.
 
@@ -183,7 +184,7 @@ Control how much Claude "thinks" before responding. The intensity bar appears in
 
 - **Low / Medium / High** — 3 levels, available for all models
 - **Max** — 4th level, added for Opus 4.6 / Sonnet 4.6
-- **XHigh** — 5th level, added for **Opus 4.7+** (the default effort for these models is XHigh)
+- **XHigh** — 5th level, added for **Opus 4.7+** and **Fable 5** (the default effort for these models is XHigh)
 
 Behavior:
 
@@ -290,4 +291,14 @@ When the **Max Budget (USD)** advanced setting (see §13.17) is configured, a st
 - The banner is informational; the SDK auto-stops the stream once the limit is actually crossed
 
 The banner disappears automatically once the running cost falls back below the warning threshold (for example, after starting a new session).
+
+### 2.25 Background Task Wait Card
+
+When Claude launches background tasks (e.g., background `Agent` sub-tasks), an amber notification card appears below the message stream showing:
+
+- **Elapsed timer** — A running clock (mm:ss) counting how long the background work has been running
+- **Pending count** — Number of background tasks still in progress
+- **Stop button** — Appears after a configurable delay (default 60 seconds) to let you abort if something seems stuck
+
+The card disappears automatically once all background tasks complete.
 
