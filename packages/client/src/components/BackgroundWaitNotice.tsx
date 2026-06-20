@@ -25,8 +25,9 @@ export function BackgroundWaitNotice() {
     }
     const tick = () => {
       const now = Date.now();
-      setElapsed(Math.floor((now - since) / 1000));
-      if (stopDelayMs === 0 || now - since >= stopDelayMs) {
+      const elapsed = now - since;
+      setElapsed(Math.floor(elapsed / 1000));
+      if (stopDelayMs === 0 || elapsed >= stopDelayMs) {
         setShowStop(true);
       }
     };

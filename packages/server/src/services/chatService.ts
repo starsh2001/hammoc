@@ -360,7 +360,8 @@ export class ChatService implements ChatEngine {
     _onPhase?: (phase: 'launching' | 'submitting' | 'waiting' | null) => void,
     _onScreenFrame?: (frame: string) => void,
     _screenFrameThrottleMs?: number,
-    _backgroundTracker?: import('../utils/backgroundTaskTracker.js').BackgroundTaskTracker
+    _backgroundTracker?: import('../utils/backgroundTaskTracker.js').BackgroundTaskTracker,
+    _onPermissionModeSync?: (mode: import('@hammoc/shared').PermissionMode) => void
   ): Promise<ChatResponse> {
     const streamHandler = new StreamHandler(effectiveModelIs1M(options.model));
     const generator = this.sendMessage(content, options, canUseTool);

@@ -386,50 +386,24 @@ export function parseConfirmChoiceMenu(rows: string[]): ParsedQuestion | null {
  * excluded). Returns null for a trivial fragment so a bare modal with no lead-in prose never
  * emits scrape noise.
  */
-/**
- * Shared lead-in prose extractor: the trailing contiguous block of prose rows immediately ABOVE
- * `modalStart` in `rows` (box chrome AND a leading card bullet `●`/`⎿` stripped; blank / numbered-
- * option / cursor / footer / affordance rows excluded). Returns null only for an empty/sub-word
- * fragment (<4 chars) — a bare modal with no lead-in already yields an empty prose block (every row
- * above it is chrome/blank → filtered), so the floor only drops a stray single glyph, NOT a real
- * short sentence. (실측 2026-06-15: a 14-char Korean lead-in "선호 색상을 여쭙겠습니다." was wrongly
- * dropped by an over-aggressive 16-char floor on a real AskUserQuestion frame.) Used by both
- * `parsePrecedingText` (question modal) and `parsePrecedingPermissionText` (permission dialog) —
- * they differ only in how they locate `modalStart`.
- */
-function precedingProseAbove(rows: string[], modalStart: number): string | null {
-  if (modalStart <= 0) return null;
-  const isNoise = (l: string): boolean =>
-    l.length === 0 ||
-    /^[\s─-▟]*$/.test(l) || // blank or pure box-drawing chrome
-    /^\d{1,2}\.\s/.test(l) || // a numbered option row
-    /❯/.test(l) || // cursor / prompt marker
-    /to\s+navigate|Enter\b[^\n]{0,12}\b(?:select|confirm)\b|Esc\b[^\n]{0,16}\bcancel\b|Tab\b[^\n]{0,16}\bamend\b/i.test(l) ||
-    /Chat about this|Type something/i.test(l);
-  // A prose row renders as a `●` body card; strip a leading card bullet so the scrape is clean text
-  // (the canonical reload shows it un-bulleted, so the provisional should match).
-  const lines = rows.slice(0, modalStart).map((l) => stripBoxChrome(l).replace(/^[●⎿]\s*/, '').trim());
-  const prose: string[] = [];
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (isNoise(lines[i])) {
-      if (prose.length > 0) break; // stop at the first noise line above the prose block
-      continue; // skip trailing noise between the prose and the modal
-    }
-    prose.unshift(lines[i]);
-  }
-  const text = prose.join(' ').trim();
-  return text.length < 4 ? null : text.slice(0, 2000);
-}
-
 export function parsePrecedingText(rows: string[]): string | null {
   const footerIdx = lastRowMatching(rows, /to\s+navigate/i);
   if (footerIdx < 0) return null;
   const region = rows.slice(0, footerIdx);
-  // The modal begins at its header ballot-box row (☐/☒), or failing that at the first numbered
-  // option row. Everything above that is the lead-in prose.
   let modalStart = region.findIndex((r) => /[☐☒]/.test(r));
   if (modalStart < 0) modalStart = region.findIndex((r) => /^\s*1\.\s/.test(r));
-  return precedingProseAbove(region, modalStart);
+  if (modalStart <= 0) return null;
+  // Use the card classifier so only recognized blocks (● text, ● tool, ⎿ result, ∴/Thought
+  // thinking) are considered — spinners, UI chrome, and any other non-block rows are
+  // automatically excluded. Only trailing contiguous TEXT cards are lead-in prose.
+  const cards = parseGridCards(region.slice(0, modalStart));
+  const prose: string[] = [];
+  for (let i = cards.length - 1; i >= 0; i--) {
+    if (cards[i].kind === 'text') prose.unshift(cards[i].text);
+    else break;
+  }
+  const text = prose.join(' ').trim();
+  return text.length < 4 ? null : text.slice(0, 2000);
 }
 
 /**
@@ -465,8 +439,7 @@ export function parsePrecedingPermissionText(rows: string[]): string | null {
     else break;
   }
   const text = prose.join(' ').trim();
-  // Same sub-word floor as precedingProseAbove (a real short lead-in must survive; only a stray glyph
-  // is dropped). parseGridCards already excludes non-text cards, so an empty block means no prose.
+  // Sub-word floor: a real short lead-in must survive; only a stray glyph is dropped.
   return text.length < 4 ? null : text.slice(0, 2000);
 }
 

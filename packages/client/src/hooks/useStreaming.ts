@@ -18,7 +18,7 @@ import { getSocket } from '../services/socket';
 import { useChatStore } from '../stores/chatStore';
 import { useMessageStore } from '../stores/messageStore';
 import { usePreferencesStore } from '../stores/preferencesStore';
-import { debugLog } from '../utils/debugLogger';
+import { debugLog, setCLILogSocket } from '../utils/debugLogger';
 
 // Module-scoped cache: SDK returns filesChanged=0 for actual rewind,
 // so we remember the count from the preceding dryRun for the success toast.
@@ -142,6 +142,7 @@ export function useStreaming() {
 
   useEffect(() => {
     const socket = getSocket();
+    setCLILogSocket(socket);
     let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
     const RECONNECT_TIMEOUT = 10000; // 10 seconds
 
@@ -274,6 +275,7 @@ export function useStreaming() {
         useChatStore.setState({ isCompacting: false });
       }
       // Reveal the thinking card: flush any buffered text first, then insert. Story 37.11: provisional flag.
+      debugLog.cliLog('recv-thinking', { len: data.content.length, provisional: data.provisional, segCount: useChatStore.getState().streamingSegments.length });
       revealSegment(() => addStreamingThinking(data.content, data.provisional));
     };
 
@@ -331,6 +333,7 @@ export function useStreaming() {
       // Story 37.11: a canonical (provisional === false) block FINALIZES the provisional text segment in
       // place. It runs through revealSegment (which flushes buffered text first) so it lands right after
       // the provisional segment exists → in-place replace, never a duplicate.
+      debugLog.cliLog('recv-text', { len: data.content.length, provisional: data.provisional, messageId: data.messageId, preview: data.content.slice(0, 60) });
       if (data.provisional === false) {
         revealSegment(() => appendStreamingContent(data.content, false, data.messageId));
       } else {
@@ -445,12 +448,11 @@ export function useStreaming() {
 
     // Handle tool call start - add tool segment (skip AskUserQuestion — handled via permission:request)
     const handleToolCall = (data: { id: string; name: string; input?: Record<string, unknown>; startedAt?: number; provisional?: boolean }) => {
-      // Skip AskUserQuestion from stream events — stream-based tool:call has empty input
-      // because input_json_delta hasn't been fully received yet. The interactive card is
-      // created later via permission:request (from canUseTool) which has the full input.
       if (data.name === 'AskUserQuestion') {
+        debugLog.cliLog('recv-tool-skip', { name: data.name, id: data.id, reason: 'AskUserQuestion' });
         return;
       }
+      debugLog.cliLog('recv-tool', { name: data.name, id: data.id, provisional: data.provisional });
 
       // Reveal the tool card. Synthetic mode: queue it so it bubbles in AFTER the assistant
       // text finishes typing (staggered). Otherwise: flush buffered text first to prevent the
@@ -473,15 +475,15 @@ export function useStreaming() {
     const handlePermissionRequest = (data: PermissionRequest) => {
       // Flush pending text before interactive/permission segment
       flushChunkQueue();
-      debugLog.stream('permission:request received', {
+      const isQuestion = data.toolCall.name === 'AskUserQuestion';
+      debugLog.cliLog('recv-permission', {
         permissionId: data.id,
-        toolCallId: data.toolCall.id,
         toolName: data.toolCall.name,
+        isQuestion,
+        standalone: !!(data as { standalone?: boolean }).standalone,
+        hasQuestions: isQuestion && !!(data.toolCall.input?.questions),
         alreadySeen: seenPermissionIds.current.has(data.id),
-        segmentCount: useChatStore.getState().streamingSegments.length,
-        existingToolIds: useChatStore.getState().streamingSegments
-          .filter(s => s.type === 'tool')
-          .map(s => (s as { type: 'tool'; toolCall: { id: string } }).toolCall.id),
+        segCount: useChatStore.getState().streamingSegments.length,
       });
       // Ignore duplicate requests (reconnect guard)
       if (seenPermissionIds.current.has(data.id)) return;
@@ -679,6 +681,8 @@ export function useStreaming() {
     };
 
     const handleBackgroundWaiting = (data: { sessionId: string; waiting: boolean; pendingCount: number }) => {
+      const viewingSessionId = useMessageStore.getState().currentSessionId;
+      if (viewingSessionId && data.sessionId !== viewingSessionId) return;
       useChatStore.getState().setBackgroundWaiting(data.waiting, data.pendingCount);
     };
 
@@ -1067,6 +1071,7 @@ export function useStreaming() {
       // = the first buffered event of that turn (each entry carries `ts`), used to realign the
       // elapsed clock so it continues instead of restarting at 0 on restore.
       let lastCliPhase: 'launching' | 'submitting' | 'waiting' | null = null;
+      let lastBackgroundWaiting: { sessionId: string; waiting: boolean; pendingCount: number; ts?: number } | null = null;
       let lastGenerationProgress: { tokens: number; elapsedSeconds: number } | null = null;
       let currentTurnStartTs: number | null = null;
 
@@ -1451,10 +1456,15 @@ export function useStreaming() {
             }
             // Reset per-turn identity so next turn doesn't inherit stale ID
             messageId = null;
-            // Turn boundary: the just-finished turn's CLI progress is stale. Clear it (and
+            // Turn boundary: clear segments from the completed turn so task notifications,
+            // system cards, and other transient segments don't carry over to the next turn.
+            // The authoritative messages were already delivered via stream:complete-messages.
+            segments.length = 0;
+            // The just-finished turn's CLI progress is stale. Clear it (and
             // the turn-start marker) so only a still-running next turn restores an indicator.
             lastCliPhase = null;
             lastGenerationProgress = null;
+            lastBackgroundWaiting = null;
             currentTurnStartTs = null;
             break;
           }
@@ -1516,6 +1526,11 @@ export function useStreaming() {
           }
           case 'generation:progress': {
             lastGenerationProgress = eventData as { tokens: number; elapsedSeconds: number; thinking?: boolean };
+            break;
+          }
+          case 'background:waiting': {
+            const d = eventData as { sessionId: string; waiting: boolean; pendingCount: number };
+            lastBackgroundWaiting = { ...d, ts: entryTs };
             break;
           }
           // Skip tool:progress during replay (only elapsed times, final state is in tool:result)
@@ -1595,6 +1610,12 @@ export function useStreaming() {
         if (currentTurnStartTs !== null) {
           chatStateUpdate.streamingStartedAt = new Date(currentTurnStartTs);
         }
+      }
+      // Restore background-waiting state from the last buffered event (survives sleep/wake)
+      if (lastBackgroundWaiting) {
+        chatStateUpdate.backgroundWaiting = lastBackgroundWaiting.waiting;
+        chatStateUpdate.backgroundWaitingSince = lastBackgroundWaiting.waiting ? (lastBackgroundWaiting.ts ?? Date.now()) : null;
+        chatStateUpdate.backgroundPendingCount = lastBackgroundWaiting.pendingCount;
       }
 
       // Update seen permission IDs for live event dedup
@@ -1878,6 +1899,7 @@ export function useStreaming() {
       socket.off('session:summary-result', handleSummaryResult);
       socket.io.off('reconnect_failed', handleReconnectFailed);
       document.removeEventListener('keydown', handleKeyDown);
+      setCLILogSocket(null);
     };
   }, [
     startStreaming,

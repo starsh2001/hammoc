@@ -311,7 +311,7 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
   describe('parsePrecedingText (lead-in prose above the modal)', () => {
     it('returns the prose row(s) directly above the modal, box chrome stripped', () => {
       const rows = [
-        '현재 구조를 다 파악했습니다. 정리하면 두 가지 방식이 있습니다.',
+        '● 현재 구조를 다 파악했습니다. 정리하면 두 가지 방식이 있습니다.',
         ' ☐ Color',
         ' Which color do you want?',
         ' ❯ 1. Red',
@@ -350,6 +350,65 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
         ' Enter to select · ↑/↓ to navigate · Esc to cancel',
       ];
       expect(parsePrecedingText(rows)).toBe('선호 색상을 여쭙겠습니다.');
+    });
+
+    it('excludes thinking rows (∴ detail + "Thought for" summary) above the modal', () => {
+      const rows = [
+        '  Thought for 5s',
+        '∴ The user wants me to call the AskUserQuestion tool again.',
+        '● 재미있는 주제로 질문해 볼게요.',
+        ' ☐ 저녁 메뉴',
+        ' 오늘 저녁 뭐 먹을까요?',
+        ' ❯ 1. 치킨',
+        '   5. Chat about this',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ];
+      const result = parsePrecedingText(rows);
+      expect(result).toBe('재미있는 주제로 질문해 볼게요.');
+      expect(result).not.toContain('Thought');
+      expect(result).not.toContain('∴');
+    });
+
+    it('excludes thinking-only rows and returns null when no text prose exists', () => {
+      const rows = [
+        '  Thought for 12s',
+        '∴ Let me think about what to do here.',
+        ' ☐ Approach',
+        ' Which approach?',
+        ' ❯ 1. Option A',
+        '   5. Chat about this',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ];
+      expect(parsePrecedingText(rows)).toBeNull();
+    });
+
+    it('excludes spinner remnants (✻/✶/etc) — only ● text cards are prose', () => {
+      const rows = [
+        '✻ Worked for 8s',
+        '',
+        '● 여기에 제가 준비한 선택지입니다.',
+        ' ☐ 메뉴',
+        ' 뭘 먹을까요?',
+        ' ❯ 1. 치킨',
+        '   5. Chat about this',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ];
+      const result = parsePrecedingText(rows);
+      expect(result).toBe('여기에 제가 준비한 선택지입니다.');
+      expect(result).not.toContain('Worked');
+    });
+
+    it('returns null when only a spinner sits above the modal (no ● prose)', () => {
+      const rows = [
+        '✻ Worked for 8s',
+        '',
+        ' ☐ 메뉴',
+        ' 뭘 먹을까요?',
+        ' ❯ 1. 치킨',
+        '   5. Chat about this',
+        ' Enter to select · ↑/↓ to navigate · Esc to cancel',
+      ];
+      expect(parsePrecedingText(rows)).toBeNull();
     });
   });
 

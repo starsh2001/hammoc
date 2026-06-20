@@ -26,7 +26,7 @@ import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react
 import { useTranslation } from 'react-i18next';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
-import { ChevronDown, ChevronRight, Trash2, Copy, SquareTerminal } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2, Copy, SquareTerminal, Minus, Plus, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSocket } from '../../services/socket';
 import { useTheme } from '../../hooks/useTheme';
@@ -74,6 +74,20 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+const MIRROR_FONT_SIZE_KEY = 'hammoc:mirrorFontSize';
+const MIRROR_AUTO_FIT_KEY = 'hammoc:mirrorAutoFit';
+const MIN_FONT_SIZE = 4;
+const MAX_FONT_SIZE = 24;
+const DEFAULT_FONT_SIZE = 13;
+const MONO_CHAR_WIDTH_RATIO = 0.6;
+
+function loadFontSize(): number {
+  try { const v = localStorage.getItem(MIRROR_FONT_SIZE_KEY); const n = v ? Number(v) : NaN; return Number.isFinite(n) ? Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, n)) : DEFAULT_FONT_SIZE; } catch { return DEFAULT_FONT_SIZE; }
+}
+function loadAutoFit(): boolean {
+  try { return localStorage.getItem(MIRROR_AUTO_FIT_KEY) === 'true'; } catch { return false; }
+}
+
 /** The actual xterm panel — mounted only when the mirror is enabled (gated by the parent). */
 function MirrorPanel() {
   const { t } = useTranslation('common');
@@ -82,12 +96,35 @@ function MirrorPanel() {
   const { resolvedTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(true); // default collapsed — show only the title bar
   const [panelHeight, setPanelHeight] = useState(192); // px — drag the bar atop the panel to resize
+  const [fontSize, setFontSize] = useState(loadFontSize);
+  const [autoFit, setAutoFit] = useState(loadAutoFit);
   // Scroll to the bottom (claude's input/spinner) on the first frame after a (re)mount/expand,
   // then leave the user's scroll position alone.
   const justExpandedRef = useRef(true);
   // Previous panel height — used to anchor the BOTTOM of the screen on resize (see the layout
   // effect below). Seeded with the initial height so the first resize delta is measured correctly.
   const prevPanelHeightRef = useRef(192);
+
+  const computeAutoFitSize = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return DEFAULT_FONT_SIZE;
+    const padding = 16; // px-2 = 8px each side
+    const available = el.clientWidth - padding;
+    return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, Math.floor(available / (120 * MONO_CHAR_WIDTH_RATIO))));
+  }, []);
+
+  useEffect(() => {
+    if (collapsed || !autoFit) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const size = computeAutoFitSize();
+      setFontSize(size);
+      localStorage.setItem(MIRROR_FONT_SIZE_KEY, String(size));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [collapsed, autoFit, computeAutoFitSize]);
 
   // xterm init + live socket subscription. Re-runs on collapse/expand (the terminal is
   // disposed while collapsed) and on theme change. The subscription is a pure observer of
@@ -111,7 +148,7 @@ function MirrorPanel() {
     const terminal = new Terminal({
       cols: COLS,
       rows: ROWS,
-      fontSize: 13,
+      fontSize,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       scrollback: 5000,
       cursorBlink: false,
@@ -201,6 +238,11 @@ function MirrorPanel() {
     };
   }, [collapsed, resolvedTheme]);
 
+  // Apply font size changes in-place (no terminal recreation).
+  useEffect(() => {
+    if (terminalRef.current) terminalRef.current.options.fontSize = fontSize;
+  }, [fontSize]);
+
   // Keep the BOTTOM of the screen anchored when the panel is resized (drag the title bar). claude's
   // active area — the input box / spinner — sits at the bottom of the 80-row grid, so growing or
   // shrinking the panel should reveal/hide rows at the TOP while the bottom edge stays put. The
@@ -219,6 +261,29 @@ function MirrorPanel() {
   const handleClear = useCallback(() => {
     terminalRef.current?.clear();
   }, []);
+
+  const adjustFontSize = useCallback((delta: number) => {
+    setAutoFit(false);
+    localStorage.setItem(MIRROR_AUTO_FIT_KEY, 'false');
+    setFontSize((prev) => {
+      const next = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, prev + delta));
+      localStorage.setItem(MIRROR_FONT_SIZE_KEY, String(next));
+      return next;
+    });
+  }, []);
+
+  const toggleAutoFit = useCallback(() => {
+    setAutoFit((prev) => {
+      const next = !prev;
+      localStorage.setItem(MIRROR_AUTO_FIT_KEY, String(next));
+      if (next) {
+        const size = computeAutoFitSize();
+        setFontSize(size);
+        localStorage.setItem(MIRROR_FONT_SIZE_KEY, String(size));
+      }
+      return next;
+    });
+  }, [computeAutoFitSize]);
 
   // Grab the whole scrollback as plain text (xterm's selection strips ANSI) so it can be
   // pasted into a chat for diagnosis — the replacement for the removed file dump.
@@ -300,6 +365,41 @@ function MirrorPanel() {
         </div>
         {!collapsed && (
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => adjustFontSize(-1)}
+                onPointerDown={(e) => e.stopPropagation()}
+                title={t('cliPtyMirror.fontDecrease')}
+                aria-label={t('cliPtyMirror.fontDecrease')}
+                className="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-30"
+                disabled={fontSize <= MIN_FONT_SIZE}
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-gray-500 dark:text-gray-400 min-w-[1.5rem] text-center tabular-nums pointer-events-none">{fontSize}</span>
+              <button
+                type="button"
+                onClick={() => adjustFontSize(1)}
+                onPointerDown={(e) => e.stopPropagation()}
+                title={t('cliPtyMirror.fontIncrease')}
+                aria-label={t('cliPtyMirror.fontIncrease')}
+                className="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-30"
+                disabled={fontSize >= MAX_FONT_SIZE}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={toggleAutoFit}
+                onPointerDown={(e) => e.stopPropagation()}
+                title={t('cliPtyMirror.autoFit')}
+                aria-label={t('cliPtyMirror.autoFit')}
+                className={`flex items-center ml-0.5 ${autoFit ? 'text-blue-500 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button
               type="button"
               onClick={handleCopy}

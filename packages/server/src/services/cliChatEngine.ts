@@ -117,8 +117,23 @@ import type { BackgroundTaskTracker } from '../utils/backgroundTaskTracker.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
 import { SDKError, SDKErrorCode } from '../utils/errors.js';
+import { CliDebugLog } from '../utils/cliDebugLog.js';
 
 const log = createLogger('cliChatEngine');
+
+function keyLabel(k: string): string {
+  if (k === ' ') return 'SPACE';
+  if (k === '\r') return 'ENTER';
+  if (k === '\x1b[B') return 'DOWN';
+  if (k === '\x1b[C') return 'RIGHT';
+  if (k === '\x1b[D') return 'LEFT';
+  if (k === '\x1b') return 'ESC';
+  return k.length > 3 ? `text(${k.length})` : k;
+}
+
+/** Module-scoped question counter — survives across engine instances (which are created per-turn)
+ *  so `cli-q-N` IDs never collide with the client's seenPermissionIds (which persists per-session). */
+let globalQuestionCounter = 0;
 
 /**
  * CLI attachment passthrough (image support in CLI mode). The interactive PTY carries
@@ -351,17 +366,17 @@ export function buildQuestionKeys(parsed: ParsedQuestion, answer: string | strin
   const labels = parsed.options.map((o) => o.label);
   const selected = resolveSelectedIndices(labels, answer, parsed.multiSelect);
   if (selected.length === 0) {
-    // Story 37.15: a custom/free-text answer ("Other"). The TUI lists it as a "Type something" item right
-    // AFTER the real options (index = options.length). 실측 (probe-askq, claude v2.1.177): from the option-0
-    // highlight, ↓×optionCount lands on "Type something" → Enter enters a text-input mode → typing fills the
-    // input → Enter submits it as the answer. Drive that for a SINGLE-select string answer; a multiSelect or
-    // array custom stays unsupported (null → the caller Esc-cancels, the prior safe behavior).
+    // Custom/free-text answer ("Other"). The TUI lists it as a "Type something" item right
+    // AFTER the real options (index = options.length). ↓×optionCount lands on "Type something",
+    // then type directly (no Enter — Enter on "Type something" submits the modal immediately;
+    // verified 2026-06-20 log). The final Enter submits the typed text.
     const customText = !parsed.multiSelect && typeof answer === 'string' && answer.trim() ? answer.trim() : null;
     if (!customText) return null;
     const custom: string[] = [];
     for (let i = 0; i < labels.length; i++) custom.push(CLI_QUESTION_DOWN_KEY); // ↓ × optionCount → "Type something"
-    custom.push(CLI_QUESTION_ENTER_KEY); // select it → enter text-input mode
-    custom.push(customText);             // type the free text (bulk write — verified the input accepts it)
+    // No Enter here — Enter on "Type something" submits the modal immediately.
+    // Just start typing: the TUI activates text input on the first keystroke.
+    custom.push(customText);             // type the free text directly
     custom.push(CLI_QUESTION_ENTER_KEY); // submit
     return custom;
   }
@@ -394,12 +409,11 @@ export function buildQuestionKeys(parsed: ParsedQuestion, answer: string | strin
  * The composed key model is derived from the verified single-question primitives (Task 1, claude
  * v2.1.162): within each tab the highlight starts at option 0; a multiSelect question Space-toggles
  * each pick; a SINGLE-select question only highlights its pick (↓×index) — the highlighted option is
- * the recorded answer, committed by the final Submit Enter (NOT a per-question Enter, which is
- * reserved for Submit). ⚠️ This single-select "highlight = recorded answer" step is the one element
- * not directly observed for the tabbed modal (single-question single-select used Enter, which here
- * would submit prematurely); it is flagged for owner live-verification. The engine's closed-loop tab
- * verification + Esc-cancel-on-anomaly fallback cap the downside at the prior behavior (a cleanly
- * cancelled modal), never a corrupted session.
+ * the recorded answer, committed by Enter (explicit per-tab confirmation). The original assumption
+ * that "highlight = recorded answer" (no confirmation key needed) was disproven by JSONL evidence:
+ * multiSelect answers (Space-toggled) were recorded, but single-select answers (highlight-only)
+ * were silently dropped. Enter on a single-select tab confirms THAT TAB (does not trigger Submit);
+ * verified by owner manual testing (2026-06-20).
  */
 export function buildMultiQuestionKeys(
   questions: ParsedQuestion[],
@@ -415,7 +429,19 @@ export function buildMultiQuestionKeys(
     // construction, but a positional answer still lands on the right tab).
     const answer = answers[q.question] ?? answerValues[qi];
     const selected = resolveSelectedIndices(q.options.map((o) => o.label), answer, q.multiSelect);
-    if (selected.length === 0) return null;
+    if (selected.length === 0) {
+      // Custom/Other in multi-tab: navigate to "Type something", then type directly (no Enter
+      // to enter text mode — Enter would submit the whole modal). The final Enter confirms the
+      // text and auto-advances to the next tab. Verified by owner manual testing (2026-06-20).
+      const customText = !q.multiSelect && typeof answer === 'string' && answer.trim() ? answer.trim() : null;
+      if (!customText) return null; // multiSelect custom or empty → not drivable
+      const custom: string[] = [];
+      for (let i = 0; i < q.options.length; i++) custom.push(CLI_QUESTION_DOWN_KEY); // ↓×optionCount → "Type something"
+      custom.push(customText);             // type directly (no Enter to activate — just start typing)
+      custom.push(CLI_QUESTION_ENTER_KEY); // confirm input + auto-advance
+      perQuestion.push(custom);
+      continue;
+    }
     const keys: string[] = [];
     if (q.multiSelect) {
       let cur = 0;
@@ -425,8 +451,8 @@ export function buildMultiQuestionKeys(
         cur = idx;
       }
     } else {
-      // Single-select within a tabbed modal: highlight the pick; the tab move (→) records it.
       for (let i = 0; i < selected[0]; i++) keys.push(CLI_QUESTION_DOWN_KEY);
+      keys.push(CLI_QUESTION_ENTER_KEY);
     }
     perQuestion.push(keys);
   }
@@ -594,6 +620,10 @@ export class CliChatEngine implements ChatEngine {
    * engines (the SDK engine reads the same preference and passes it as an inline `settings`).
    */
   private autoCompactEnabled: boolean;
+  private planModeBypassBehavior: 'override' | 'sync';
+
+  /** Current turn's CLI decision log — populated inside sendMessageWithCallbacks, read by websocket handler. */
+  currentDebugLog: CliDebugLog | null = null;
 
   /**
    * CLI mode performs no inline rewind-before-send, so this stays null. (Standalone
@@ -608,6 +638,7 @@ export class CliChatEngine implements ChatEngine {
     this.cliShowThinkingSummaries = config.cliShowThinkingSummaries ?? true;
     this.cliResumeChoice = config.cliResumeChoice ?? 'ask';
     this.autoCompactEnabled = config.autoCompactEnabled ?? true;
+    this.planModeBypassBehavior = config.planModeBypassBehavior ?? 'override';
   }
 
   getPermissionMode(): PermissionMode {
@@ -732,6 +763,7 @@ export class CliChatEngine implements ChatEngine {
     onScreenFrame?: (frame: string) => void,
     screenFrameThrottleMs?: number,
     backgroundTracker?: BackgroundTaskTracker,
+    onPermissionModeSync?: (mode: PermissionMode) => void,
   ): Promise<ChatResponse> {
     const cwd = this.workingDirectory;
     if (!cwd) {
@@ -934,6 +966,11 @@ export class CliChatEngine implements ChatEngine {
       if (toolTraceStream) { try { toolTraceStream.write(`${msg}\n`); } catch { /* best-effort */ } }
     };
 
+    // Unified CLI decision log — always-on, per-turn session file.
+    const dlog = new CliDebugLog(resumeId ?? options.sessionId ?? 'new');
+    this.currentDebugLog?.close();
+    this.currentDebugLog = dlog;
+
     // Story 36.2: report the pre-generation phase so the UI shows progress through the
     // ~3s boot/inject window instead of a frozen spinner. launching → (❯ seen) submitting
     // → (Enter sent) waiting → (first block) null, handing off to onGenerationProgress.
@@ -1064,6 +1101,7 @@ export class CliChatEngine implements ChatEngine {
       let liveTextSlots = 0;
       let provisionalTextEmitsPending = 0;
       let provisionalCardCounter = 0; // synthesizes a messageId for each provisional grid text chunk
+      const fifoSnap = () => ({ thinkP: provisionalThinkingEmitsPending, toolP: provisionalToolEmitsPending, textP: provisionalTextEmitsPending, bodyP: provisionalBodyEmitsPending, thinkS: liveThinkingSlots, toolS: liveToolSlots, textS: liveTextSlots });
       // Story 37.11 (content-set dedup): the ordered list of cards the GRID has already EMITTED this turn,
       // each with its per-kind `slot` (the synthetic-id index for tools / the cross-source high-water for
       // thinking/text). The live scraper keys on the card's content SIGNATURE, not its viewport position —
@@ -1072,7 +1110,7 @@ export class CliChatEngine implements ChatEngine {
       // frame (the duplicate-parse storm). A sig already here is skipped; a sig that EXTENDS one of these
       // (same kind) is a growth (emit only the delta). Holds STABLE kinds only (text/thinking/tool) — `⎿`
       // result cards mutate frame-to-frame and flip the preceding tool instead.
-      const heldCards: Array<{ kind: GridCardKind; sig: string; text: string; slot: number; seenGreen?: boolean; retired?: boolean }> = [];
+      const heldCards: Array<{ kind: GridCardKind; sig: string; baseSig?: string; text: string; slot: number; seenGreen?: boolean; retired?: boolean }> = [];
       // Story 37.12 (flickered-bullet stickiness): cross-frame memory of tool-header lines seen WITH their
       // `●` glyph, so a later frame that catches the bullet mid-repaint (glyph momentarily erased) restores
       // it instead of fusing the tool row into the prose above. Scoped to on-screen lines each frame.
@@ -1085,7 +1123,8 @@ export class CliChatEngine implements ChatEngine {
       // old buffer-clear consume), held across the settle timer + the round-trip.
       let questionPending = false; // guards re-entry while awaiting the user's answer
       let questionSettleTimer: ReturnType<typeof setTimeout> | null = null; // modal paint settle
-      let questionCounter = 0; // synthesizes a toolUseID (the real id is not in JSONL pre-answer)
+      // questionCounter lives on the engine instance (not per-turn) so IDs are unique across
+      // turns within the same session — the client's seenPermissionIds persists for the session.
       // Usage-limit notice state (POST-INJECTION only — see the onData handler). The limit shows
       // only on the PTY, never in the JSONL, so without detection the turn would hang waiting for
       // an end_turn that never arrives. Detection is deferred until after prompt injection so the
@@ -1093,6 +1132,7 @@ export class CliChatEngine implements ChatEngine {
       // Story 37.4: read from the settled grid; a refuted scrape is simply ignored every frame
       // (idempotent) and logged once — no buffer to clear.
       let limitFalsePositiveLogged = false; // log a refuted (usage-contradicted) scrape once per turn
+      let lastIsGenerating = false; // tracks isGeneratingGrid transitions for debug logging
 
       // Generation-progress state (Story 32.7 — post-injection only; token source = screen grid, 37.2).
       let lastProgressTokens = -1; // last emitted token count; -1 = none yet (a real 0 still emits once)
@@ -1197,6 +1237,7 @@ export class CliChatEngine implements ChatEngine {
           ptyDumpStream = null;
           toolTraceStream?.end();
           toolTraceStream = null;
+          dlog.close();
         } catch {
           /* ignore — dump best-effort */
         }
@@ -1539,24 +1580,20 @@ export class CliChatEngine implements ChatEngine {
        */
       const emitProvisionalBody = (prose: string | null): void => {
         if (settled || !prose || !callbacks.onTextChunk || !resolvedSessionId) return;
-        // AC3 dedup (text correlation = SECONDARY signal): the lead-in can reach the JSONL EITHER
-        // as its own assistant line BEFORE the modal — then the drain already emitted it
-        // (accumulatedText holds it; the 5b0e68c6 ordering) and the file is the single source — OR
-        // only post-answer, in which case it is absent here and the scrape is the only pre-answer
-        // source. Emit the provisional ONLY in the latter case so the file path is never duplicated.
-        // Match on a whitespace-normalized prefix so the lossy one-line scrape still recognizes the
-        // canonical (possibly multi-line) copy. Lossy text is a guard here, NOT the primary key — the
-        // primary key stays the arrival-order suppression slot (handleAssistantLine) + turn-end reload.
         const norm = (s: string): string => s.replace(/\s+/g, '').toLowerCase();
         const needle = norm(prose).slice(0, 40);
-        if (needle && norm(accumulatedText).includes(needle)) return;
-        // Story 37.11: also skip if the general grid text branch already emitted this same lead-in
-        // (its card sits in the held transcript). Prefix-match (normalized) is robust to the two
-        // scrapers (parsePrecedingText vs parseGridCards) wording slightly differently.
-        if (needle && heldCards.some((h) => h.kind === 'text' && norm(h.sig).includes(needle))) return;
+        if (needle && norm(accumulatedText).includes(needle)) {
+          dlog.server('prov-body-dedup', { reason: 'accumulatedText', preview: prose.slice(0, 60) });
+          return;
+        }
+        if (needle && heldCards.some((h) => h.kind === 'text' && norm(h.sig).includes(needle))) {
+          dlog.server('prov-body-dedup', { reason: 'heldCard-match', preview: prose.slice(0, 60) });
+          return;
+        }
         provisionalBodyEmitsPending++;
         const bodySlot = liveTextSlots++;
         heldCards.push({ kind: 'text', sig: cardSig({ kind: 'text', text: prose }), text: prose, slot: bodySlot });
+        dlog.server('prov-body-emit', { slot: bodySlot, len: prose.length, preview: prose.slice(0, 80) });
         callbacks.onTextChunk({
           sessionId: resolvedSessionId,
           messageId: `cli-provisional-${++provisionalBodyCounter}`,
@@ -1629,7 +1666,16 @@ export class CliChatEngine implements ChatEngine {
           depth += CLI_SCROLLUP_INCREMENT; // no known block yet (a tall block's header is still above) — climb
         }
         const traceFrameSig = `depth=${depth} rows=${bodyRows.length} cards=[${cards.map((c) => `${c.kind}:${c.toolName ?? ''}:${c.bulletColor ?? '-'}`).join(', ')}]`;
-        if (traceFrameSig !== lastTraceFrameSig) { trace(`frame ${traceFrameSig}`); lastTraceFrameSig = traceFrameSig; }
+        if (traceFrameSig !== lastTraceFrameSig) {
+          trace(`frame ${traceFrameSig}`);
+          lastTraceFrameSig = traceFrameSig;
+          dlog.server('grid-frame', {
+            scrollDepth: depth,
+            rowCount: bodyRows.length,
+            scrolledUp: depth > 0,
+            cards: cards.map((c) => ({ kind: c.kind, tool: c.toolName, color: c.bulletColor, textLen: c.text.length, preview: c.text.slice(0, 50) })),
+          });
+        }
 
         // Story 37.12: refresh the cross-frame tool-header memory from the FINAL (deepest) frame read.
         // First drop keys whose line scrolled off — retention is scoped to on-screen text INCLUDING
@@ -1668,6 +1714,7 @@ export class CliChatEngine implements ChatEngine {
           const output = next && next.kind === 'result' && next.text.trim() ? next.text : '';
           gridResultFlippedSlots.add(slot);
           trace(`flip-green slot=${slot} sid=${sid} (screen green → done)`);
+          dlog.server('grid-tool-green-flip', { slot, sid, hasOutput: !!output });
           callbacks.onToolResult?.(sid, { success: true, output }, true);
         };
         for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
@@ -1685,21 +1732,15 @@ export class CliChatEngine implements ChatEngine {
             continue;
           }
           const sig = cardSig(card);
-          // Claim the FIRST unclaimed held card: an EXACT same-content match wins; else a GROWTH (same kind,
-          // this card's text extends the held one). First-unclaimed = the order tiebreak among identical sigs.
           let matchIdx = -1;
           let growthDelta: string | null = null;
-          // Story 37.13: completed (green) held tools of THIS sig that we SKIP because the current card is a
-          // fresh RUNNING run — retired below if a new card is opened, so the 2nd run can't fuse into them.
           const supersededDone: number[] = [];
+          let dedupSkipReasons: Array<{ idx: number; reason: string }> | undefined;
           for (let i = 0; i < heldCards.length; i++) {
             const h = heldCards[i];
-            if (usedHeld.has(i) || h.retired || h.sig !== sig) continue;
-            // A held tool that ALREADY went green (completed) cannot be a now-RUNNING (non-green) card of the
-            // SAME content — that is a NEW invocation, not the old one. Skip it (and retire it on open) so the
-            // same tool run twice in a row doesn't fuse the 2nd into the completed 1st once the 1st scrolled
-            // off (the order tiebreak, which needed BOTH in view, is gone). A green card still matches its
-            // green held (a repaint of the same completed tool), so no spurious re-emit.
+            if (usedHeld.has(i)) { dedupSkipReasons ??= []; dedupSkipReasons.push({ idx: i, reason: 'usedHeld' }); continue; }
+            if (h.retired) { dedupSkipReasons ??= []; dedupSkipReasons.push({ idx: i, reason: 'retired' }); continue; }
+            if (h.sig !== sig && h.baseSig !== sig) continue; // neither current nor pre-growth sig matches
             if (card.kind === 'tool' && h.seenGreen && card.bulletColor !== 'green') { supersededDone.push(i); continue; }
             matchIdx = i; break;
           }
@@ -1711,22 +1752,37 @@ export class CliChatEngine implements ChatEngine {
               }
             }
           }
+          // Log dedup miss: no match found → about to emit as new card. Capture why held candidates (same sig) were skipped.
+          if (matchIdx < 0 && (card.kind === 'text' || card.kind === 'thinking')) {
+            const sameSigHeld = heldCards.map((h, i) => h.sig === sig ? { idx: i, slot: h.slot, retired: !!h.retired, usedThisFrame: usedHeld.has(i), kind: h.kind } : null).filter(Boolean);
+            if (sameSigHeld.length > 0) {
+              dlog.server('grid-dedup-miss', { sig: sig.slice(0, 60), sameSigHeld, skipReasons: dedupSkipReasons });
+            }
+          }
           if (matchIdx >= 0) {
             usedHeld.add(matchIdx);
             const h = heldCards[matchIdx];
             if (growthDelta !== null) {
+              if (!h.baseSig) h.baseSig = h.sig;
               h.sig = sig; h.text = card.text;
               if (growthDelta.trim()) {
+                dlog.server('grid-card-growth', { kind: h.kind, slot: h.slot, deltaLen: growthDelta.length });
                 if (h.kind === 'thinking') callbacks.onThinking?.(growthDelta, true);
                 else if (h.kind === 'text') callbacks.onTextChunk?.({ sessionId: resolvedSessionId, messageId: `cli-prov-text-${provisionalCardCounter}`, content: growthDelta, done: false, provisional: true });
-                // a tool's growth (`Read` → `Read(path)`) is its input streaming in; the screen truncates it,
-                // so the live card keeps the name and the finalize/reload supplies the full input.
+              }
+            } else {
+              // If matched via baseSig (card shrank back after a flicker-growth), restore the sig
+              if (h.baseSig === sig && h.sig !== sig) {
+                h.sig = sig; h.text = card.text; h.baseSig = undefined;
+                dlog.server('grid-card-shrink', { kind: h.kind, slot: h.slot });
+              } else {
+                dlog.server('grid-card-seen', { kind: h.kind, slot: h.slot });
               }
             }
             if (h.kind === 'tool') {
               lastToolSlot = h.slot; lastToolColor = card.bulletColor;
               if (card.bulletColor === 'green') h.seenGreen = true;
-              flipDoneIfGreen(h.slot, card.bulletColor, cardIdx); // green = done; don't wait for a `⎿` row
+              flipDoneIfGreen(h.slot, card.bulletColor, cardIdx);
             }
             continue;
           }
@@ -1738,17 +1794,21 @@ export class CliChatEngine implements ChatEngine {
           // 2nd run shows the color transition (green held → gray card) and is opened via supersededDone below.
           if (card.kind === 'tool' && card.bulletColor !== 'green'
               && heldCards.some((h, idx) => usedHeld.has(idx) && !h.retired && h.sig === sig && !h.seenGreen)) {
+            dlog.server('grid-card-skip', { kind: 'tool', reason: 'repaint-echo', sig: sig.slice(0, 60) });
             continue;
           }
-          // genuinely NEW card — emit and record it with its per-kind slot. A fresh run supersedes any
-          // completed same-sig held we skipped above, so they can't reclaim a later (green) frame of THIS run.
+          // genuinely NEW card
           for (const idx of supersededDone) heldCards[idx].retired = true;
-          if ((card.kind === 'thinking' || card.kind === 'text') && !card.text.trim()) continue;
+          if ((card.kind === 'thinking' || card.kind === 'text') && !card.text.trim()) {
+            dlog.server('grid-card-skip', { kind: card.kind, reason: 'empty' });
+            continue;
+          }
           const newIdx = heldCards.length;
           if (card.kind === 'thinking') {
             const slot = liveThinkingSlots++;
             heldCards.push({ kind: 'thinking', sig, text: card.text, slot });
             provisionalThinkingEmitsPending++;
+            dlog.server('grid-emit-thinking', { slot, len: card.text.length, preview: card.text.slice(0, 80) });
             callbacks.onThinking?.(card.text, true);
           } else if (card.kind === 'tool') {
             const slot = liveToolSlots++;
@@ -1758,6 +1818,7 @@ export class CliChatEngine implements ChatEngine {
             provisionalToolEmitsPending++;
             provPendingToolSlots.push(slot); // Story 37.19: remember the REAL slot for the backstop mapping
             trace(`prov-emit-tool slot=${slot} sid=${synthId} name=${card.toolName ?? 'Tool'} green=${card.bulletColor === 'green'}`);
+            dlog.server('grid-emit-tool', { slot, synthId, name: card.toolName ?? 'Tool', color: card.bulletColor });
             callbacks.onToolUse?.({
               id: synthId,
               name: card.toolName ?? 'Tool',
@@ -1772,6 +1833,7 @@ export class CliChatEngine implements ChatEngine {
             const slot = liveTextSlots++;
             heldCards.push({ kind: 'text', sig, text: card.text, slot });
             provisionalTextEmitsPending++;
+            dlog.server('grid-emit-text', { slot, len: card.text.length, preview: card.text.slice(0, 80) });
             callbacks.onTextChunk?.({ sessionId: resolvedSessionId, messageId: `cli-prov-text-${++provisionalCardCounter}`, content: card.text, done: false, provisional: true });
           }
           usedHeld.add(newIdx);
@@ -1845,11 +1907,9 @@ export class CliChatEngine implements ChatEngine {
        */
       const handleQuestion = (parsed: ParsedQuestion | null, toolUseID: string): void => {
         void (async () => {
-          // Esc-cancel + clear the guard: the single exit for every non-drivable case, so a
-          // detected modal never leaves the turn without a response path (AC4 — root-cause
-          // fix of the response-path deadlock, not a new freeze hidden behind a workaround).
           const cancel = (why: string) => {
             log.warn(`AskUserQuestion: ${why} — cancelling modal (Esc) to keep the turn responsive`);
+            dlog.server('sq-cancel', { toolUseID, reason: why, settled });
             if (!settled) {
               try {
                 pty.write(CLI_QUESTION_ESC_KEY);
@@ -1859,6 +1919,8 @@ export class CliChatEngine implements ChatEngine {
             }
             questionPending = false;
           };
+
+          dlog.server('sq-start', { toolUseID, parsed: parsed ? { question: parsed.question?.slice(0, 40), optionCount: parsed.options?.length, multiSelect: parsed.multiSelect } : null });
 
           if (!parsed) {
             cancel('modal not parseable as a single-question choice (or it is multi-question)');
@@ -1871,6 +1933,7 @@ export class CliChatEngine implements ChatEngine {
               { question: parsed.question, header: parsed.header, multiSelect: parsed.multiSelect, options: parsed.options },
             ],
           };
+          dlog.server('sq-canUseTool-call', { toolUseID, question: parsed.question?.slice(0, 40) });
           try {
             const signal = options.abortController?.signal ?? new AbortController().signal;
             result = await canUseTool!('AskUserQuestion', input as unknown as Record<string, unknown>, {
@@ -1883,9 +1946,12 @@ export class CliChatEngine implements ChatEngine {
             return;
           }
 
-          // Abort race: if the turn ended/aborted while awaiting the answer, the PTY is being
-          // torn down (onAbort sends Ctrl+C, which cancels the modal) — write nothing.
-          if (settled) return;
+          dlog.server('sq-canUseTool-resolved', { toolUseID, behavior: result.behavior, settled, hasAnswers: !!(result as { updatedInput?: unknown }).updatedInput });
+
+          if (settled) {
+            dlog.server('sq-abort-race', { toolUseID, reason: 'settled after canUseTool' });
+            return;
+          }
 
           const answers =
             result.behavior === 'allow' && result.updatedInput
@@ -1893,25 +1959,28 @@ export class CliChatEngine implements ChatEngine {
               : undefined;
           const answer = answers ? (answers[parsed.question] ?? Object.values(answers)[0]) : undefined;
           const keys = buildQuestionKeys(parsed, answer);
+          dlog.server('sq-keys-built', { toolUseID, answer: typeof answer === 'string' ? answer.slice(0, 30) : answer, keyCount: keys?.length ?? 0, keys: keys?.map(keyLabel) });
           if (!keys) {
             cancel('answer did not map to a listed option (custom/Other is not drivable)');
             return;
           }
 
-          // Drive the menu keys spaced out (each a discrete keypress — CLI_QUESTION_KEY_GAP_MS),
-          // re-checking the abort guard before each write.
           for (const key of keys) {
-            if (settled) return;
+            if (settled) {
+              dlog.server('sq-abort-race', { toolUseID, reason: 'settled during key drive' });
+              return;
+            }
             try {
               pty.write(key);
+              dlog.server('sq-key-write', { toolUseID, key: keyLabel(key) });
             } catch (err) {
-              log.warn(`question key injection failed: ${err instanceof Error ? err.message : String(err)}`);
+              dlog.server('sq-key-fail', { toolUseID, key: keyLabel(key), err: err instanceof Error ? err.message : String(err) });
               questionPending = false;
               return;
             }
             await new Promise((r) => setTimeout(r, CLI_QUESTION_KEY_GAP_MS));
           }
-          // Allow a subsequent question in the same turn to be detected afresh.
+          dlog.server('sq-done', { toolUseID });
           questionPending = false;
         })();
       };
@@ -2016,23 +2085,28 @@ export class CliChatEngine implements ChatEngine {
               ? ((result.updatedInput as Record<string, unknown>).answers as Record<string, string | string[]> | undefined)
               : undefined;
           const perQuestion = buildMultiQuestionKeys(questions, answers);
+          dlog.server('mq-keys-built', {
+            questionCount: questions.length,
+            answers: answers ? Object.fromEntries(Object.entries(answers).map(([k, v]) => [k.slice(0, 30), v])) : null,
+            perQuestion: perQuestion?.map((keys, i) => ({ tab: i, multiSelect: questions[i].multiSelect, keyCount: keys.length, keys: keys.map(keyLabel) })),
+          });
           if (!perQuestion) {
             cancel('an answer did not map to a listed option (custom/Other is not drivable)');
             return;
           }
 
           // ---- PHASE 3: WRITE — return to tab 0, then answer each tab, advance, and submit. ----
-          // Closed-loop return to the first tab (robust to a clamped/wrapped ← and a dropped key):
-          // step ← until the first question is back on screen, bounded by the tab count + slack.
           let atFirst = false;
           for (let attempt = 0; attempt <= tabCount + 2; attempt++) {
             if (settled || !questionPending) return;
             grid = await readSettled();
-            if (parseQuestionTabBody(grid)?.question === questions[0].question) {
+            const bodyQ = parseQuestionTabBody(grid)?.question;
+            dlog.server('mq-return-tab0', { attempt, bodyQ: bodyQ?.slice(0, 40), target: questions[0].question.slice(0, 40), match: bodyQ === questions[0].question });
+            if (bodyQ === questions[0].question) {
               atFirst = true;
               break;
             }
-            pty.write(CLI_QUESTION_LEFT_KEY); // ← to the previous tab
+            pty.write(CLI_QUESTION_LEFT_KEY);
             await settle();
           }
           if (!atFirst) {
@@ -2041,38 +2115,54 @@ export class CliChatEngine implements ChatEngine {
           }
 
           for (let i = 0; i < questions.length; i++) {
-            // Drive this tab's option keys (↓ / Space), re-checking the abort guard before each write.
+            dlog.server('mq-tab-drive-start', { tab: i, question: questions[i].question.slice(0, 40), multiSelect: questions[i].multiSelect, keyCount: perQuestion[i].length });
             for (const key of perQuestion[i]) {
               if (settled || !questionPending) return;
               try {
                 pty.write(key);
+                dlog.server('mq-key-write', { tab: i, key: keyLabel(key) });
               } catch (err) {
-                log.warn(`multi-question key injection failed: ${err instanceof Error ? err.message : String(err)}`);
+                dlog.server('mq-key-fail', { tab: i, key: keyLabel(key), err: err instanceof Error ? err.message : String(err) });
                 questionPending = false;
                 return;
               }
               await settle();
             }
-            // Advance one tab right: to the next question, or (after the last) to the Submit tab.
+            // Read the screen AFTER driving this tab's keys. Enter on a single-select tab
+            // auto-advances to the next tab, so check whether we already moved before pressing →.
+            const postGrid = await readSettled();
+            const postBody = parseQuestionTabBody(postGrid);
+            dlog.server('mq-tab-drive-done', { tab: i, postQuestion: postBody?.question?.slice(0, 40), postOptions: postBody?.options?.map(o => o.label) });
+
             if (settled || !questionPending) return;
-            pty.write(CLI_QUESTION_RIGHT_KEY);
-            await settle();
+            // Enter on single-select auto-advances. Detect: if the screen no longer shows THIS
+            // tab's question, we already moved (either to the next question or to Submit).
+            const alreadyAdvanced = postBody != null && postBody.question !== questions[i].question;
+            if (alreadyAdvanced) {
+              dlog.server('mq-tab-auto-advanced', { tab: i, skipRightKey: true });
+            } else {
+              dlog.server('mq-tab-advance', { tab: i, direction: '→' });
+              pty.write(CLI_QUESTION_RIGHT_KEY);
+              await settle();
+            }
             if (i < questions.length - 1) {
               grid = await readSettled();
-              if (parseQuestionTabBody(grid)?.question !== questions[i + 1].question) {
+              const nextQ = parseQuestionTabBody(grid)?.question;
+              dlog.server('mq-tab-verify', { tab: i + 1, expected: questions[i + 1].question.slice(0, 40), actual: nextQ?.slice(0, 40), match: nextQ === questions[i + 1].question });
+              if (nextQ !== questions[i + 1].question) {
                 cancel(`could not advance to tab ${i + 2}/${questions.length}`);
                 return;
               }
             }
           }
-          // Parked on the Submit tab now — Enter commits every question's answer at once.
+          // Parked on the Submit tab now
           if (settled || !questionPending) return;
+          dlog.server('mq-submit', { action: 'ENTER' });
           try {
             pty.write(CLI_QUESTION_ENTER_KEY);
           } catch {
             /* PTY may already be gone */
           }
-          // Allow a subsequent question in the same turn to be detected afresh.
           questionPending = false;
         })();
       };
@@ -2156,8 +2246,18 @@ export class CliChatEngine implements ChatEngine {
         // frame, and a permission-gated tool card (which only appears once generation halts) is left to
         // its 32.6 standalone card. Auto-approved tools and thinking run WHILE the spinner spins, so they
         // are scraped and emitted live; the JSONL drain reconciles by arrival-order slot (no double-render).
-        if (isGeneratingGrid(grid)) {
-          // Story 37.11: the prior-conversation boundary is now handled by the resume SNAPSHOT (seeded
+        const nowGenerating = isGeneratingGrid(grid);
+        if (nowGenerating !== lastIsGenerating) {
+          dlog.server('state-isGenerating', {
+            from: lastIsGenerating,
+            to: nowGenerating,
+            questionPending,
+            permissionPending,
+            footer: liveFooterText(grid).slice(0, 200),
+          });
+          lastIsGenerating = nowGenerating;
+        }
+        if (nowGenerating) {
           // into `heldCards` at injection) + the bounded scroll-up that STOPS at the first known block —
           // not a position floor (markTurnStart), which couldn't exclude a repaint sitting IN the viewport
           // and blocked the scroll-up from reaching the snapshotted prior cards above it.
@@ -2276,6 +2376,7 @@ export class CliChatEngine implements ChatEngine {
         // parse it, and drove an Esc that interrupted the agent — and the turn never recovered. A real
         // modal sits in the live region with the spinner gone, so both guards still admit it.
         if (canUseTool && !permissionPending && !questionPending && !isGeneratingGrid(grid) && detectQuestionModal(liveFooterText(grid))) {
+          dlog.server('modal-detect-question', { questionCounter: globalQuestionCounter + 1 });
           questionPending = true;
           // Let the modal finish painting (the footer first appearing does not mean every option row is
           // drawn yet). When the timer FIRES, re-flush and re-read the grid: the modal is fully painted
@@ -2304,7 +2405,7 @@ export class CliChatEngine implements ChatEngine {
               // ISSUE-99: branch on the header tab count. A single ballot box ⇒ the single-round-trip
               // path (32.8); more than one ⇒ the tabbed multi-question driver. Either way a
               // non-drivable case ends in a clean Esc-cancel.
-              const toolUseID = `cli-q-${++questionCounter}`;
+              const toolUseID = `cli-q-${++globalQuestionCounter}`;
               if (countQuestionTabs(freshGrid) > 1) {
                 handleMultiQuestion(freshGrid, countQuestionTabs(freshGrid), toolUseID);
               } else {
@@ -2535,44 +2636,33 @@ export class CliChatEngine implements ChatEngine {
               const thinking = (block as ThinkingContentBlock).thinking;
               if (provisionalThinkingEmitsPending > 0) {
                 provisionalThinkingEmitsPending--;
+                dlog.server('drain-thinking-suppress', { len: thinking?.length ?? 0, reason: 'provisional-pending', fifo: fifoSnap() });
                 maybeFinalize('thinking', thinking ?? ''); // swap the live ∴ scrape for the canonical, drop the badge
               } else if (thinking && thinking.trim()) {
                 liveThinkingSlots++;
+                dlog.server('drain-thinking-emit', { len: thinking.length, preview: thinking.slice(0, 80) });
                 callbacks.onThinking?.(thinking);
+              } else {
+                dlog.server('drain-thinking-skip', { empty: true });
               }
             } else if (block.type === 'text') {
               const text = (block as TextContentBlock).text;
               if (text && text.trim() && text.trim() !== '(no content)') {
                 accumulatedText += text;
-                // Story 37.11 (AC1): the screen grid is the single LIVE text source — the drain no
-                // longer UNCONDITIONALLY re-emits text live (that was the source of the grid↔file
-                // race). It SUPPRESSES the live re-emit when a provisional already holds this slot,
-                // and emits authoritatively ONLY when the grid hasn't reached this block (no
-                // generating frame caught it / it scrolled past) — the file as completeness backstop.
-                //   (a) modal lead-in (37.9 `suppressBlockText`) — the provisional prose above an
-                //       input-waiting modal; reload replaces.
-                //   (b) general grid text (`provisionalTextEmitsPending`, arrival-order FIFO) — the
-                //       `emitProvisionalCards` text card already emitted it; reload replaces.
-                //   (c) neither pending → authoritative emit; advance `liveTextSlots` so a later grid
-                //       scrape of this same card falls below the high-water and is skipped.
                 if (suppressBlockText) {
-                  // (a) 37.9 modal lead-in: same-block text+tool_use — finalize in place.
+                  dlog.server('drain-text-suppress', { len: text.length, reason: 'modal-lead-in', fifo: fifoSnap() });
                   maybeFinalize('text', text);
                 } else if (provisionalBodyEmitsPending > 0) {
-                  // (a2) The modal lead-in text arrived as a SEPARATE JSONL entry (실측: text and
-                  // tool_use are distinct entries, not one block). emitProvisionalBody counted it
-                  // on provisionalBodyEmitsPending, but suppressBlockText only fires when the text
-                  // and tool_use share one block. Finalize via the body counter so the provisional
-                  // is replaced immediately, not left badged until the turn-end reload.
                   provisionalBodyEmitsPending--;
+                  dlog.server('drain-text-suppress', { len: text.length, reason: 'body-pending', fifo: fifoSnap() });
                   maybeFinalize('text', text);
                 } else if (provisionalTextEmitsPending > 0) {
-                  // (b) general grid provisional holds this slot.
                   provisionalTextEmitsPending--;
-                  maybeFinalize('text', text); // swap the live screen literal for the canonical markdown
+                  dlog.server('drain-text-suppress', { len: text.length, reason: 'grid-pending', fifo: fifoSnap() });
+                  maybeFinalize('text', text);
                 } else {
-                  // (c) authoritative (grid behind / no grid frame).
                   liveTextSlots++;
+                  dlog.server('drain-text-emit', { len: text.length, preview: text.slice(0, 80) });
                   callbacks.onTextChunk?.({
                     sessionId: resolvedSessionId ?? '',
                     messageId: `${raw.uuid}-t${textIdx++}`,
@@ -2589,12 +2679,23 @@ export class CliChatEngine implements ChatEngine {
               // reload (the authoritative `stream:complete-messages` replaces the live cards
               // at turn end), so this only adds the *live* view — no double render.
               const toolBlock = block as ToolUseContentBlock;
+              if (toolBlock.name === 'EnterPlanMode' && this.permissionMode !== 'plan') {
+                if (this.planModeBypassBehavior === 'sync') {
+                  this.permissionMode = 'plan';
+                  log.info('[CLI] EnterPlanMode (sync) — switching Hammoc button to Plan');
+                  onPermissionModeSync?.('plan');
+                } else if (this.permissionMode === 'bypassPermissions') {
+                  setTimeout(() => {
+                    if (this.permissionMode === 'bypassPermissions' && !settled) {
+                      log.info('[CLI] EnterPlanMode in Bypass (override) — restoring Bypass on PTY');
+                      void this.setPermissionMode('bypassPermissions');
+                    }
+                  }, 500);
+                }
+              }
               if (permissionGatedToolsPending > 0) {
-                // Approval-gated tool (AC4): a 32.6 standalone permission card already stands
-                // in for it (synthetic `cli-perm-N` id) and it renders on reload — so suppress
-                // the live emit (a real-id card here would split from that permission card).
-                // This is the honest reload fallback for the permission path (Task 1 decision).
                 permissionGatedToolsPending--;
+                dlog.server('drain-tool-suppress', { name: toolBlock.name, id: toolBlock.id, reason: 'permission-gated', fifo: fifoSnap() });
               } else if (provisionalToolEmitsPending > 0) {
                 // Story 37.10 (AC4): a grid provisional tool card already occupies this slot
                 // (synthetic `cli-prov-tool-N`, arrival-order FIFO — checked AFTER the permission
@@ -2607,22 +2708,13 @@ export class CliChatEngine implements ChatEngine {
                 // grid never sees green (the running tool scrolled above the viewport). The turn-end reload still
                 // replaces the name-only provisional with the full-input canonical.
                 provisionalToolEmitsPending--;
-                // Story 37.19: map to the screen card's ACTUAL slot (FIFO), not a 0-based counter — see the
-                // trace-confirmed `synthId=?` / `noSynth` skip. Shift FIRST so we know the synthId.
                 const finalizeSlot = provPendingToolSlots.shift() ?? -1;
-                // Story 37.21: finalize with the provisional card's OWN synthId (not the real toolu_ id) so the
-                // client id-matches the canonical onto its provisional card — robust to the N:M tool-count
-                // mismatch (screen 'Search' ↔ file Grep/Glob, Task sub-tasks, redraw dups). Completion (green
-                // flip / file backstop) already uses this synthId, so provisional-emit, finalize and result now
-                // all share one id. grid-behind (no slot → -1) falls back to the real toolu_ id as before.
                 const finalizeSynthId = provToolSlotIds[finalizeSlot];
-                maybeFinalize('tool', '', toolBlock.name, toolBlock.input, finalizeSynthId ?? toolBlock.id); // fill real name+input, drop badge
+                dlog.server('drain-tool-suppress', { name: toolBlock.name, id: toolBlock.id, reason: 'provisional-pending', finalizeSlot, finalizeSynthId, fifo: fifoSnap() });
+                maybeFinalize('tool', '', toolBlock.name, toolBlock.input, finalizeSynthId ?? toolBlock.id);
                 provRealIdToSlot.set(toolBlock.id, finalizeSlot);
                 trace(`finalize-tool name=${toolBlock.name} realId=${toolBlock.id} → provSlot=${finalizeSlot} synthId=${finalizeSynthId ?? '(fallback toolu_)'}`);
               } else {
-                // Auto-approved / safe tool the grid scraper didn't reach (32.9 path). Track the id so
-                // the matching tool_result is mirrored live, and advance the shared slot counter so the
-                // scraper won't re-provision this slot.
                 const toolCall: TrackedToolCall = {
                   id: toolBlock.id,
                   name: toolBlock.name,
@@ -2631,6 +2723,7 @@ export class CliChatEngine implements ChatEngine {
                 };
                 liveEmittedToolIds.add(toolBlock.id);
                 liveToolSlots++;
+                dlog.server('drain-tool-emit', { name: toolBlock.name, id: toolBlock.id });
                 callbacks.onToolUse?.(toolCall);
               }
             }
@@ -2833,13 +2926,18 @@ export class CliChatEngine implements ChatEngine {
                   const taskNotif = parseTaskNotification(textContent);
                   if (taskNotif) {
                     emittedUuids.add(raw.uuid);
-                    backgroundTracker?.trackTaskDone();
+                    // trackTaskDone is called by streamCallbacks.onTaskNotification (deps.backgroundTracker)
+                    // — not here, to avoid double-decrement.
                     callbacks.onTaskNotification?.({
                       taskId: taskNotif.taskId,
                       status: taskNotif.status,
                       summary: taskNotif.summary,
                       toolUseId: taskNotif.toolUseId,
                     });
+                    if (backgroundTracker?.isFullyDone) {
+                      finishTurn();
+                      return;
+                    }
                   }
                 }
               }

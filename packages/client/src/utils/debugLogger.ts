@@ -38,6 +38,7 @@ const categoryColors: Record<string, string> = {
   info: '#2196F3',
   socket: '#2196F3',
   stream: '#4CAF50',
+  cliLog: '#E040FB',
   state: '#FF9800',
   message: '#9C27B0',
   reconnect: '#F44336',
@@ -250,7 +251,24 @@ export const debugLog = {
     debugLogger.log('reconnect', event, data),
   chatpage: (event: string, data?: Record<string, unknown>) =>
     debugLogger.log('chatpage', event, data),
+  /** CLI decision log — logged locally AND relayed to server immediately via socket. */
+  cliLog: (event: string, data?: Record<string, unknown>) => {
+    debugLogger.log('cliLog', event, data);
+    cliLogRelay(event, data);
+  },
 };
+
+/** Relay a CLI decision log entry to the server via socket for unified collection. */
+let _cliLogEmit: ((data: { ts: string; ev: string; d?: Record<string, unknown> }) => void) | null = null;
+export function setCLILogSocket(socket: { emit: (ev: 'cli:debug-log', data: { ts: string; ev: string; d?: Record<string, unknown> }) => void } | null) {
+  _cliLogEmit = socket ? (d) => socket.emit('cli:debug-log', d) : null;
+}
+function cliLogRelay(event: string, data?: Record<string, unknown>) {
+  if (!_cliLogEmit) return;
+  try {
+    _cliLogEmit({ ts: new Date().toISOString(), ev: event, d: data });
+  } catch { /* best-effort */ }
+}
 
 // Expose to browser console
 if (typeof window !== 'undefined') {

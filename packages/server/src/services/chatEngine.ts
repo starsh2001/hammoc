@@ -62,7 +62,9 @@ export interface ChatEngine {
     /** Story 37.8: CLI mirror refresh interval (ms) for the trailing throttle. CLI-only; default 200. */
     screenFrameThrottleMs?: number,
     /** Background task tracker — keeps the turn alive while background tasks are pending. */
-    backgroundTracker?: BackgroundTaskTracker
+    backgroundTracker?: BackgroundTaskTracker,
+    /** Notification when CLI engine syncs permission mode (EnterPlanMode in sync mode). */
+    onPermissionModeSync?: (mode: PermissionMode) => void
   ): Promise<ChatResponse>;
 
   /** Update the permission mode mid-conversation (propagates to the live query). */

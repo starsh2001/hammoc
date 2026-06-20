@@ -612,7 +612,10 @@
     "clear": "Clear",
     "copy": "Copy all",
     "copied": "Mirror contents copied to clipboard",
-    "copyFailed": "Copy failed"
+    "copyFailed": "Copy failed",
+    "fontDecrease": "Decrease font size",
+    "fontIncrease": "Increase font size",
+    "autoFit": "Auto fit (no horizontal scroll)"
   },
   "terminal": {
     "connecting": "Connecting...",

@@ -158,6 +158,8 @@ interface ActiveStream {
   isFork?: boolean;
   /** Deferred usage data — included in stream:complete-messages after JSONL flush */
   deferredUsage?: ChatUsage;
+  /** CLI decision log — per-turn file, server + client entries. */
+  cliDebugLog?: import('../utils/cliDebugLog.js').CliDebugLog;
   /**
    * Project slug (encoded cwd) captured at chat:send time. Lets the session list
    * attribute a still-file-less stream to its project synchronously — sessionProjectMap
@@ -1544,6 +1546,18 @@ export async function initializeWebSocket(
       }
     });
 
+    // CLI debug log relay — client sends decision entries, server writes them to the
+    // per-session CLI debug log file alongside server-side entries.
+    socket.on('cli:debug-log', (data: { ts: string; ev: string; d?: Record<string, unknown> }) => {
+      const sid = socketToSession.get(socket.id) ?? socketSessionRoom.get(socket.id);
+      if (!sid) return;
+      const stream = activeStreams.get(sid);
+      const engine = stream?.chatService;
+      if (engine && 'currentDebugLog' in engine) {
+        (engine as { currentDebugLog?: { clientWithTs: (ts: string, ev: string, d?: Record<string, unknown>) => void } }).currentDebugLog?.clientWithTs(data.ts, data.ev, data.d);
+      }
+    });
+
     // Handle session:leave event — detach socket from current stream and session room
     // (client navigating away from a session while streaming continues in background)
     socket.on('session:leave', (sessionId: string) => {
@@ -2739,7 +2753,7 @@ async function handleChatSend(
     // auto-compact (forwarded into each engine's settings) AND Hammoc's overflow-triggered
     // /compact recovery below, so one toggle controls all auto-compaction.
     const autoCompactEnabled = effectivePrefs.autoCompactEnabled ?? true;
-    const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath, cliShowThinkingSummaries: effectivePrefs.cliShowThinkingSummaries, cliResumeChoice: effectivePrefs.cliResumeChoice, autoCompactEnabled });
+    const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath, cliShowThinkingSummaries: effectivePrefs.cliShowThinkingSummaries, cliResumeChoice: effectivePrefs.cliResumeChoice, autoCompactEnabled, planModeBypassBehavior: effectivePrefs.planModeBypassBehavior });
     stream.chatService = chatService;
 
     const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
@@ -2865,6 +2879,8 @@ async function handleChatSend(
               : Array.isArray(userResponse.response) ? userResponse.response.join(', ') : '';
             answers = { [questions[0].question]: answer };
           }
+
+          log.info(`[canUseTool] AskUserQuestion result: questionCount=${questions.length}, answerCount=${Object.keys(answers).length}, responseType=${typeof userResponse.response}, isArray=${Array.isArray(userResponse.response)}, answerKeys=${JSON.stringify(Object.keys(answers))}`);
 
           return {
             behavior: 'allow',
@@ -3130,7 +3146,9 @@ async function handleChatSend(
     try {
       const sendResult = await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
         resetTimeout(`raw:${messageType}`);
-      }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs, backgroundTracker);
+      }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs, backgroundTracker, (mode) => {
+        emit('permission:mode-change', { mode });
+      });
       // SDK may return "No conversation found" as an error result (not a thrown exception).
       // Convert to a thrown error so the retry logic below can handle it.
       if (sendResult.isError && isResumeAttempt && !abortController.signal.aborted && !hasEmittedOutput) {
@@ -3168,13 +3186,17 @@ async function handleChatSend(
         // Run /compact to shrink context (preserves session file)
         await chatService.sendMessageWithCallbacks('/compact', callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`compact:${messageType}`);
-        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
+        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs, backgroundTracker, (mode) => {
+          emit('permission:mode-change', { mode });
+        });
         // Retry the original message after compaction
         log.info(`[AUTO-COMPACT] compaction done, retrying original message: sessionId=${sessionId}`);
         resetTimeout('auto-compact-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, chatOptions, canUseTool, (messageType: string) => {
           resetTimeout(`retry:${messageType}`);
-        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
+        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs, backgroundTracker, (mode) => {
+          emit('permission:mode-change', { mode });
+        });
       // Resume failed for other unknown reasons — retry without resume (fresh session).
       // Guards:
       //  1. Only when resuming (not a fresh session send)
@@ -3212,7 +3234,9 @@ async function handleChatSend(
         resetTimeout('resume-retry');
         await chatService.sendMessageWithCallbacks(content, callbacks, retryOptions, canUseTool, (messageType: string) => {
           resetTimeout(`raw:${messageType}`);
-        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs);
+        }, generationProgressCb, cliPhaseCb, screenFrameCb, mirrorThrottleMs, backgroundTracker, (mode) => {
+          emit('permission:mode-change', { mode });
+        });
       } else {
         // Not retrying — flush gated error events before re-throwing
         ungateCallbacks();

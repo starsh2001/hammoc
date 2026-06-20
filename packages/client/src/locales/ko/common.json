@@ -621,7 +621,10 @@
     "clear": "지우기",
     "copy": "전체 복사",
     "copied": "미러 내용을 클립보드에 복사했습니다",
-    "copyFailed": "복사에 실패했습니다"
+    "copyFailed": "복사에 실패했습니다",
+    "fontDecrease": "글자 축소",
+    "fontIncrease": "글자 확대",
+    "autoFit": "자동 맞춤 (가로 스크롤 없이)"
   },
   "terminal": {
     "connecting": "연결 중...",

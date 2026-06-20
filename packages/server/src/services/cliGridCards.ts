@@ -211,28 +211,21 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       flush();
       const body = clean(trimmed.slice(CARD_BULLET.length).trim());
       const bulletColor = bulletColors?.[i];
-      // Story 37.13: the bullet COLOR is the PRIMARY tool/text signal (실측 cli-real-pty-dump: a tool's
-      // bullet is green=done / gray=running, an assistant text body's bullet is white — the SAME `●` glyph,
-      // the COLOR splits them). The name pattern (`Tool(` / bare `Tool`) is only the FALLBACK when no color
-      // is supplied (pure unit tests) or the fg is a non-RGB 'other'. This makes hyphenated sub-agent names
-      // (claude-code-guide) read as tools, and stops a prose line that merely contains `foo(bar)` from being
-      // misread as a tool.
       const isTool =
         bulletColor === 'green' || bulletColor === 'gray'
           ? true
           : bulletColor === 'white'
             ? false
-            : TOOL_HEADER_RE.test(body) || BARE_TOOL_RE.test(body); // 'other' / no color → name pattern
+            : TOOL_HEADER_RE.test(body) || BARE_TOOL_RE.test(body);
       if (isTool) {
-        // Tool name: the part before `(` (covers hyphens/dots the strict regex would miss), else the body.
         const toolMatch = body.match(TOOL_HEADER_RE);
         const parenIdx = body.indexOf('(');
         const toolName = (toolMatch ? toolMatch[1] : parenIdx > 0 ? body.slice(0, parenIdx) : body).trim() || 'Tool';
-        current = { kind: 'tool', text: body, toolName, ...(bulletColor ? { bulletColor } : {}) };
+        current = { kind: 'tool', text: body, toolName, ...(bulletColor ? { bulletColor } : {})};
       } else if (UI_CHROME_BODY_RE.test(body)) {
-        droppingSpinner = true; // drop this line + any continuation rows below it
+        droppingSpinner = true;
       } else {
-        current = { kind: 'text', text: body, ...(bulletColor ? { bulletColor } : {}) };
+        current = { kind: 'text', text: body, ...(bulletColor ? { bulletColor } : {})};
       }
     } else if (indent === 2 && trimmed.startsWith(RESULT_BULLET)) {
       flush();
@@ -241,9 +234,6 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       flush();
       current = { kind: 'thinking', text: clean(trimmed) };
     } else if (indent === 0 && trimmed.startsWith(THINKING_DETAIL_GLYPH)) {
-      // Story 37.11: a verbose-mode expanded reasoning block opens with `∴`; its wrapped continuation
-      // rows fold into this thinking card. The block STREAMS (grows each frame) — the engine emits the
-      // delta, not the full text, to avoid the live re-emit storm.
       flush();
       current = { kind: 'thinking', text: clean(trimmed.slice(THINKING_DETAIL_GLYPH.length).trim()) };
     } else if (current) {
@@ -274,12 +264,15 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
  * merely contains `foo(x)` is never promoted.
  */
 
-/** The cleaned body of a row IFF it stands alone as a tool header (`Tool(…)` or a bare `Tool`/`mcp__…`),
- *  any leading `●` stripped first. Null for prose / results / blanks. This is the cross-frame match KEY. */
+/** The TOOL NAME from a row that stands alone as a tool header (`Tool(…)` or a bare `Tool`/`mcp__…`),
+ *  any leading `●` stripped first. Null for prose / results / blanks. Keyed on NAME ONLY (not the full
+ *  body) so a running tool whose argument text is truncated differently across repaints still matches. */
 function toolHeaderKey(row: string): string | null {
   const body = clean(row.trim().replace(/^●\s*/, ''));
   if (!body) return null;
-  return TOOL_HEADER_RE.test(body) || BARE_TOOL_RE.test(body) ? body : null;
+  const m = body.match(TOOL_HEADER_RE);
+  if (m) return m[1]; // just the name: "Search", "Read", "PowerShell", etc.
+  return BARE_TOOL_RE.test(body) ? body : null; // bare name already IS the key
 }
 
 /**

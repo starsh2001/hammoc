@@ -72,6 +72,7 @@ export interface ClientToServerEvents {
   // A control channel separate from the cli:screen-frame display event, so collapse/expand —
   // which does NOT re-fire session:join — can still pull the current screen.
   'cli:request-screen-frame': () => void;
+  'cli:debug-log': (data: { ts: string; ev: string; d?: Record<string, unknown> }) => void;
   // Story 15.2: Queue runner events
   'queue:start': (data: { items: QueueItem[]; sessionId?: string; projectSlug: string; permissionMode?: PermissionMode }) => void;
   'queue:pause': (data: { projectSlug: string }) => void;

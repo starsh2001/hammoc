@@ -595,10 +595,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (provisional === false) {
       const idx = segments.findIndex((s) => s.type === 'text' && (s as { provisional?: boolean }).provisional === true);
       if (idx >= 0) {
-        // Story 37.21: finalize this anchor AND prune leftover provisional TOOLS in its section (from just
-        // after the previous canonical text/thinking anchor up to idx). An N>M tool count leaves some
-        // provisional tools with no canonical; without this they stick forever as live badges. The canonical
-        // markdown replaces the literal and the badge is dropped.
         let sectionStart = 0;
         for (let i = idx - 1; i >= 0; i--) {
           const s = segments[i];
@@ -607,6 +603,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         const updated = segments
           .map((s, i) => (i === idx ? { type: 'text' as const, content } : s))
           .filter((s, i) => !(i >= sectionStart && i < idx && s.type === 'tool' && (s as { provisional?: boolean }).provisional === true));
+        debugLog.cliLog('seg-text-finalize', { idx, len: content.length });
         set({ streamingSegments: updated });
         return;
       }
@@ -622,8 +619,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         ...(provisional ? { provisional: true } : {}),
         ...(messageId ? { messageId } : {}),
       };
+      debugLog.cliLog('seg-text-append', { segIdx: segments.length - 1, addedLen: content.length });
       set({ streamingSegments: updated });
     } else {
+      debugLog.cliLog('seg-text-new', { segIdx: segments.length, len: content.length, provisional: !!provisional, messageId });
       set({ streamingSegments: [...segments, { type: 'text', content, ...(provisional ? { provisional: true } : {}), ...(messageId ? { messageId } : {}) }] });
     }
   },
@@ -639,8 +638,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (provisional === false) {
       const idx = segments.findIndex((s) => s.type === 'thinking' && (s as { provisional?: boolean }).provisional === true);
       if (idx >= 0) {
-        // Story 37.21: finalize this anchor AND prune its section's leftover provisional tools (same rationale
-        // as appendStreamingContent — an N>M tool section leaves orphan provisional tools that must be dropped).
         let sectionStart = 0;
         for (let i = idx - 1; i >= 0; i--) {
           const s = segments[i];
@@ -649,6 +646,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         const updated = segments
           .map((s, i) => (i === idx ? { type: 'thinking' as const, content } : s))
           .filter((s, i) => !(i >= sectionStart && i < idx && s.type === 'tool' && (s as { provisional?: boolean }).provisional === true));
+        debugLog.cliLog('seg-thinking-finalize', { idx, len: content.length });
         set({ streamingSegments: updated });
         return;
       }
@@ -656,16 +654,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     const lastSegment = segments[segments.length - 1];
     if (lastSegment?.type === 'thinking') {
-      // Append to existing thinking segment
       const updated = [...segments];
       updated[updated.length - 1] = {
         type: 'thinking',
         content: lastSegment.content + content,
         ...(provisional ? { provisional: true } : {}),
       };
+      debugLog.cliLog('seg-thinking-append', { segIdx: segments.length - 1, addedLen: content.length });
       set({ streamingSegments: updated });
     } else {
-      // Create new thinking segment
+      debugLog.cliLog('seg-thinking-new', { segIdx: segments.length, len: content.length, provisional: !!provisional });
       set({ streamingSegments: [...segments, { type: 'thinking', content, ...(provisional ? { provisional: true } : {}) }] });
     }
   },
@@ -689,11 +687,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // (the server sends the Nth canonical tool to finalize the Nth provisional), robust to the screen↔file
     // block-order difference. No provisional tool waiting ⇒ fall through and create it (grid-behind backstop).
     if (!toolCall.provisional) {
-      // Story 37.21: prefer an EXACT provisional-id match first. From Step 2 on, the server finalizes a tool
-      // with the SAME id as its provisional card (the synthId), so id-matching is robust to the N:M tool-count
-      // mismatch (screen 'Search' ↔ file Grep/Glob, Task sub-tasks, redraw dups) that the order-only rule
-      // can't handle. Fall back to "oldest still-provisional tool" when the id isn't present (pre-Step2 server,
-      // or grid-behind backstop with no provisional card) — keeps every existing behavior intact.
       let idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true && s.toolCall.id === toolCall.id);
       if (idx < 0) idx = segments.findIndex((s) => s.type === 'tool' && (s as { provisional?: boolean }).provisional === true);
       if (idx >= 0) {
@@ -701,14 +694,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         if (seg.type === 'tool') {
           const updated = [...segments];
           updated[idx] = { ...seg, toolCall: { ...seg.toolCall, name: toolCall.name, input: toolCall.input } };
-          delete (updated[idx] as { provisional?: boolean }).provisional; // badge dropped
+          delete (updated[idx] as { provisional?: boolean }).provisional;
+          debugLog.cliLog('seg-tool-finalize', { idx, id: toolCall.id, name: toolCall.name });
           set({ streamingSegments: updated });
         }
         return;
       }
     }
-    // Avoid duplicate provisional cards (defensive — the scraper emits each tool once via content-set dedup).
-    if (segments.some((seg) => seg.type === 'tool' && seg.toolCall.id === toolCall.id)) return;
+    if (segments.some((seg) => seg.type === 'tool' && seg.toolCall.id === toolCall.id)) {
+      debugLog.cliLog('seg-tool-dedup', { id: toolCall.id, name: toolCall.name });
+      return;
+    }
     // Check if a permission request arrived before this tool segment
     const bufferedPermissionId = pendingPermissionBuffer.get(toolCall.id);
     if (bufferedPermissionId) {
@@ -724,6 +720,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // If a buffered permission exists, attach it immediately
     // If a buffered input exists, merge it (enriched input takes precedence)
     // Clear isCompacting — tool call arrival means real response content is flowing
+    debugLog.cliLog('seg-tool-new', { segIdx: segments.length, id: toolCall.id, name: toolCall.name, provisional: !!toolCall.provisional });
     set({
       ...(get().isCompacting && { isCompacting: false }),
       streamingSegments: [
@@ -733,7 +730,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           toolCall: { ...toolCall, ...(bufferedInput && { input: bufferedInput }), startedAt: toolCall.startedAt ?? Date.now() },
           status: 'pending',
           ...(bufferedPermissionId && { permissionId: bufferedPermissionId, permissionStatus: 'waiting' as const }),
-          // Story 37.11 (AC4): a CLI grid tool card is provisional (name-only, empty input until reload).
           ...(toolCall.provisional ? { provisional: true } : {}),
         },
       ],
@@ -910,8 +906,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   addInteractiveSegment: (segment) => {
     const segments = get().streamingSegments;
-    // Avoid duplicates by ID
-    if (segments.some((seg) => seg.type === 'interactive' && seg.id === segment.id)) return;
+    if (segments.some((seg) => seg.type === 'interactive' && seg.id === segment.id)) {
+      debugLog.cliLog('seg-interactive-dedup', { id: segment.id, type: segment.interactionType });
+      return;
+    }
+    debugLog.cliLog('seg-interactive-new', { segIdx: segments.length, id: segment.id, type: segment.interactionType, toolName: segment.toolCall?.name, choiceCount: segment.choices?.length, questionCount: segment.questions?.length });
     set({
       streamingSegments: [
         ...segments,

@@ -174,16 +174,17 @@ async function writeSession(sid: string, lines: string[]): Promise<void> {
 // engine's handleMultiQuestion then drives keys[i] on tab i and adds the inter-tab → / final Enter.
 describe('buildMultiQuestionKeys (ISSUE-99 — multi-question answer → per-tab option keys, pure)', () => {
   const DOWN = '\x1b[B';
+  const ENTER = '\r';
   const SPACE = ' ';
   const Q_COLOR = { question: 'Which color?', header: 'Color', multiSelect: false, options: [{ label: 'Red' }, { label: 'Green' }, { label: 'Blue' }] };
   const Q_SIZE = { question: 'Which sizes?', header: 'Size', multiSelect: true, options: [{ label: 'Small' }, { label: 'Large' }, { label: 'XL' }] };
 
-  it('single-select per question: ↓×index, and NOTHING for index 0 (highlight = the recorded answer)', () => {
+  it('single-select per question: ↓×index + Enter to confirm, Enter alone for index 0', () => {
     const keys = buildMultiQuestionKeys(
       [Q_COLOR, { ...Q_COLOR, question: 'Second?' }],
       { 'Which color?': 'Green', 'Second?': 'Red' }, // index 1, index 0
     );
-    expect(keys).toEqual([[DOWN], []]); // Green = one ↓; Red (index 0) = no move
+    expect(keys).toEqual([[DOWN, ENTER], [ENTER]]); // Green = one ↓ + Enter; Red (index 0) = Enter only
   });
 
   it('multiSelect question: walks down toggling each pick with Space (array answer, NOT joined)', () => {
@@ -193,17 +194,18 @@ describe('buildMultiQuestionKeys (ISSUE-99 — multi-question answer → per-tab
 
   it('mixes single + multi questions in tab order', () => {
     const keys = buildMultiQuestionKeys([Q_COLOR, Q_SIZE], { 'Which color?': 'Blue', 'Which sizes?': ['Large'] }); // Blue idx2; Large idx1
-    expect(keys).toEqual([[DOWN, DOWN], [DOWN, SPACE]]);
+    expect(keys).toEqual([[DOWN, DOWN, ENTER], [DOWN, SPACE]]);
   });
 
-  it('returns null when ANY answer maps to no listed option (custom/Other → cancel the WHOLE modal)', () => {
+  it('returns null for multiSelect custom but drives single-select custom via "Type something"', () => {
     expect(buildMultiQuestionKeys([Q_COLOR, Q_SIZE], { 'Which color?': 'Green', 'Which sizes?': ['Nope'] })).toBeNull();
-    expect(buildMultiQuestionKeys([Q_COLOR], { 'Which color?': 'Purple' })).toBeNull();
+    // single-select custom: ↓×optionCount → type text → Enter
+    expect(buildMultiQuestionKeys([Q_COLOR], { 'Which color?': 'Purple' })).toEqual([[DOWN, DOWN, DOWN, 'Purple', ENTER]]);
   });
 
   it('falls back to the POSITIONAL answer when the question-text key is absent (insertion order = tab order)', () => {
     const keys = buildMultiQuestionKeys([Q_COLOR, { ...Q_COLOR, question: 'Second?' }], { a: 'Green', b: 'Blue' });
-    expect(keys).toEqual([[DOWN], [DOWN, DOWN]]); // Green idx1, Blue idx2 — by position
+    expect(keys).toEqual([[DOWN, ENTER], [DOWN, DOWN, ENTER]]); // Green idx1 + Enter, Blue idx2 + Enter
   });
 
   it('returns null when answers is undefined', () => {
@@ -216,10 +218,10 @@ describe('buildQuestionKeys (single-question — Story 37.15 custom/Other free-t
   const ENTER = '\r';
   const Q = { question: 'Color?', header: 'Color', multiSelect: false, options: [{ label: 'Red' }, { label: 'Blue' }] };
 
-  it('drives a custom/free-text answer via the "Type something" item: ↓×optionCount → Enter → type → Enter', () => {
-    // 실측 (probe-askq): from option-0 highlight, ↓×2 lands on "Type something" (the item after the 2 real
-    // options), Enter opens text-input, the text is typed, Enter submits.
-    expect(buildQuestionKeys(Q, 'Purple')).toEqual([DOWN, DOWN, ENTER, 'Purple', ENTER]);
+  it('drives a custom/free-text answer via the "Type something" item: ↓×optionCount → type → Enter', () => {
+    // ↓×2 lands on "Type something" (after the 2 real options), type directly (no Enter to activate),
+    // then Enter submits. Verified 2026-06-20: Enter on "Type something" submits the modal immediately.
+    expect(buildQuestionKeys(Q, 'Purple')).toEqual([DOWN, DOWN, 'Purple', ENTER]);
   });
 
   it('still drives a LISTED option the normal way (↓×index, Enter)', () => {

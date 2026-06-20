@@ -357,7 +357,7 @@ describe('flickered-bullet stickiness (Story 37.12 — tool header glyph flicker
 
   it('restoreFlickeredToolBullets re-opens the tool when its header was seen in a recent frame', () => {
     const recent = collectToolHeaderKeys(['● Search(completeStreaming)']); // frame N: glyph present
-    expect(recent.has('Search(completeStreaming)')).toBe(true);
+    expect(recent.has('Search')).toBe(true); // name-only key
     // frame N+1: the tool header's glyph flickered off (claude paints a spacer + the `●` answer body below).
     const flickered = ['Search(completeStreaming)', '', '● 좋은 점을 짚으셨습니다.'];
     expect(parseGridCards(flickered).some((c) => c.kind === 'tool')).toBe(false); // tool lost without memory
@@ -369,19 +369,19 @@ describe('flickered-bullet stickiness (Story 37.12 — tool header glyph flicker
   });
 
   it('does NOT promote prose that merely contains a call (gated on ACTUAL observation, not shape alone)', () => {
-    const recent = collectToolHeaderKeys(['● Search(q)']); // only Search(q) was ever a tool header
+    const recent = collectToolHeaderKeys(['● Search(q)']); // only Search was ever a tool header
     // A standalone call-shaped line that was never observed as a tool header stays prose.
     expect(restoreFlickeredToolBullets(['other(y)', 'call foo(x)'], recent)).toEqual(['other(y)', 'call foo(x)']);
   });
 
   it('collectToolHeaderKeys: bullet-only by default, bullet-less included with the flag (scroll-off scope)', () => {
     const rows = ['● Read(a.ts)', 'Bash(ls)']; // Read carries its bullet; Bash lost its (flickering)
-    expect([...collectToolHeaderKeys(rows)]).toEqual(['Read(a.ts)']); // confident set: glyph-carrying only
-    expect(collectToolHeaderKeys(rows, true).has('Bash(ls)')).toBe(true); // on-screen scope also counts it
+    expect([...collectToolHeaderKeys(rows)]).toEqual(['Read']); // confident set: name-only keys
+    expect(collectToolHeaderKeys(rows, true).has('Bash')).toBe(true); // on-screen scope also counts it
   });
 
   it('restores a BARE tool header (input not painted yet) too', () => {
-    const recent = collectToolHeaderKeys(['● PowerShell']); // bare name, glyph present
+    const recent = collectToolHeaderKeys(['● PowerShell']); // bare name, glyph present — key is 'PowerShell'
     const restored = restoreFlickeredToolBullets(['PowerShell'], recent);
     expect(parseGridCards(restored)).toEqual([{ kind: 'tool', text: 'PowerShell', toolName: 'PowerShell' }]);
   });
@@ -414,12 +414,12 @@ describe('parseGridCards — indented tool-output gate (Story 37.17)', () => {
   });
 
   it('restoreFlickeredToolBullets resurrects a margin header but NOT a deeply-indented output echo', () => {
-    const restored = restoreFlickeredToolBullets(['Bash(x)', '       Bash(x)'], new Set(['Bash(x)']));
+    const restored = restoreFlickeredToolBullets(['Bash(x)', '       Bash(x)'], new Set(['Bash']));
     expect(restored[0]).toBe('● Bash(x)'); //       col-0 flickered header → restored
     expect(restored[1]).toBe('       Bash(x)'); //  col-7 output echo → left alone
   });
 
   it('collectToolHeaderKeys ignores a deeply-indented glyph row (no recentKeys pollution)', () => {
-    expect([...collectToolHeaderKeys(['● Bash(x)', '       ● Bash(x)'])]).toEqual(['Bash(x)']);
+    expect([...collectToolHeaderKeys(['● Bash(x)', '       ● Bash(x)'])]).toEqual(['Bash']);
   });
 });

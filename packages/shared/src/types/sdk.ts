@@ -41,6 +41,12 @@ export interface ChatServiceConfig {
    * Mirrors the `autoCompactEnabled` user preference.
    */
   autoCompactEnabled?: boolean;
+  /**
+   * What to do when EnterPlanMode runs while the permission button is Bypass (CLI mode).
+   *  - 'override' (default): force CLI back to Bypass so no permission prompts appear.
+   *  - 'sync': let CLI stay in Plan and sync the Hammoc button to Plan.
+   */
+  planModeBypassBehavior?: 'override' | 'sync';
 }
 
 /**

@@ -111,6 +111,10 @@ export interface UserPreferences {
   // Auto-approve CLI safety checks in Bypass mode (default: false)
   // When enabled, safety check prompts from the CLI are auto-approved without user confirmation
   autoApproveSafetyChecks?: boolean;
+  // What to do when EnterPlanMode runs while the permission button is Bypass (CLI mode).
+  //  - 'override' (default): force CLI back to Bypass so no permission prompts appear.
+  //  - 'sync': let CLI stay in Plan and sync the Hammoc button to Plan.
+  planModeBypassBehavior?: 'override' | 'sync';
   // File checkpointing (enables rewind/restore of file changes)
   enableChatCheckpointing?: boolean;   // default: true (browser chat sessions)
   enableQueueCheckpointing?: boolean;  // default: false (queue runner — can increase JSONL size)
