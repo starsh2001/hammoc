@@ -1425,12 +1425,10 @@ export function useStreaming() {
             segments.push({ type: 'tool_summary', summary: d.summary, precedingToolUseIds: d.precedingToolUseIds });
             break;
           }
-          case 'system:task-notification': {
-            const d = eventData as TaskNotificationData;
-            flushText();
-            segments.push({ type: 'task_notification', ...d });
-            break;
-          }
+          // system:task-notification: skip during replay — already in the authoritative
+          // history at its correct chronological position. Re-adding it here would show
+          // stale completion cards at the top of the current turn on every reconnect.
+          case 'system:task-notification': break;
           case 'result:error': {
             const d = eventData as ResultErrorData;
             flushText();
