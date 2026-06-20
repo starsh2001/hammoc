@@ -131,6 +131,12 @@ function keyLabel(k: string): string {
   return k.length > 3 ? `text(${k.length})` : k;
 }
 
+/** Strip control characters from custom free-text answers before PTY injection.
+ *  CR/LF would be interpreted as Enter (premature submit), ANSI escapes as cursor keys. */
+function sanitizeCustomText(text: string): string {
+  return text.replace(/[\r\n\x1b\x00-\x1f]/g, '').trim();
+}
+
 /** Module-scoped question counter — survives across engine instances (which are created per-turn)
  *  so `cli-q-N` IDs never collide with the client's seenPermissionIds (which persists per-session). */
 let globalQuestionCounter = 0;
@@ -370,13 +376,11 @@ export function buildQuestionKeys(parsed: ParsedQuestion, answer: string | strin
     // AFTER the real options (index = options.length). ↓×optionCount lands on "Type something",
     // then type directly (no Enter — Enter on "Type something" submits the modal immediately;
     // verified 2026-06-20 log). The final Enter submits the typed text.
-    const customText = !parsed.multiSelect && typeof answer === 'string' && answer.trim() ? answer.trim() : null;
+    const customText = !parsed.multiSelect && typeof answer === 'string' ? sanitizeCustomText(answer) : null;
     if (!customText) return null;
     const custom: string[] = [];
-    for (let i = 0; i < labels.length; i++) custom.push(CLI_QUESTION_DOWN_KEY); // ↓ × optionCount → "Type something"
-    // No Enter here — Enter on "Type something" submits the modal immediately.
-    // Just start typing: the TUI activates text input on the first keystroke.
-    custom.push(customText);             // type the free text directly
+    for (let i = 0; i < labels.length; i++) custom.push(CLI_QUESTION_DOWN_KEY);
+    custom.push(customText);
     custom.push(CLI_QUESTION_ENTER_KEY); // submit
     return custom;
   }
@@ -433,11 +437,11 @@ export function buildMultiQuestionKeys(
       // Custom/Other in multi-tab: navigate to "Type something", then type directly (no Enter
       // to enter text mode — Enter would submit the whole modal). The final Enter confirms the
       // text and auto-advances to the next tab. Verified by owner manual testing (2026-06-20).
-      const customText = !q.multiSelect && typeof answer === 'string' && answer.trim() ? answer.trim() : null;
+      const customText = !q.multiSelect && typeof answer === 'string' ? sanitizeCustomText(answer) : null;
       if (!customText) return null; // multiSelect custom or empty → not drivable
       const custom: string[] = [];
-      for (let i = 0; i < q.options.length; i++) custom.push(CLI_QUESTION_DOWN_KEY); // ↓×optionCount → "Type something"
-      custom.push(customText);             // type directly (no Enter to activate — just start typing)
+      for (let i = 0; i < q.options.length; i++) custom.push(CLI_QUESTION_DOWN_KEY);
+      custom.push(customText);
       custom.push(CLI_QUESTION_ENTER_KEY); // confirm input + auto-advance
       perQuestion.push(custom);
       continue;
@@ -1771,11 +1775,13 @@ export class CliChatEngine implements ChatEngine {
                 else if (h.kind === 'text') callbacks.onTextChunk?.({ sessionId: resolvedSessionId, messageId: `cli-prov-text-${provisionalCardCounter}`, content: growthDelta, done: false, provisional: true });
               }
             } else {
-              // If matched via baseSig (card shrank back after a flicker-growth), restore the sig
               if (h.baseSig === sig && h.sig !== sig) {
+                // Matched via baseSig: card shrank back after a flicker-growth — restore sig
                 h.sig = sig; h.text = card.text; h.baseSig = undefined;
                 dlog.server('grid-card-shrink', { kind: h.kind, slot: h.slot });
               } else {
+                // Exact sig match: growth episode (if any) is over — clear baseSig
+                if (h.baseSig) h.baseSig = undefined;
                 dlog.server('grid-card-seen', { kind: h.kind, slot: h.slot });
               }
             }
@@ -2136,8 +2142,9 @@ export class CliChatEngine implements ChatEngine {
 
             if (settled || !questionPending) return;
             // Enter on single-select auto-advances. Detect: if the screen no longer shows THIS
-            // tab's question, we already moved (either to the next question or to Submit).
-            const alreadyAdvanced = postBody != null && postBody.question !== questions[i].question;
+            // tab's question, we already moved (to the next question or Submit). postBody=null
+            // means the screen shows no question (e.g. Submit tab) — also counts as advanced.
+            const alreadyAdvanced = postBody == null || postBody.question !== questions[i].question;
             if (alreadyAdvanced) {
               dlog.server('mq-tab-auto-advanced', { tab: i, skipRightKey: true });
             } else {
