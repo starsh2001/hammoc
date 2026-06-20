@@ -1272,10 +1272,10 @@ export function useStreaming() {
               }
             } else {
               const lastSeg = segments[segments.length - 1];
-              if (lastSeg && lastSeg.type === 'thinking' && (lastSeg as { provisional?: boolean }).provisional) {
+              if (lastSeg && lastSeg.type === 'thinking' && Boolean((lastSeg as { provisional?: boolean }).provisional) === Boolean(d.provisional)) {
                 (lastSeg as { type: 'thinking'; content: string }).content += d.content;
               } else {
-                segments.push({ type: 'thinking', content: d.content, provisional: true });
+                segments.push({ type: 'thinking', content: d.content, ...(d.provisional ? { provisional: true } : {}) });
               }
             }
             break;
