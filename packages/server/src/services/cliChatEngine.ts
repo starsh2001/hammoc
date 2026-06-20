@@ -2919,8 +2919,11 @@ export class CliChatEngine implements ChatEngine {
                 finishTurn();
                 return;
               }
-              // Detect task-notification user messages (background task completions)
-              if (!emittedUuids.has(raw.uuid)) {
+              // Detect task-notification user messages (background task completions).
+              // Only after this turn's first assistant block — otherwise the drain re-parses
+              // the ENTIRE JSONL file and re-emits task notifications from previous turns
+              // (emittedUuids is per-turn, so old uuids are unknown).
+              if (lastAssistantUuid && !emittedUuids.has(raw.uuid)) {
                 const textContent = extractUserTextContent(raw);
                 if (textContent) {
                   const taskNotif = parseTaskNotification(textContent);
