@@ -290,7 +290,8 @@
     "activeSessionsCount": "{{count}} 个活跃会话",
     "activeFormat": "{{active}}/{{total}} 活跃",
     "queueStatusFormat": "{{status}}",
-    "terminalsFormat": "{{count}} 个终端"
+    "terminalsFormat": "{{count}} 个终端",
+    "pendingQuestionCount": "{{count}} 个等待选择"
   },
   "queueStatus": {
     "running": "队列运行中",
@@ -610,7 +611,9 @@
     "openInTab": "在终端标签页中打开",
     "disabledDescriptionShort": "请在设置中启用终端。",
     "securityDescriptionShort": "请从本地网络连接。",
-    "imeInputPlaceholder": "在此输入非英文字符后发送",
+    "inputPlaceholder": "输入命令...",
+    "send": "发送",
+    "copy": "复制终端内容",
     "createNotConnected": "无法创建终端: 套接字未连接",
     "createTimeout": "创建终端超时 — 请重试"
   },

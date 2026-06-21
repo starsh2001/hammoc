@@ -1,25 +1,48 @@
 /**
- * TerminalEmulator - xterm.js wrapper component
- * Story 17.2: Terminal Emulator Component
+ * TerminalEmulator - xterm.js wrapper component (read-only display + input bar)
  *
- * Renders a terminal UI using xterm.js and binds it to a PTY session
- * via terminalStore. Data binding (sendInput, resize, registerDataCallback)
- * is done directly through the store, not via useTerminal hook.
+ * The xterm.js viewport is always read-only (disableStdin: true).
+ * All user input goes through the bottom input bar, which relays
+ * keystrokes to the PTY in real-time while keeping typed text visible.
  *
- * Mobile: an invisible password-type proxy input captures keyboard input
- * without IME composition (for ASCII/English). An additional visible input
- * bar at the bottom lets users compose CJK text and send it on Enter.
+ * The input bar is uncontrolled — the DOM value is managed via ref,
+ * avoiding React/IME composition conflicts. onChange detects new text
+ * (typed, pasted, IME-committed) via a length-based diff and sends
+ * it to the PTY. Special keys (Enter, Tab, arrows, Ctrl combos)
+ * are handled in onKeyDown and bypass the diff path.
  */
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { CornerDownLeft, ClipboardCopy } from 'lucide-react';
 import '@xterm/xterm/css/xterm.css';
 import { useTerminalStore } from '../../stores/terminalStore';
 import { useTheme } from '../../hooks/useTheme';
-import { useIsMobile } from '../../hooks/useIsMobile';
 import { getXtermTheme } from './xtermTheme';
+
+const QUICK_KEYS: Array<{ label: string; seq: string; title?: string } | 'sep'> = [
+  { label: '↑', seq: '\x1b[A', title: 'Up' },
+  { label: '↓', seq: '\x1b[B', title: 'Down' },
+  { label: '←', seq: '\x1b[D', title: 'Left' },
+  { label: '→', seq: '\x1b[C', title: 'Right' },
+  'sep',
+  { label: 'Tab', seq: '\t' },
+  { label: 'Esc', seq: '\x1b' },
+  'sep',
+  { label: '^C', seq: '\x03', title: 'Ctrl+C' },
+  { label: '^D', seq: '\x04', title: 'Ctrl+D' },
+  { label: '^Z', seq: '\x1a', title: 'Ctrl+Z' },
+];
+
+const KEY_BTN =
+  'min-w-[2rem] h-7 px-1.5 text-xs font-mono rounded border ' +
+  'bg-gray-200 dark:bg-[#2a3040] border-gray-300 dark:border-gray-600 ' +
+  'text-gray-700 dark:text-gray-300 ' +
+  'hover:bg-gray-300 dark:hover:bg-[#354050] ' +
+  'active:bg-gray-400 dark:active:bg-[#405060] ' +
+  'transition-colors select-none';
 
 // ===== Component =====
 
@@ -40,9 +63,11 @@ export function TerminalEmulator({
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const isComposingRef = useRef(false);
+  const sentLenRef = useRef(0);
 
   const { resolvedTheme } = useTheme();
-  const isMobile = useIsMobile();
   const sendInput = useTerminalStore((s) => s.sendInput);
   const resize = useTerminalStore((s) => s.resize);
   const registerDataCallback = useTerminalStore((s) => s.registerDataCallback);
@@ -50,46 +75,188 @@ export function TerminalEmulator({
   const status = session?.status ?? null;
   const fontSize = useTerminalStore((s) => s.fontSize);
 
-  // Input bar state (for CJK / IME input on mobile)
-  const [barText, setBarText] = useState('');
-  const [isComposing, setIsComposing] = useState(false);
-  const proxyInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Reset input state when switching terminals
   useEffect(() => {
-    setBarText('');
-    setIsComposing(false);
+    if (inputRef.current) inputRef.current.value = '';
+    isComposingRef.current = false;
+    sentLenRef.current = 0;
   }, [terminalId]);
 
-  // Send text to terminal (no Enter)
-  const handleBarSend = useCallback(() => {
-    if (isComposing || !barText) return;
+  const clearInput = useCallback(() => {
+    if (inputRef.current) inputRef.current.value = '';
+    sentLenRef.current = 0;
+  }, []);
+
+  // Copy terminal content (selection if any, otherwise all)
+  const handleCopy = useCallback(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    const sel = terminal.getSelection();
+    if (sel) {
+      navigator.clipboard.writeText(sel).catch(() => {});
+      terminal.clearSelection();
+    } else {
+      terminal.selectAll();
+      const all = terminal.getSelection();
+      if (all) navigator.clipboard.writeText(all).catch(() => {});
+      terminal.clearSelection();
+    }
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
+
+  // Quick-key buttons: send sequence, clear input, refocus
+  const sendKey = useCallback(
+    (seq: string) => {
+      const s = useTerminalStore.getState().terminals.get(terminalId);
+      if (s?.status !== 'connected') return;
+      sendInput(terminalId, seq);
+      clearInput();
+      requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    [sendInput, terminalId, clearInput]
+  );
+
+  // Send button = Enter
+  const handleSend = useCallback(() => {
     const s = useTerminalStore.getState().terminals.get(terminalId);
     if (s?.status !== 'connected') return;
-    sendInput(terminalId, barText);
-    setBarText('');
-    // Focus proxy input (terminal) to keep keyboard open for direct typing
-    requestAnimationFrame(() => proxyInputRef.current?.focus());
-  }, [barText, isComposing, sendInput, terminalId]);
+    sendInput(terminalId, '\r');
+    clearInput();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [sendInput, terminalId, clearInput]);
 
-  const handleBarKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !isComposing && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
-      e.preventDefault();
-      if (barText) {
-        handleBarSend();
-      } else {
-        // Empty input bar: send Enter directly to terminal
-        const s = useTerminalStore.getState().terminals.get(terminalId);
-        if (s?.status === 'connected') sendInput(terminalId, '\r');
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+
+      const s = useTerminalStore.getState().terminals.get(terminalId);
+      if (s?.status !== 'connected') return;
+
+      switch (e.key) {
+        case 'Enter':
+          e.preventDefault();
+          sendInput(terminalId, '\r');
+          clearInput();
+          break;
+        case 'Backspace':
+          sendInput(terminalId, '\x7f');
+          break;
+        case 'Delete':
+          e.preventDefault();
+          sendInput(terminalId, '\x1b[3~');
+          clearInput();
+          break;
+        case 'Tab':
+          e.preventDefault();
+          sendInput(terminalId, '\t');
+          clearInput();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          sendInput(terminalId, '\x1b');
+          clearInput();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          sendInput(terminalId, '\x1b[A');
+          clearInput();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          sendInput(terminalId, '\x1b[B');
+          clearInput();
+          break;
+        case 'ArrowLeft':
+        case 'ArrowRight':
+        case 'Home':
+        case 'End':
+          e.preventDefault();
+          break;
+        default:
+          if (e.ctrlKey || e.metaKey) {
+            const k = e.key.toLowerCase();
+            const isCtrl = e.ctrlKey && !e.metaKey;
+
+            if (k === 'c') {
+              const input = e.currentTarget;
+              if (
+                input.selectionStart !== null &&
+                input.selectionEnd !== null &&
+                input.selectionStart !== input.selectionEnd
+              )
+                return;
+
+              e.preventDefault();
+              const sel = terminalRef.current?.getSelection();
+              if (sel) {
+                navigator.clipboard.writeText(sel).catch(() => {});
+                terminalRef.current?.clearSelection();
+              } else if (isCtrl) {
+                sendInput(terminalId, '\x03');
+                clearInput();
+              }
+            } else if (k === 'd' && isCtrl) {
+              e.preventDefault();
+              sendInput(terminalId, '\x04');
+              clearInput();
+            } else if (k === 'z' && isCtrl) {
+              e.preventDefault();
+              sendInput(terminalId, '\x1a');
+              clearInput();
+            } else if (k === '=' || k === '+') {
+              e.preventDefault();
+              useTerminalStore.getState().increaseFontSize();
+            } else if (k === '-') {
+              e.preventDefault();
+              useTerminalStore.getState().decreaseFontSize();
+            } else if (k === '0') {
+              e.preventDefault();
+              useTerminalStore.getState().resetFontSize();
+            }
+          }
+          // Printable chars: no preventDefault → browser inserts → onChange sends
       }
-    }
-  }, [isComposing, handleBarSend, barText, sendInput, terminalId]);
+    },
+    [sendInput, terminalId, clearInput]
+  );
 
-  // Initialize xterm.js
+  // onChange detects new text (typed chars, paste, IME commit) via length diff
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (isComposingRef.current) return;
+
+      const val = e.target.value;
+      if (val.length > sentLenRef.current) {
+        const added = val.slice(sentLenRef.current);
+        const s = useTerminalStore.getState().terminals.get(terminalId);
+        if (s?.status === 'connected') sendInput(terminalId, added);
+      }
+      sentLenRef.current = val.length;
+    },
+    [sendInput, terminalId]
+  );
+
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback(
+    (e: React.CompositionEvent<HTMLInputElement>) => {
+      isComposingRef.current = false;
+      const val = (e.target as HTMLInputElement).value;
+      if (val.length > sentLenRef.current) {
+        const added = val.slice(sentLenRef.current);
+        const s = useTerminalStore.getState().terminals.get(terminalId);
+        if (s?.status === 'connected') sendInput(terminalId, added);
+      }
+      sentLenRef.current = val.length;
+    },
+    [sendInput, terminalId]
+  );
+
+  // ── xterm.js lifecycle ──────────────────────────────────────────
+
   useEffect(() => {
     if (!containerRef.current) return;
-
-    const isMobileNow = isMobile;
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -98,8 +265,7 @@ export function TerminalEmulator({
       scrollback: 1000,
       allowProposedApi: false,
       theme: getXtermTheme(resolvedTheme),
-      // On mobile, disable xterm's own keyboard — proxy input handles it
-      disableStdin: isMobileNow,
+      disableStdin: true,
     });
 
     const fitAddon = new FitAddon();
@@ -109,146 +275,10 @@ export function TerminalEmulator({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    // Font size shortcuts: Ctrl+= / Ctrl+- / Ctrl+0
-    terminal.attachCustomKeyEventHandler((event) => {
-      if (event.type !== 'keydown') return true;
-      if (event.ctrlKey || event.metaKey) {
-        if (event.key === '=' || event.key === '+') {
-          useTerminalStore.getState().increaseFontSize();
-          return false;
-        }
-        if (event.key === '-') {
-          useTerminalStore.getState().decreaseFontSize();
-          return false;
-        }
-        if (event.key === '0') {
-          useTerminalStore.getState().resetFontSize();
-          return false;
-        }
-      }
-      return true;
-    });
-
-    // Input handler: user keystrokes → server PTY (desktop only)
-    const inputDisposable = terminal.onData((data) => {
-      const s = useTerminalStore.getState().terminals.get(terminalId);
-      if (s?.status !== 'connected') return;
-      sendInput(terminalId, data);
-    });
-
-    // Mobile: invisible password proxy for direct ASCII input
-    // (ref: xtermjs/xterm.js#2403 — password inputs bypass IME/composition)
-    let proxyInput: HTMLInputElement | null = null;
-    let proxyTapHandler: (() => void) | null = null;
-    let proxyFocusTimeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    if (isMobileNow && containerRef.current) {
-      proxyInput = document.createElement('input');
-      proxyInputRef.current = proxyInput;
-      proxyInput.type = 'password';
-      proxyInput.autocomplete = 'off';
-      proxyInput.setAttribute('autocorrect', 'off');
-      proxyInput.setAttribute('autocapitalize', 'off');
-      proxyInput.setAttribute('spellcheck', 'false');
-      proxyInput.setAttribute('aria-label', 'Terminal input');
-      proxyInput.setAttribute('enterkeyhint', 'send');
-      proxyInput.tabIndex = -1;
-      Object.assign(proxyInput.style, {
-        width: '100%',
-        height: '100%',
-        opacity: '0',
-        border: 'none',
-        outline: 'none',
-        caretColor: 'transparent',
-        fontSize: '16px', // prevent iOS auto-zoom on focus
-      });
-
-      // Wrap proxy in a <form> to prevent Enter from triggering
-      // browser "next field" navigation on mobile password inputs.
-      const proxyForm = document.createElement('form');
-      proxyForm.addEventListener('submit', (ev) => ev.preventDefault());
-      Object.assign(proxyForm.style, {
-        position: 'absolute',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        margin: '0',
-        padding: '0',
-        border: 'none',
-        zIndex: '2',
-        pointerEvents: 'none',
-      });
-      proxyForm.appendChild(proxyInput);
-
-      containerRef.current.style.position = 'relative';
-      containerRef.current.appendChild(proxyForm);
-
-      // Use touchend + setTimeout so the focus happens AFTER xterm.js
-      // finishes its own click/focus handling, preventing the keyboard
-      // from immediately closing due to xterm stealing focus.
-      proxyTapHandler = () => {
-        if (proxyFocusTimeoutId) clearTimeout(proxyFocusTimeoutId);
-        proxyFocusTimeoutId = setTimeout(() => {
-          proxyFocusTimeoutId = null;
-          if (proxyInput?.isConnected) proxyInput.focus();
-        }, 0);
-      };
-      containerRef.current.addEventListener('touchend', proxyTapHandler);
-
-      proxyInput.addEventListener('input', () => {
-        if (proxyInput && proxyInput.value) {
-          const s = useTerminalStore.getState().terminals.get(terminalId);
-          if (s?.status !== 'connected') { proxyInput.value = ''; return; }
-          sendInput(terminalId, proxyInput.value);
-          proxyInput.value = '';
-        }
-      });
-
-      proxyInput.addEventListener('keydown', (e) => {
-        const s = useTerminalStore.getState().terminals.get(terminalId);
-        if (s?.status !== 'connected') return;
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          sendInput(terminalId, '\r');
-        } else if (e.key === 'Backspace') {
-          e.preventDefault();
-          sendInput(terminalId, '\x7f');
-        } else if (e.key === 'Tab') {
-          e.preventDefault();
-          sendInput(terminalId, '\t');
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          sendInput(terminalId, '\x1b');
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          sendInput(terminalId, '\x1b[A');
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          sendInput(terminalId, '\x1b[B');
-        } else if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          sendInput(terminalId, '\x1b[C');
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          sendInput(terminalId, '\x1b[D');
-        } else if (e.ctrlKey) {
-          const k = e.key.toLowerCase();
-          if (k === 'c') { e.preventDefault(); sendInput(terminalId, '\x03'); }
-          else if (k === 'd') { e.preventDefault(); sendInput(terminalId, '\x04'); }
-          else if (k === 'z') { e.preventDefault(); sendInput(terminalId, '\x1a'); }
-        }
-      });
-
-      if (autoFocus) proxyInput.focus();
-    }
-
-    // Data callback: server PTY output → xterm.js
     const unregisterData = registerDataCallback(terminalId, (data) => {
       terminal.write(data);
     });
 
-    // FitAddon: auto-resize with debounce
     let rafId: number | null = null;
     let lastCols = 0;
     let lastRows = 0;
@@ -267,28 +297,78 @@ export function TerminalEmulator({
     });
     resizeObserver.observe(containerRef.current);
 
-    // Initial fit after render
+    // Redirect focus from xterm to input bar so the mobile keyboard
+    // doesn't open on the terminal and keystrokes always go through
+    // the input bar.
+    const container = containerRef.current;
+    const handleFocusIn = () => {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    };
+    container.addEventListener('focusin', handleFocusIn);
+
+    // Touch-based line selection (long-press + drag)
+    const LONG_PRESS_MS = 400;
+    const MOVE_THRESHOLD = 10;
+    let touchTimer: ReturnType<typeof setTimeout> | null = null;
+    let selecting = false;
+    let startRow = -1;
+    let touchStartY = 0;
+    let touchStartX = 0;
+
+    const touchToRow = (clientY: number): number => {
+      const rect = container.getBoundingClientRect();
+      const cellH = rect.height / terminal.rows;
+      const vRow = Math.floor((clientY - rect.top) / cellH);
+      return terminal.buffer.active.viewportY + Math.max(0, Math.min(vRow, terminal.rows - 1));
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      selecting = false;
+      touchTimer = setTimeout(() => {
+        selecting = true;
+        startRow = touchToRow(t.clientY);
+        terminal.selectLines(startRow, startRow);
+      }, LONG_PRESS_MS);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!selecting) {
+        if (
+          Math.abs(t.clientX - touchStartX) > MOVE_THRESHOLD ||
+          Math.abs(t.clientY - touchStartY) > MOVE_THRESHOLD
+        ) {
+          if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+        }
+        return;
+      }
+      e.preventDefault();
+      const curRow = touchToRow(t.clientY);
+      terminal.selectLines(Math.min(startRow, curRow), Math.max(startRow, curRow));
+    };
+    const onTouchEnd = () => {
+      if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+      selecting = false;
+    };
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd);
+
     let initRafId: number | null = null;
     initRafId = requestAnimationFrame(() => {
       initRafId = null;
       fitAndResize();
-
-      if (autoFocus && !isMobileNow) {
-        terminal.focus();
-      }
       onReady?.();
     });
 
     return () => {
-      if (proxyFocusTimeoutId) clearTimeout(proxyFocusTimeoutId);
-      if (proxyInput) {
-        proxyInput.parentElement?.remove(); // remove wrapping <form>
-        proxyInputRef.current = null;
-      }
-      if (proxyTapHandler && containerRef.current) {
-        containerRef.current.removeEventListener('touchend', proxyTapHandler);
-      }
-      inputDisposable.dispose();
+      container.removeEventListener('focusin', handleFocusIn);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
+      if (touchTimer) clearTimeout(touchTimer);
       unregisterData();
       resizeObserver.disconnect();
       if (rafId) cancelAnimationFrame(rafId);
@@ -297,18 +377,20 @@ export function TerminalEmulator({
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-    // Re-run when terminalId or mobile mode changes (remounts terminal
-    // to reconfigure disableStdin and proxy input for the new mode).
-  }, [terminalId, isMobile]);
+  }, [terminalId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Dynamic theme update
+  useEffect(() => {
+    if (autoFocus && status === 'connected') {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [autoFocus, status]);
+
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.options.theme = getXtermTheme(resolvedTheme);
     }
   }, [resolvedTheme]);
 
-  // Dynamic font size update
   const lastSizeRef = useRef<{ cols: number; rows: number }>({ cols: 0, rows: 0 });
   useEffect(() => {
     const terminal = terminalRef.current;
@@ -324,40 +406,78 @@ export function TerminalEmulator({
     }
   }, [fontSize, terminalId, resize]);
 
+  const isConnected = status === 'connected';
+
   return (
     <div className="relative flex flex-col" style={{ height }}>
       <div ref={containerRef} className="w-full flex-1 min-h-0" />
 
-      {/* Mobile input bar — for CJK and any text that needs IME composition */}
-      {isMobile && status === 'connected' && (
-        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-100 dark:bg-[#1e2030] border-t border-gray-300 dark:border-gray-600">
-          <input
-            type="text"
-            aria-label="Terminal input"
-            placeholder={t('terminal.imeInputPlaceholder')}
-            className="flex-1 bg-white dark:bg-[#282a3a] text-sm font-mono text-gray-900 dark:text-gray-100 outline-none rounded px-2 py-1 border border-gray-300 dark:border-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500 placeholder:text-xs"
-            value={barText}
-            onChange={(e) => setBarText(e.target.value)}
-            onKeyDown={handleBarKeyDown}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => setIsComposing(false)}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-          <button
-            type="button"
-            className="px-2.5 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 active:bg-blue-800 shrink-0"
-            onClick={handleBarSend}
-          >
-            Send
-          </button>
+      {isConnected && (
+        <div className="flex flex-col gap-1 px-2 py-1.5 bg-gray-50 dark:bg-[#1e2030] border-t border-gray-300 dark:border-gray-600">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {QUICK_KEYS.map((k, i) =>
+              k === 'sep' ? (
+                <span
+                  key={i}
+                  className="w-px h-5 bg-gray-300 dark:bg-gray-600 shrink-0"
+                />
+              ) : (
+                <button
+                  key={k.label}
+                  type="button"
+                  className={KEY_BTN}
+                  title={k.title ?? k.label}
+                  onClick={() => sendKey(k.seq)}
+                >
+                  {k.label}
+                </button>
+              )
+            )}
+            <span className="w-px h-5 bg-gray-300 dark:bg-gray-600 shrink-0" />
+            <button
+              type="button"
+              className={KEY_BTN}
+              title={t('terminal.copy')}
+              onClick={handleCopy}
+            >
+              <ClipboardCopy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <input
+              ref={inputRef}
+              type="text"
+              aria-label={t('terminal.inputPlaceholder')}
+              placeholder={t('terminal.inputPlaceholder')}
+              className="flex-1 h-7 bg-white dark:bg-[#282a3a] text-sm font-mono text-gray-900 dark:text-gray-100 outline-none rounded px-2 border border-gray-300 dark:border-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500 placeholder:text-xs focus:border-blue-500 dark:focus:border-blue-400"
+              onKeyDown={handleKeyDown}
+              onChange={handleChange}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              enterKeyHint="send"
+            />
+            <button
+              type="button"
+              className="h-7 px-2.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 active:bg-blue-800 transition-colors shrink-0 flex items-center"
+              onClick={handleSend}
+              aria-label={t('terminal.send')}
+            >
+              <CornerDownLeft className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
       {(status === 'connecting' || !status) && (
-        <div role="status" aria-live="polite" className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100 dark:bg-[#1c2129] text-gray-500 dark:text-gray-300">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100 dark:bg-[#1c2129] text-gray-500 dark:text-gray-300"
+        >
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             <span className="text-sm">{t('terminal.connecting')}</span>
@@ -366,7 +486,10 @@ export function TerminalEmulator({
       )}
 
       {status === 'disconnected' && (
-        <div role="alert" className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+        <div
+          role="alert"
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/50"
+        >
           <div className="text-sm text-white bg-red-600/90 px-4 py-2 rounded">
             {t('terminal.disconnected')}
           </div>
@@ -374,7 +497,10 @@ export function TerminalEmulator({
       )}
 
       {status === 'exited' && (
-        <div role="alert" className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+        <div
+          role="alert"
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/50"
+        >
           <div className="text-sm text-white bg-gray-600/90 px-4 py-2 rounded">
             {t('terminal.exited', { exitCode: session?.exitCode ?? '?' })}
           </div>

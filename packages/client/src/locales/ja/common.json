@@ -290,7 +290,8 @@
     "activeSessionsCount": "アクティブセッション{{count}}件",
     "activeFormat": "{{active}}/{{total}}件アクティブ",
     "queueStatusFormat": "{{status}}",
-    "terminalsFormat": "ターミナル{{count}}台"
+    "terminalsFormat": "ターミナル{{count}}台",
+    "pendingQuestionCount": "選択待ち{{count}}件"
   },
   "queueStatus": {
     "running": "キュー実行中",
@@ -610,7 +611,9 @@
     "openInTab": "ターミナルタブで開く",
     "disabledDescriptionShort": "設定でターミナルを有効にしてください。",
     "securityDescriptionShort": "ローカルネットワークから接続してください。",
-    "imeInputPlaceholder": "非英語文字はここで入力して送信",
+    "inputPlaceholder": "コマンドを入力...",
+    "send": "送信",
+    "copy": "ターミナルの内容をコピー",
     "createNotConnected": "ターミナルを作成できません: ソケットが接続されていません",
     "createTimeout": "ターミナル作成がタイムアウトしました — 再試行してください"
   },

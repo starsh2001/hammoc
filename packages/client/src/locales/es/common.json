@@ -290,7 +290,8 @@
     "activeSessionsCount": "{{count}} sesión(es) activa(s)",
     "activeFormat": "{{active}}/{{total}} activos",
     "queueStatusFormat": "{{status}}",
-    "terminalsFormat": "{{count}} terminal(es)"
+    "terminalsFormat": "{{count}} terminal(es)",
+    "pendingQuestionCount": "{{count}} esperando selección"
   },
   "queueStatus": {
     "running": "Cola en ejecución",
@@ -610,7 +611,9 @@
     "openInTab": "Abrir en pestaña de terminal",
     "disabledDescriptionShort": "Habilitar terminal en configuración.",
     "securityDescriptionShort": "Por favor, conéctate desde una red local.",
-    "imeInputPlaceholder": "Escribe texto no ASCII aquí y envía",
+    "inputPlaceholder": "Ingrese comando...",
+    "send": "Enviar",
+    "copy": "Copiar contenido del terminal",
     "createNotConnected": "No se puede crear el terminal: socket no conectado",
     "createTimeout": "Se agotó el tiempo para crear el terminal — inténtalo de nuevo"
   },

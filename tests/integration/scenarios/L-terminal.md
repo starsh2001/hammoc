@@ -11,8 +11,8 @@
 **절차**:
 1. 터미널 탭 진입 → "새 터미널" 버튼 클릭 (빈 상태 안내에 표시되는 버튼 또는 헤더 우측 버튼)
 2. `browser_wait_for`로 탭 헤더 상태 "연결됨" 표시 대기 (1~2초)
-3. Terminal input textbox(`textarea[aria-label="Terminal input"]`) 클릭 → 포커스
-4. `browser_type`로 `echo hello` 입력 후 Enter (`submit: true`)
+3. 하단 입력바의 `input[type="text"]` (터미널 명령어 입력 필드) 클릭 → 포커스
+4. `browser_type`로 `echo hello` 입력 후 Enter
 5. `browser_evaluate`로 `.xterm-rows` 내 출력 라인 조회
 
 **기대 결과**:
@@ -39,7 +39,7 @@
 
 ### L-01-03: 폰트 크기 단축키
 **절차**:
-1. 터미널 탭 생성 후 터미널 영역 클릭으로 포커스
+1. 터미널 탭 생성 후 하단 입력바 클릭으로 포커스
 2. `browser_evaluate`로 현재 폰트 크기 기록: `() => getComputedStyle(document.querySelector('.xterm-rows')).fontSize`
 3. `browser_press_key(key="Equal", modifiers=["Control"])` → 폰트 크기 증가 확인
 4. `browser_press_key(key="Minus", modifiers=["Control"])` → 축소 확인

@@ -291,7 +291,8 @@
     "activeSessionsCount": "{{count}} active session(s)",
     "activeFormat": "{{active}}/{{total}} active",
     "queueStatusFormat": "{{status}}",
-    "terminalsFormat": "{{count}} terminal(s)"
+    "terminalsFormat": "{{count}} terminal(s)",
+    "pendingQuestionCount": "{{count}} awaiting selection"
   },
   "queueStatus": {
     "running": "Queue running",
@@ -648,7 +649,9 @@
     "openInTab": "Open in terminal tab",
     "disabledDescriptionShort": "Enable terminal in settings.",
     "securityDescriptionShort": "Please connect from a local network.",
-    "imeInputPlaceholder": "Type non-ASCII text here, then send",
+    "inputPlaceholder": "Enter command...",
+    "send": "Send",
+    "copy": "Copy terminal content",
     "createNotConnected": "Cannot create terminal: socket not connected",
     "createTimeout": "Terminal create timed out — please try again"
   },
