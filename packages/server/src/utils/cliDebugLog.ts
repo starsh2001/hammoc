@@ -7,8 +7,10 @@
  * land in ONE chronological file so a post-mortem can diff server-emitted vs
  * client-received at each timestamp.
  *
- * Activation: always-on when CLI engine runs (lightweight — one WriteStream per turn,
- * best-effort writes). No env-var gate; the file is gitignored under `logs/`.
+ * Activation: opt-in via the HAMMOC_CLI_DEBUG env var (off by default). When unset the logger
+ * is a no-op — no directory, no file, no writes — so a released install never accumulates
+ * per-turn JSONL files on the user's disk. When set, one WriteStream per turn (best-effort)
+ * writes under `logs/cli-debug/` (gitignored).
  *
  * Format (one JSON line per entry):
  *   {"ts":"2026-06-20T10:15:32.123Z","src":"S","ev":"grid-card-emit","d":{...}}
@@ -37,6 +39,9 @@ export class CliDebugLog {
     const sid = sessionId || 'unknown';
     const fname = `${sid}-${Date.now()}.jsonl`;
     this.filePath = path.join(LOG_DIR, fname);
+    // Opt-in: only open the trace file when HAMMOC_CLI_DEBUG is set. Off by default → the
+    // stream stays null and every write() below is a no-op (no directory, no file created).
+    if (!process.env.HAMMOC_CLI_DEBUG) return;
     try {
       mkdirSync(LOG_DIR, { recursive: true });
       this.stream = createWriteStream(this.filePath, { encoding: 'utf8' });

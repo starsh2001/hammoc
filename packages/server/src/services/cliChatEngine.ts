@@ -970,7 +970,7 @@ export class CliChatEngine implements ChatEngine {
       if (toolTraceStream) { try { toolTraceStream.write(`${msg}\n`); } catch { /* best-effort */ } }
     };
 
-    // Unified CLI decision log — always-on, per-turn session file.
+    // Unified CLI decision log — per-turn session file, opt-in via HAMMOC_CLI_DEBUG (no-op when unset).
     const dlog = new CliDebugLog(resumeId ?? options.sessionId ?? 'new');
     this.currentDebugLog?.close();
     this.currentDebugLog = dlog;

@@ -197,6 +197,11 @@ class DebugLogger {
     console.log(`[DebugLogger] Server logging ${enabled ? 'enabled' : 'disabled'}`);
   }
 
+  /** True only after the dev-mode probe confirmed the server persists logs. Gates the CLI relay. */
+  isServerLoggingEnabled(): boolean {
+    return this.serverLoggingEnabled;
+  }
+
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
     console.log(`[DebugLogger] ${enabled ? 'Enabled' : 'Disabled'}`);
@@ -264,7 +269,10 @@ export function setCLILogSocket(socket: { emit: (ev: 'cli:debug-log', data: { ts
   _cliLogEmit = socket ? (d) => socket.emit('cli:debug-log', d) : null;
 }
 function cliLogRelay(event: string, data?: Record<string, unknown>) {
-  if (!_cliLogEmit) return;
+  // Only relay when the server confirmed dev-mode log persistence (same gate as the HTTP flush).
+  // In a released install this stays off, so the client never streams decision entries the
+  // server would only drop (its CLI debug file is itself opt-in via HAMMOC_CLI_DEBUG).
+  if (!_cliLogEmit || !debugLogger.isServerLoggingEnabled()) return;
   try {
     _cliLogEmit({ ts: new Date().toISOString(), ev: event, d: data });
   } catch { /* best-effort */ }
