@@ -22,7 +22,7 @@ import type { ChatEngine } from './chatEngine.js';
 import { createChatEngine } from './chatEngineFactory.js';
 import { parseSDKError } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
-import { clampEffortForModel } from '../utils/effortUtils.js';
+import { clampEffortForModel, supportsAdaptiveThinking } from '../utils/effortUtils.js';
 import i18next from '../i18n.js';
 import { isSnippetRef, resolveSnippet, SnippetError } from '../utils/snippetResolver.js';
 
@@ -131,7 +131,7 @@ export class QueueService {
     this.engineMode = await this.projectService.getEffectiveEngineMode(this.workingDirectory);
     this.chatService = createChatEngine(
       this.engineMode,
-      { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath, cliShowThinkingSummaries: prefs?.cliShowThinkingSummaries, cliResumeChoice: prefs?.cliResumeChoice },
+      { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath, cliShowThinkingSummaries: prefs?.cliShowThinkingSummaries, cliResumeChoice: prefs?.cliResumeChoice, autoCompactEnabled: prefs?.autoCompactEnabled ?? true },
     );
     this.abortController = new AbortController();
     this.items = items;
@@ -1037,7 +1037,15 @@ export class QueueService {
     try {
       const prefs = await this.preferencesService.getEffectivePreferences();
       if (prefs.customSystemPrompt !== undefined) opts.customSystemPrompt = prefs.customSystemPrompt;
-      if (prefs.maxThinkingTokens !== undefined) opts.maxThinkingTokens = prefs.maxThinkingTokens;
+      if (prefs.displayName !== undefined) opts.displayName = prefs.displayName;
+      const adaptiveCapable = supportsAdaptiveThinking(this.currentModel);
+      if (!adaptiveCapable && prefs.maxThinkingTokens !== undefined) {
+        opts.maxThinkingTokens = prefs.maxThinkingTokens;
+      }
+      if (adaptiveCapable) {
+        const showThinkingBlocks = prefs.showThinkingBlocks ?? true;
+        opts.thinking = { type: 'adaptive', display: showThinkingBlocks ? 'summarized' : 'omitted' };
+      }
       if (prefs.maxTurns !== undefined) opts.maxTurns = prefs.maxTurns;
       if (prefs.maxBudgetUsd !== undefined) opts.maxBudgetUsd = prefs.maxBudgetUsd;
       const effort = clampEffortForModel(prefs.defaultEffort, this.currentModel);
