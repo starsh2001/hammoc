@@ -333,11 +333,14 @@ export function useStreaming() {
       // Story 37.11: a canonical (provisional === false) block FINALIZES the provisional text segment in
       // place. It runs through revealSegment (which flushes buffered text first) so it lands right after
       // the provisional segment exists → in-place replace, never a duplicate.
+      // SDK engine: strip provisional/messageId so text merges into one segment (v1.6.0 behavior).
+      // CLI engine: forward all three for provisional/canonical finalize + messageId-based block separation.
+      const isSDK = useChatStore.getState().streamingEngineMode !== 'cli';
       debugLog.cliLog('recv-text', { len: data.content.length, provisional: data.provisional, messageId: data.messageId, preview: data.content.slice(0, 60) });
       if (data.provisional === false) {
         revealSegment(() => appendStreamingContent(data.content, false, data.messageId));
       } else {
-        enqueueChunk(data.content, data.provisional, data.messageId);
+        enqueueChunk(data.content, isSDK ? undefined : data.provisional, isSDK ? undefined : data.messageId);
       }
     };
 
@@ -706,22 +709,21 @@ export function useStreaming() {
     // just update the sessionId. For passive viewers (browser B), this is the first
     // reliable signal that a stream exists — start streaming here so all subsequent
     // events (tool:call, permission:request, message:chunk) render correctly.
-    const handleSessionInit = (data: { sessionId: string; model?: string }) => {
+    const handleSessionInit = (data: { sessionId: string; model?: string; engineMode?: 'sdk' | 'cli' }) => {
       const state = useChatStore.getState();
       debugLog.stream('session:init', {
         sessionId: data.sessionId,
         model: data.model,
+        engineMode: data.engineMode,
         currentStreamingSessionId: state.streamingSessionId,
         isStreaming: state.isStreaming,
       });
+      if (data.engineMode) {
+        useChatStore.setState({ streamingEngineMode: data.engineMode });
+      }
       if (!state.streamingSessionId) {
-        // First session signal — start visual streaming state with actual sessionId.
-        // For sender (A): isStreaming is already true (from sendMessage) but no visual
-        // indicator yet. For passive viewer (B): nothing set yet.
-        // Both enter visual streaming at the same time (server-confirmed).
         startStreaming(data.sessionId, 'pending');
       } else if (state.streamingSessionId === 'pending') {
-        // Already started with 'pending' (e.g., thinking chunk arrived first), update to real ID
         updateStreamingSessionId(data.sessionId);
       }
     };
@@ -1020,7 +1022,7 @@ export function useStreaming() {
     // Handle stream:buffer-replay — process entire buffer as a single batch
     // instead of receiving individual events one by one. This dramatically reduces
     // the number of React re-renders when joining an active streaming session.
-    const handleBufferReplay = (data: { sessionId?: string; events: Array<{ event: string; data: unknown }> }) => {
+    const handleBufferReplay = (data: { sessionId?: string; events: Array<{ event: string; data: unknown }>; engineMode?: 'sdk' | 'cli' }) => {
       // Drop replay from a different session (rapid session switch guard)
       if (data.sessionId) {
         const currentSessionId = useChatStore.getState().streamingSessionId
@@ -1055,6 +1057,7 @@ export function useStreaming() {
       const defaultUsage: ChatUsage = { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, totalCostUSD: 0, contextWindow: 0 };
       let contextUsage: ChatUsage | null = null;
       let activeModel: string | null = null;
+      let replayEngineMode: 'sdk' | 'cli' | undefined = data.engineMode;
       let isCompacting = false;
       let pendingTextBuffer = '';
       // Story 37.11 (AC4): carry the provisional flag through the buffered-text accumulator so a
@@ -1224,9 +1227,10 @@ export function useStreaming() {
           }
           case 'session:created':
           case 'session:resumed': {
-            const d = eventData as { sessionId: string; model?: string };
+            const d = eventData as { sessionId: string; model?: string; engineMode?: 'sdk' | 'cli' };
             sessionId = d.sessionId;
             if (d.model) activeModel = d.model;
+            if (d.engineMode) replayEngineMode = d.engineMode;
             break;
           }
           case 'message:chunk': {
@@ -1559,6 +1563,7 @@ export function useStreaming() {
         chatStateUpdate.streamingMessageId = messageId;
         chatStateUpdate.streamingSegments = segments;
         chatStateUpdate.streamingStartedAt = new Date();
+        if (replayEngineMode) chatStateUpdate.streamingEngineMode = replayEngineMode;
       } else if (hasActiveSegments && !useChatStore.getState().isStreaming) {
         // Buffer has segments but server said active: false (e.g., abort, completed
         // stream without message:complete). Convert remaining segments to messages

@@ -211,7 +211,7 @@ export interface ServerToClientEvents {
   // Story 27.1: Confirmed messages after streaming completion (JSONL re-parsed)
   'stream:complete-messages': (data: { sessionId: string; messages: HistoryMessage[]; usage?: ChatUsage; aborted?: boolean }) => void;
   // Buffer replay: send entire buffer as a single batch for fast session join
-  'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }> }) => void;
+  'stream:buffer-replay': (data: { sessionId: string; events: Array<{ event: string; data: unknown }>; engineMode?: 'sdk' | 'cli' }) => void;
   // ISSUE-54: Snippet autocomplete — return available snippets
   'snippets:list': (data: { snippets: SnippetItem[] }) => void;
   // Story 25.8: Standalone file rewind result

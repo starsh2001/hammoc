@@ -59,6 +59,8 @@ export interface CallbackBuilderDeps {
   getQueueProgress?: () => QueueProgress | undefined;
   /** Story 25.11: when true, emit 'session:forked' instead of 'session:created'/'session:resumed' */
   isFork?: boolean;
+  /** Which conversation engine this turn is running on (resolved at chat:send time). */
+  engineMode?: 'sdk' | 'cli';
   /**
    * Story 31.3: optional MCP-call recorder (read-only observability collection).
    * When present, tool-use/result callbacks feed it; the body of args/results is
@@ -91,7 +93,7 @@ export function buildStreamCallbacks(
   deps: CallbackBuilderDeps,
   hooks?: CallbackBuilderHooks,
 ): BuildResult {
-  const { emit, stream, isResuming, resumeSessionAt, rekeyStream, broadcastStreamChange, notificationService, isFork } = deps;
+  const { emit, stream, isResuming, resumeSessionAt, rekeyStream, broadcastStreamChange, notificationService, isFork, engineMode } = deps;
   const activity = hooks?.onCallbackActivity;
   const sessionIdRef: SessionIdRef = { current: deps.initialSessionId };
 
@@ -106,11 +108,11 @@ export function buildStreamCallbacks(
         if (!deps.initialSessionId) {
           log.warn('session:forked emitted without originalSessionId — fork request may be missing sessionId');
         }
-        emit('session:forked', { sessionId: sid, originalSessionId: deps.initialSessionId || sid, model: metadata?.model });
+        emit('session:forked', { sessionId: sid, originalSessionId: deps.initialSessionId || sid, model: metadata?.model, engineMode });
       } else if (isResuming) {
-        emit('session:resumed', { sessionId: sid, model: metadata?.model, ...(resumeSessionAt ? { resumeSessionAt } : {}) });
+        emit('session:resumed', { sessionId: sid, model: metadata?.model, ...(resumeSessionAt ? { resumeSessionAt } : {}), engineMode });
       } else {
-        emit('session:created', { sessionId: sid, model: metadata?.model });
+        emit('session:created', { sessionId: sid, model: metadata?.model, engineMode });
       }
 
       broadcastStreamChange(sid, true);

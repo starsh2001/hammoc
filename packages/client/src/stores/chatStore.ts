@@ -173,6 +173,8 @@ interface ChatState {
   streamingSegments: StreamingSegment[];
   /** When streaming started */
   streamingStartedAt: Date | null;
+  /** Which engine is running the current turn (sent by the server at session init / buffer-replay). */
+  streamingEngineMode: 'sdk' | 'cli' | null;
   /**
    * Story 32.7: transient CLI-engine generation progress ("↓ N tokens · Ns" parsed
    * from the claude TUI spinner). Live-only — never persisted to messages or the
@@ -395,6 +397,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingMessageId: null,
   streamingSegments: [],
   streamingStartedAt: null,
+  streamingEngineMode: null,
   generationProgress: null,
   cliPhase: null,
   cliScreenStalled: false,
@@ -807,6 +810,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      streamingEngineMode: null,
       generationProgress: null,
       cliPhase: null,
       cliScreenStalled: false,
@@ -837,6 +841,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingMessageId: null,
       streamingSegments: [],
       streamingStartedAt: null,
+      streamingEngineMode: null,
       generationProgress: null,
       cliPhase: null,
       cliScreenStalled: false,
@@ -890,7 +895,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
     pendingPermissionBuffer.clear();
     pendingInputBuffer.clear();
-    set({ streamingSegments: [], streamingStartedAt: null });
+    set({ streamingSegments: [], streamingStartedAt: null, streamingEngineMode: null });
   },
 
   updateStreamingSessionId: (sessionId: string) => set({ streamingSessionId: sessionId }),

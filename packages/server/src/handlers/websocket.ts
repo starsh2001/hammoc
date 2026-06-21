@@ -158,6 +158,8 @@ interface ActiveStream {
   isFork?: boolean;
   /** Deferred usage data — included in stream:complete-messages after JSONL flush */
   deferredUsage?: ChatUsage;
+  /** Which conversation engine this stream is running on (resolved at chat:send time). */
+  engineMode?: 'sdk' | 'cli';
   /** CLI decision log — per-turn file, server + client entries. */
   cliDebugLog?: import('../utils/cliDebugLog.js').CliDebugLog;
   /**
@@ -1435,7 +1437,7 @@ export async function initializeWebSocket(
               socket.emit('stream:history', { sessionId, messages: buf.messages });
             }
             socket.emit('stream:status', { active: true, sessionId, permissionMode: freshMode });
-            socket.emit('stream:buffer-replay', { sessionId, events: [...freshStream.buffer] });
+            socket.emit('stream:buffer-replay', { sessionId, events: [...freshStream.buffer], engineMode: freshStream.engineMode });
             freshStream.sockets.add(socket);
             return;
           }
@@ -1452,7 +1454,7 @@ export async function initializeWebSocket(
               socket.emit('stream:history', { sessionId, messages: buf.messages });
             }
             socket.emit('stream:status', { active: true, sessionId, permissionMode });
-            socket.emit('stream:buffer-replay', { sessionId, events: [...completedStream.buffer] });
+            socket.emit('stream:buffer-replay', { sessionId, events: [...completedStream.buffer], engineMode: completedStream.engineMode });
             completedStream.sockets.add(socket);
             return;
           }
@@ -1526,7 +1528,7 @@ export async function initializeWebSocket(
       }
       socket.emit('stream:status', { active: true, sessionId, permissionMode });
       // Replay raw event buffer so the client can build streaming segments
-      socket.emit('stream:buffer-replay', { sessionId, events: [...stream.buffer] });
+      socket.emit('stream:buffer-replay', { sessionId, events: [...stream.buffer], engineMode: stream.engineMode });
 
       // NOW add to broadcast set — live events flow from here
       stream.sockets.add(socket);
@@ -2755,6 +2757,7 @@ async function handleChatSend(
     const autoCompactEnabled = effectivePrefs.autoCompactEnabled ?? true;
     const chatService = createChatEngine(engineMode, { workingDirectory, permissionMode, cliBinaryPath: effectivePrefs.cliBinaryPath, cliShowThinkingSummaries: effectivePrefs.cliShowThinkingSummaries, cliResumeChoice: effectivePrefs.cliResumeChoice, autoCompactEnabled, planModeBypassBehavior: effectivePrefs.planModeBypassBehavior });
     stream.chatService = chatService;
+    stream.engineMode = engineMode;
 
     const effectiveEffort = clampEffortForModel(effort ?? effectivePrefs.defaultEffort, model);
 
@@ -3021,6 +3024,7 @@ async function handleChatSend(
           projectService.findProjectByPath(workingDirectory).then((p) => p?.projectSlug),
         ),
         backgroundTracker,
+        engineMode,
       },
       {
         onCallbackActivity: (source) => resetTimeout(source),
