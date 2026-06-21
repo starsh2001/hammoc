@@ -205,7 +205,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 - **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime
 - **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
 
-> The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install. The `{gitStatus}` block is no longer baked into the default — re-add it via this editor if you want it pre-included.
+The system prompt applies to both conversation engines (SDK and CLI). The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install.
 
 ### 13.16 Conversation Engine
 
@@ -232,19 +232,14 @@ CLI engine settings have moved to **Advanced Settings** (see §13.17) under the 
 
 ### 13.17 Advanced Settings
 
-Settings in the Advanced tab are organized into groups by which conversation engine they apply to.
-
-**Server Management (mode-dependent):**
-
-- **Development mode:** "Server Rebuild" button — rebuilds and restarts the server. Shows elapsed time during the build process
-- **Production mode:** Shows current version number, "Check for Updates" button, and "Install Update" button (appears only when an update is available). Includes build progress with elapsed timer
-
-**File Checkpointing:**
-- **Chat sessions** — Save file snapshots during chat for rewind/restore (default: on). Disabling this prevents the Code Rewind feature (see §2.20) from working
-- **Queue runner** — Save file snapshots during queue execution (default: off). Enabling increases JSONL session file size
+Settings in the Advanced tab are organized into three groups: Common (both engines), SDK engine only, and CLI engine only.
 
 **Common (both engines):**
-- **Auto-compact when context fills** — Master switch for automatic context compaction (default: on). When enabled, conversations are automatically summarized when the context window fills up, so the session keeps going instead of stalling. When disabled, you manage compaction manually via `/compact` or the usage donut (see §2.10). Applies to both SDK and CLI engines.
+- **System prompt** — Customizable prompt template that applies to both engines (see §13.15)
+- **Server management** — Development mode: "Server Rebuild" button. Production mode: version display, update check, and install
+- **File checkpointing** — Chat sessions (default on, required for code rewind §2.20) and queue runner (default off)
+- **Card entrance animation** — Streaming cards fade/slide in one at a time (default on, both engines)
+- **Auto-compact when context fills** — Master switch for automatic context compaction (default on). When disabled, manage compaction manually via `/compact` or the usage donut (see §2.10)
 
 **SDK Parameters (SDK engine only):**
 - **Max Thinking Tokens** — Limit Claude's extended thinking tokens (1,024–128,000)
@@ -264,9 +259,6 @@ These settings apply only while the CLI engine is active (see §13.16):
 - **Screen-stall detection** — If generation appears stuck for a configurable duration (default 20 seconds), a soft amber warning appears with a "Stop" button. Advisory only — Hammoc never auto-aborts. Set to 0 to disable.
 - **Claude screen mirror** — Show a read-only terminal mirroring Claude's raw output during CLI-mode chats; on by default. Useful when a card is slow to arrive or the progress counter freezes. The panel is draggable and resizable, with a copy button for the full buffer. Turn it off if you find it distracting.
 - **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path is invalid, Hammoc falls back to auto-detect.
-
-**Display:**
-- **Card entrance animation** — While a response streams, each message and tool card fades and slides up one at a time as it appears, instead of the whole batch popping in at once. Applies to both engines and affects live streaming only (reloaded history renders statically). Purely cosmetic; on by default.
 
 ### 13.18 Help
 

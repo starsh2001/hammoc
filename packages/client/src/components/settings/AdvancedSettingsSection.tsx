@@ -309,12 +309,12 @@ export function AdvancedSettingsSection() {
         </div>
       )}
 
-      {/* ===== SDK-only group ===== */}
+      {/* ===== Common group (both engines) ===== */}
       <div className="pt-2 border-t border-gray-200 dark:border-[#3a4d5e]">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          {t('advanced.groupSdk')}
+          {t('advanced.groupCommon')}
         </h3>
-        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupSdkDesc')}</p>
+        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupCommonDesc')}</p>
       </div>
 
       {/* System Prompt Template */}
@@ -423,6 +423,94 @@ export function AdvancedSettingsSection() {
         )}
       </div>
 
+      {/* File Checkpointing */}
+      <div>
+        <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          {t('advanced.fileCheckpointing')}
+        </p>
+        <div className="space-y-3">
+          {/* Chat checkpointing */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preferences.enableChatCheckpointing ?? true}
+              onChange={(e) => {
+                updatePreference('enableChatCheckpointing', e.target.checked);
+                toast.success(t('toast.settingChanged', { label: t('advanced.chatCheckpointing') }));
+              }}
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm text-gray-900 dark:text-white">{t('advanced.chatCheckpointing')}</span>
+              <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.chatCheckpointingDesc')}</p>
+            </div>
+          </label>
+
+          {/* Queue checkpointing */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preferences.enableQueueCheckpointing ?? false}
+              onChange={(e) => {
+                updatePreference('enableQueueCheckpointing', e.target.checked);
+                toast.success(t('toast.settingChanged', { label: t('advanced.queueCheckpointing') }));
+              }}
+              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm text-gray-900 dark:text-white">{t('advanced.queueCheckpointing')}</span>
+              <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.queueCheckpointingDesc')}</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* Card entrance animation: streaming cards bubble in one by one (both engines) */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={preferences.cardEntranceAnimation ?? true}
+            onChange={(e) => {
+              updatePreference('cardEntranceAnimation', e.target.checked);
+              toast.success(t('toast.settingChanged', { label: t('advanced.cardEntranceAnimation') }));
+            }}
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+          />
+          <div>
+            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.cardEntranceAnimation')}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.cardEntranceAnimationDesc')}</p>
+          </div>
+        </label>
+      </div>
+
+      {/* Auto-compaction master switch — autoCompactEnabled preference (both engines) */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={preferences.autoCompactEnabled ?? true}
+            onChange={(e) => {
+              updatePreference('autoCompactEnabled', e.target.checked);
+              toast.success(t('toast.settingChanged', { label: t('advanced.autoCompactEnabled') }));
+            }}
+            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+          />
+          <div>
+            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.autoCompactEnabled')}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.autoCompactEnabledDesc')}</p>
+          </div>
+        </label>
+      </div>
+
+      {/* ===== SDK-only group ===== */}
+      <div className="pt-2 border-t border-gray-200 dark:border-[#3a4d5e]">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {t('advanced.groupSdk')}
+        </h3>
+        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupSdkDesc')}</p>
+      </div>
+
       {/* Max Thinking Tokens */}
       <div>
         <label
@@ -516,94 +604,6 @@ export function AdvancedSettingsSection() {
           <div>
             <span className="text-sm text-gray-900 dark:text-white">{t('advanced.showThinkingBlocks')}</span>
             <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.showThinkingBlocksDesc')}</p>
-          </div>
-        </label>
-      </div>
-
-      {/* ===== Common group (both engines) ===== */}
-      <div className="pt-2 border-t border-gray-200 dark:border-[#3a4d5e]">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          {t('advanced.groupCommon')}
-        </h3>
-        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupCommonDesc')}</p>
-      </div>
-
-      {/* File Checkpointing */}
-      <div>
-        <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-          {t('advanced.fileCheckpointing')}
-        </p>
-        <div className="space-y-3">
-          {/* Chat checkpointing */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={preferences.enableChatCheckpointing ?? true}
-              onChange={(e) => {
-                updatePreference('enableChatCheckpointing', e.target.checked);
-                toast.success(t('toast.settingChanged', { label: t('advanced.chatCheckpointing') }));
-              }}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
-            />
-            <div>
-              <span className="text-sm text-gray-900 dark:text-white">{t('advanced.chatCheckpointing')}</span>
-              <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.chatCheckpointingDesc')}</p>
-            </div>
-          </label>
-
-          {/* Queue checkpointing */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={preferences.enableQueueCheckpointing ?? false}
-              onChange={(e) => {
-                updatePreference('enableQueueCheckpointing', e.target.checked);
-                toast.success(t('toast.settingChanged', { label: t('advanced.queueCheckpointing') }));
-              }}
-              className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
-            />
-            <div>
-              <span className="text-sm text-gray-900 dark:text-white">{t('advanced.queueCheckpointing')}</span>
-              <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.queueCheckpointingDesc')}</p>
-            </div>
-          </label>
-        </div>
-      </div>
-
-      {/* Card entrance animation: streaming cards bubble in one by one (both engines) */}
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={preferences.cardEntranceAnimation ?? true}
-            onChange={(e) => {
-              updatePreference('cardEntranceAnimation', e.target.checked);
-              toast.success(t('toast.settingChanged', { label: t('advanced.cardEntranceAnimation') }));
-            }}
-            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
-          />
-          <div>
-            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.cardEntranceAnimation')}</span>
-            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.cardEntranceAnimationDesc')}</p>
-          </div>
-        </label>
-      </div>
-
-      {/* Auto-compaction master switch — autoCompactEnabled preference (both engines) */}
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={preferences.autoCompactEnabled ?? true}
-            onChange={(e) => {
-              updatePreference('autoCompactEnabled', e.target.checked);
-              toast.success(t('toast.settingChanged', { label: t('advanced.autoCompactEnabled') }));
-            }}
-            className="w-4 h-4 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
-          />
-          <div>
-            <span className="text-sm text-gray-900 dark:text-white">{t('advanced.autoCompactEnabled')}</span>
-            <p className="text-xs text-gray-500 dark:text-gray-300">{t('advanced.autoCompactEnabledDesc')}</p>
           </div>
         </label>
       </div>
