@@ -26,6 +26,7 @@ import {
   FolderOpen,
   Plus,
   PartyPopper,
+  Loader2,
 } from 'lucide-react';
 import type { BmadStatusResponse } from '@hammoc/shared';
 
@@ -61,9 +62,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 function RecommendationButton({
   rec,
   onClick,
+  disabled,
 }: {
   rec: NextStepRecommendation;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   const Icon = ICON_MAP[rec.iconKey] ?? ArrowRight;
   const isPrimary = rec.variant === 'primary';
@@ -71,10 +74,19 @@ function RecommendationButton({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left cursor-pointer ${
+      disabled={disabled}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
+        disabled
+          ? 'opacity-50 cursor-not-allowed'
+          : `cursor-pointer ${
+              isPrimary
+                ? 'hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                : 'hover:bg-gray-100 dark:hover:bg-[#253040]'
+            }`
+      } ${
         isPrimary
-          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-          : 'bg-gray-100/80 dark:bg-[#253040]/50 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#253040]'
+          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+          : 'bg-gray-100/80 dark:bg-[#253040]/50 text-gray-700 dark:text-gray-200'
       }`}
     >
       <Icon className={`w-4 h-4 flex-shrink-0 ${isPrimary ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
@@ -96,9 +108,10 @@ function RecommendationButton({
 interface NextStepRecommenderProps {
   data: BmadStatusResponse;
   projectSlug: string;
+  isRefreshing?: boolean;
 }
 
-export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderProps) {
+export function NextStepRecommender({ data, projectSlug, isRefreshing }: NextStepRecommenderProps) {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { phase, recommendations } = computeNextSteps(data);
@@ -150,11 +163,18 @@ export function NextStepRecommender({ data, projectSlug }: NextStepRecommenderPr
 
       {/* Recommendation buttons */}
       <div className="space-y-2">
+        {isRefreshing && (
+          <div className="flex items-center gap-2 px-3 py-2 text-xs text-blue-600 dark:text-blue-400">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>{t('nextSteps.refreshing')}</span>
+          </div>
+        )}
         {recommendations.map((rec) => (
           <RecommendationButton
             key={rec.id}
             rec={rec}
             onClick={() => handleAction(rec)}
+            disabled={isRefreshing}
           />
         ))}
       </div>

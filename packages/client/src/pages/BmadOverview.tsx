@@ -202,7 +202,7 @@ function BmadSection({
               </ul>
             </div>
           )}
-          <NextStepRecommender data={data} projectSlug={projectSlug} />
+          <NextStepRecommender data={data} projectSlug={projectSlug} isRefreshing={isRefreshing} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <DocumentStatusCard
               documents={data.documents}
