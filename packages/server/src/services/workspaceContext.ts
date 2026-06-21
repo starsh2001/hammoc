@@ -67,8 +67,9 @@ export const TEMPLATE_VARIABLES = [
 
 /**
  * Resolve template variables like {gitBranch} using the project CWD.
+ * @param displayName - User's preferred form of address (from preferences). Empty/absent = no name.
  */
-export function resolveTemplateVariables(template: string, cwd: string): string {
+export function resolveTemplateVariables(template: string, cwd: string, displayName?: string): string {
   const vars: Record<string, string> = {};
 
   // Home directory is OS-level and always resolvable, independent of git state.
@@ -108,7 +109,15 @@ export function resolveTemplateVariables(template: string, cwd: string): string 
     vars.gitStatus = '(not a git repo)';
   }
 
-  return template.replace(/\{(\w+)\}/g, (match, varName) => {
+  let result = template.replace(/\{(\w+)\}/g, (match, varName) => {
     return vars[varName] ?? match;
   });
+
+  if (displayName) {
+    result += `\n\nAddress the user as "${displayName}". Do not guess or infer a different name from system context (email, account name, etc.).`;
+  } else {
+    result += '\n\nDo not guess or infer the user\'s name from system context (email, account name, etc.). Converse naturally without a specific form of address.';
+  }
+
+  return result;
 }

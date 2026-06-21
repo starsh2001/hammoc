@@ -11,6 +11,9 @@
         },
         "defaultModel": "デフォルトモデル",
         "language": "言語",
+        "displayName": "呼び名",
+        "displayNamePlaceholder": "エージェントにどう呼ばれたいですか？",
+        "displayNameDesc": "エージェントがこの名前で呼びかけます。空欄にすると特定の呼称なしで会話します。",
         "permissionMode": "権限モード",
         "permissionModeLabel": {
             "plan": "Plan",

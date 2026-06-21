@@ -71,6 +71,8 @@ export interface ChatOptions {
   images?: ImageAttachment[];
   /** Custom system prompt (replaces Claude Code default when set) */
   customSystemPrompt?: string;
+  /** User's preferred form of address (injected into system prompt) */
+  displayName?: string;
   /** Max thinking tokens for reasoning */
   maxThinkingTokens?: number;
   /** Max budget in USD per query */

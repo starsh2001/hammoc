@@ -826,7 +826,7 @@ export class CliChatEngine implements ChatEngine {
     // billing is unaffected (the pool is set by interactive-vs-print, not prompt content — this only
     // adds input tokens to the same subscription pool).
     const appendTemplate = options.customSystemPrompt || DEFAULT_WORKSPACE_TEMPLATE;
-    args.push('--append-system-prompt', resolveTemplateVariables(appendTemplate, cwd));
+    args.push('--append-system-prompt', resolveTemplateVariables(appendTemplate, cwd, options.displayName));
     // Session-scoped `--settings` JSON (the global ~/.claude/settings.json is never
     // modified). Thinking summaries (default ON): Opus 4.7+ omit summaries unless asked.
     const settingsObj: Record<string, unknown> = {};

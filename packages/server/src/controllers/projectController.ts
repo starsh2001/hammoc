@@ -23,6 +23,7 @@ import { validateBoardConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { broadcastProjectSettingsChange } from '../handlers/websocket.js';
 import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/workspaceContext.js';
+import { preferencesService } from '../services/preferencesService.js';
 import { createLogger } from '../utils/logger.js';
 import { extractRequestIP, isLoopbackIP } from '../utils/networkUtils.js';
 
@@ -393,7 +394,8 @@ export const projectController = {
         return;
       }
 
-      const resolved = resolveTemplateVariables(DEFAULT_WORKSPACE_TEMPLATE, projectPath);
+      const prefs = await preferencesService.readPreferences();
+      const resolved = resolveTemplateVariables(DEFAULT_WORKSPACE_TEMPLATE, projectPath, prefs.displayName);
       res.json({
         template: DEFAULT_WORKSPACE_TEMPLATE,
         resolved,

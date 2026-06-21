@@ -115,7 +115,7 @@ export class ChatService implements ChatEngine {
     const systemPrompt = (() => {
       const template = options.customSystemPrompt || DEFAULT_WORKSPACE_TEMPLATE;
       const append = this.workingDirectory
-        ? resolveTemplateVariables(template, this.workingDirectory)
+        ? resolveTemplateVariables(template, this.workingDirectory, options.displayName)
         : template;
       return {
         type: 'preset' as const,

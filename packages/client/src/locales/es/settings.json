@@ -11,6 +11,9 @@
         },
         "defaultModel": "Modelo predeterminado",
         "language": "Idioma",
+        "displayName": "Nombre para mostrar",
+        "displayNamePlaceholder": "¿Cómo debería llamarte el agente?",
+        "displayNameDesc": "El agente usará este nombre para dirigirse a ti. Déjalo vacío para conversar sin un trato específico.",
         "permissionMode": "Modo de permisos",
         "permissionModeLabel": {
             "plan": "Plan",

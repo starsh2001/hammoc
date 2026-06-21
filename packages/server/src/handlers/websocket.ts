@@ -2785,6 +2785,7 @@ async function handleChatSend(
         : { images }),
       // Advanced settings from preferences
       customSystemPrompt: effectivePrefs.customSystemPrompt,
+      displayName: effectivePrefs.displayName,
       // maxThinkingTokens: legacy path; SDK docs say it takes precedence for backward-compat,
       // which conflicts with adaptive mode on Opus 4.7+ (rejects enabled+budget). Skip on
       // adaptive-capable models so the explicit `thinking` field governs.

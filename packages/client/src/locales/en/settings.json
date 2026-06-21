@@ -12,6 +12,9 @@
         "themeSystemUnsupported": "Samsung Internet does not support system theme detection. Please select Dark or Light manually.",
         "defaultModel": "Default Model",
         "language": "Language",
+        "displayName": "Display Name",
+        "displayNamePlaceholder": "How should the agent address you?",
+        "displayNameDesc": "The agent will use this name to address you. Leave empty for no specific form of address.",
         "permissionMode": "Permission Mode",
         "permissionModeLabel": {
             "latest": "Last Used",

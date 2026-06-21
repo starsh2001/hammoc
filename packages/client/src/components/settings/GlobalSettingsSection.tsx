@@ -264,6 +264,35 @@ export function GlobalSettingsSection() {
         </select>
       </div>
 
+      {/* Display Name Setting */}
+      <div>
+        <label
+          htmlFor="display-name"
+          className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+        >
+          {t('global.displayName')}
+        </label>
+        <input
+          type="text"
+          id="display-name"
+          value={preferences.displayName ?? ''}
+          onChange={(e) => {
+            updatePreference('displayName', e.target.value || undefined);
+          }}
+          onBlur={() => {
+            toast.success(t('toast.settingSaved'));
+          }}
+          placeholder={t('global.displayNamePlaceholder')}
+          className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
+                     bg-white dark:bg-[#263240] text-gray-900 dark:text-white
+                     placeholder:text-gray-400 dark:placeholder:text-gray-500
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+          {t('global.displayNameDesc')}
+        </p>
+      </div>
+
       {/* Permission Mode Setting */}
       <fieldset>
         <legend className="text-sm font-medium text-gray-900 dark:text-white mb-3">

@@ -12,6 +12,9 @@
         "themeSystemUnsupported": "삼성 인터넷은 시스템 테마 감지를 지원하지 않습니다. 다크 또는 라이트를 직접 선택해 주세요.",
         "defaultModel": "기본 모델",
         "language": "언어",
+        "displayName": "호칭",
+        "displayNamePlaceholder": "에이전트가 어떻게 부르면 좋을까요?",
+        "displayNameDesc": "에이전트가 이 이름으로 호칭합니다. 비워두면 특별한 호칭 없이 대화합니다.",
         "permissionMode": "권한 모드",
         "permissionModeLabel": {
             "latest": "Last Used",

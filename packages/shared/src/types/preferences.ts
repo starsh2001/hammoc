@@ -27,6 +27,9 @@ export interface UserPreferences {
   theme?: 'light' | 'dark' | 'system';
   layoutMode?: 'narrow' | 'wide';
   diffLayout?: 'side-by-side' | 'inline';
+  // How the agent should address the user (injected into system prompt).
+  // Empty or absent → no specific address, and the agent must not guess.
+  displayName?: string;
   permissionMode?: PermissionMode | 'latest';
   /** Stores the actual last-used mode when permissionMode is 'latest' */
   lastPermissionMode?: PermissionMode;

@@ -11,6 +11,9 @@
         },
         "defaultModel": "默认模型",
         "language": "语言",
+        "displayName": "称呼",
+        "displayNamePlaceholder": "希望助手怎么称呼您？",
+        "displayNameDesc": "助手将使用此名称称呼您。留空则不使用特定称呼。",
         "permissionMode": "权限模式",
         "permissionModeLabel": {
             "plan": "Plan",
