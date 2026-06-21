@@ -63,6 +63,7 @@ export class QueueService {
   private projectSlug: string = '';
   private workingDirectory: string = '';
   private chatService: ChatEngine | null = null;
+  private engineMode: 'sdk' | 'cli' = 'sdk';
   private abortController: AbortController | null = null;
   private pauseReason: string | undefined = undefined;
   private resumeSessionId: string | null = null;
@@ -127,8 +128,9 @@ export class QueueService {
     // Story 33.3: instantiate the effective engine (override > global > 'sdk' default).
     // cliBinaryPath comes from the same global prefs (undefined on read failure
     // = auto-detect, graceful).
+    this.engineMode = await this.projectService.getEffectiveEngineMode(this.workingDirectory);
     this.chatService = createChatEngine(
-      await this.projectService.getEffectiveEngineMode(this.workingDirectory),
+      this.engineMode,
       { workingDirectory: this.workingDirectory, permissionMode, cliBinaryPath: prefs?.cliBinaryPath, cliShowThinkingSummaries: prefs?.cliShowThinkingSummaries, cliResumeChoice: prefs?.cliResumeChoice },
     );
     this.abortController = new AbortController();
@@ -774,6 +776,7 @@ export class QueueService {
     // Identical to handleChatSend: headless stream → createStreamEmit
     const { stream, emit } = createHeadlessStream(streamKey, this.abortController!, this.projectSlug);
     stream.chatService = this.chatService!;
+    stream.engineMode = this.engineMode;
 
     const chunks: string[] = [];
 
@@ -873,6 +876,7 @@ export class QueueService {
           }),
           // Story 31.3 — projectSlug is known synchronously on the queue path.
           mcpRecorder: createMcpCallRecorder(() => this.projectSlug || undefined),
+          engineMode: this.engineMode,
         },
         {
           onSessionIdResolved: (sid) => { this.currentSessionId = sid; },
