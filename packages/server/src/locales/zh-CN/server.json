@@ -171,6 +171,8 @@
       "branchCreated": "分支 {{value}} 创建成功"
     },
     "error": {
+      "notInstalled": "系统未安装 Git。",
+      "authFailed": "Git 认证失败。请设置 SSH 密钥或凭据。",
       "operationFailed": "Git操作失败。",
       "notInitialized": "Git仓库未初始化。",
       "conflict": "检测到Git冲突。",

@@ -227,7 +227,8 @@
     "tasks": "接下来的任务",
     "newSession": "新建会话",
     "queueTask": "队列任务",
-    "fileExplore": "浏览文件"
+    "fileExplore": "浏览文件",
+    "refreshing": "正在更新项目状态…"
   },
   "phase": {
     "prePrd": "PRD 之前",
@@ -288,13 +289,13 @@
     "activeSessionsFormat": "{{active}}/{{total}} 个活跃会话",
     "activeSessionsCount": "{{count}} 个活跃会话",
     "activeFormat": "{{active}}/{{total}} 活跃",
-    "queueStatusFormat": "队列 {{status}}",
+    "queueStatusFormat": "{{status}}",
     "terminalsFormat": "{{count}} 个终端"
   },
   "queueStatus": {
-    "running": "运行中",
-    "paused": "已暂停",
-    "error": "错误",
+    "running": "队列运行中",
+    "paused": "队列已暂停",
+    "error": "队列错误",
     "statusLabel": "队列状态：{{status}}"
   },
   "files": {
@@ -409,6 +410,13 @@
     "hoursAgo": "{{count}}小时前",
     "daysAgo": "{{count}}天前",
     "binaryFileDiffers": "二进制文件已更改",
+    "notInstalled": "未安装 Git。安装 Git 后可以使用版本控制功能。",
+    "installButton": "下载 Git",
+    "authFailed": {
+      "title": "Git 认证失败",
+      "description": "请设置 SSH 密钥或凭据以访问远程仓库。",
+      "docsLink": "查看认证设置指南"
+    },
     "notInitialized": "Git 仓库未初始化",
     "changesCount": "{{count}} 项更改",
     "commitMessagePlaceholder": "输入提交信息...",

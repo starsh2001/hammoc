@@ -227,7 +227,8 @@
     "tasks": "次のタスク",
     "newSession": "新しいセッション",
     "queueTask": "キュータスク",
-    "fileExplore": "ファイルを閲覧"
+    "fileExplore": "ファイルを閲覧",
+    "refreshing": "プロジェクトの状態を更新中…"
   },
   "phase": {
     "prePrd": "PRD作成前",
@@ -288,13 +289,13 @@
     "activeSessionsFormat": "{{active}}/{{total}}件のアクティブセッション",
     "activeSessionsCount": "アクティブセッション{{count}}件",
     "activeFormat": "{{active}}/{{total}}件アクティブ",
-    "queueStatusFormat": "キュー {{status}}",
+    "queueStatusFormat": "{{status}}",
     "terminalsFormat": "ターミナル{{count}}台"
   },
   "queueStatus": {
-    "running": "実行中",
-    "paused": "一時停止",
-    "error": "エラー",
+    "running": "キュー実行中",
+    "paused": "キュー一時停止",
+    "error": "キューエラー",
     "statusLabel": "キューステータス：{{status}}"
   },
   "files": {
@@ -409,6 +410,13 @@
     "hoursAgo": "{{count}}時間前",
     "daysAgo": "{{count}}日前",
     "binaryFileDiffers": "バイナリファイルが変更されました",
+    "notInstalled": "Gitがインストールされていません。Gitをインストールするとバージョン管理機能を使用できます。",
+    "installButton": "Gitをダウンロード",
+    "authFailed": {
+      "title": "Git認証に失敗しました",
+      "description": "リモートリポジトリにアクセスするにはSSHキーまたは資格情報を設定してください。",
+      "docsLink": "認証設定ガイドを表示"
+    },
     "notInitialized": "Gitリポジトリが初期化されていません",
     "changesCount": "{{count}}件の変更",
     "commitMessagePlaceholder": "コミットメッセージを入力...",

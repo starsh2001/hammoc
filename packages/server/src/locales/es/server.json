@@ -171,6 +171,8 @@
       "branchCreated": "Rama {{value}} creada exitosamente"
     },
     "error": {
+      "notInstalled": "Git no está instalado en el sistema.",
+      "authFailed": "La autenticación de Git falló. Configure claves SSH o credenciales.",
       "operationFailed": "La operación Git falló.",
       "notInitialized": "El repositorio Git no está inicializado.",
       "conflict": "Se detectó un conflicto de Git.",

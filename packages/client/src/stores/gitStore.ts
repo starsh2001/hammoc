@@ -20,6 +20,7 @@ interface GitStore {
   branches: GitBranchesResponse | null;
   isLoading: boolean;
   error: string | null;
+  errorCode: string | null;
   // Actions
   fetchStatus: (projectSlug: string) => Promise<void>;
   fetchLog: (projectSlug: string, limit?: number) => Promise<void>;
@@ -40,13 +41,21 @@ interface GitStore {
 
 let _errorTimerId: ReturnType<typeof setTimeout> | null = null;
 
-function setErrorWithAutoClear(set: (partial: Partial<GitStore>) => void, message: string) {
+function getErrorCode(err: unknown): string | null {
+  if (err instanceof ApiError) return err.code;
+  return null;
+}
+
+function setErrorWithAutoClear(set: (partial: Partial<GitStore>) => void, message: string, code: string | null = null) {
   if (_errorTimerId) clearTimeout(_errorTimerId);
-  set({ error: message, isLoading: false });
-  _errorTimerId = setTimeout(() => {
-    set({ error: null });
-    _errorTimerId = null;
-  }, 5000);
+  const isAuthError = code === 'GIT_AUTH_FAILED';
+  set({ error: message, errorCode: code, isLoading: false });
+  if (!isAuthError) {
+    _errorTimerId = setTimeout(() => {
+      set({ error: null, errorCode: null });
+      _errorTimerId = null;
+    }, 5000);
+  }
 }
 
 function getErrorMessage(err: unknown): string {
@@ -61,6 +70,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
   branches: null,
   isLoading: false,
   error: null,
+  errorCode: null,
 
   // Actions
   fetchStatus: async (projectSlug: string) => {
@@ -68,7 +78,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       const status = await gitApi.getStatus(projectSlug);
       set({ status });
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -77,7 +87,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       const response = await gitApi.getLog(projectSlug, limit);
       set({ commits: response.commits });
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -86,7 +96,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       const branches = await gitApi.getBranches(projectSlug);
       set({ branches });
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -99,7 +109,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
         isBinary: response.isBinary ?? false,
       };
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
       return { before: '', after: '', isBinary: false };
     }
   },
@@ -110,7 +120,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.stage(projectSlug, files);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -120,7 +130,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.unstage(projectSlug, files);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -130,7 +140,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.commit(projectSlug, message);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -140,7 +150,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.push(projectSlug);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -150,7 +160,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.pull(projectSlug);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -160,7 +170,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.checkout(projectSlug, branch);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -170,7 +180,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.createBranch(projectSlug, name, startPoint);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -180,7 +190,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await gitApi.init(projectSlug);
       await get().refreshAll(projectSlug);
     } catch (err) {
-      setErrorWithAutoClear(set, getErrorMessage(err));
+      setErrorWithAutoClear(set, getErrorMessage(err), getErrorCode(err));
     }
   },
 
@@ -201,7 +211,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       clearTimeout(_errorTimerId);
       _errorTimerId = null;
     }
-    set({ status: null, commits: [], branches: null, error: null, isLoading: false });
+    set({ status: null, commits: [], branches: null, error: null, errorCode: null, isLoading: false });
   },
 
   clearError: () => {
@@ -209,6 +219,6 @@ export const useGitStore = create<GitStore>((set, get) => ({
       clearTimeout(_errorTimerId);
       _errorTimerId = null;
     }
-    set({ error: null });
+    set({ error: null, errorCode: null });
   },
 }));

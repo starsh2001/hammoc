@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Download } from 'lucide-react';
 import { useCliStatusContext } from '../contexts/CliStatusContext';
 import {
   ChecklistItem,
@@ -45,13 +45,6 @@ function OnboardingContent() {
     if (!cliStatus) return [];
 
     return [
-      {
-        id: 'cli-installed',
-        label: t('onboarding.checklist.cliInstalled.label'),
-        status: cliStatus.cliInstalled ? 'complete' : 'incomplete',
-        description: t('onboarding.checklist.cliInstalled.description'),
-        command: cliStatus.setupCommands.install,
-      },
       {
         id: 'authenticated',
         label: t('onboarding.checklist.authenticated.label'),
@@ -153,6 +146,24 @@ function OnboardingContent() {
                   />
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Optional: Git installation hint */}
+          {!isLoading && cliStatus && (
+            <div className="p-4 rounded-lg bg-gray-50 dark:bg-[#263240] border border-gray-200 dark:border-[#3a4d5e] animate-fadeIn">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                {t('onboarding.gitHint')}
+              </p>
+              <a
+                href="https://git-scm.com/downloads"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {t('onboarding.gitInstallLink')}
+              </a>
             </div>
           )}
 

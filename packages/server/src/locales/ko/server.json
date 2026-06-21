@@ -178,6 +178,8 @@
       "branchCreated": "{{value}} 브랜치가 성공적으로 생성되었습니다"
     },
     "error": {
+      "notInstalled": "Git이 시스템에 설치되어 있지 않습니다.",
+      "authFailed": "Git 인증에 실패했습니다. SSH 키 또는 자격 증명을 설정해 주세요.",
       "operationFailed": "Git 작업이 실패했습니다.",
       "notInitialized": "Git 저장소가 초기화되지 않았습니다.",
       "conflict": "Git 충돌이 감지되었습니다.",

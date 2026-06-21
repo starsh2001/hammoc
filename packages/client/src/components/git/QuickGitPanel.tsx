@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GitBranch, GitCommitHorizontal, Loader2, ExternalLink } from 'lucide-react';
+import { GitBranch, GitCommitHorizontal, Loader2, ExternalLink, Download } from 'lucide-react';
 import { useGitStatus } from '../../hooks/useGitStatus';
 import { useGitStore } from '../../stores/gitStore';
 import { formatRelativeTime } from '../../utils/formatters';
@@ -82,8 +82,24 @@ export function QuickGitPanel({
           </div>
         )}
 
-        {/* Git not initialized */}
-        {status?.initialized === false ? (
+        {/* Git not installed */}
+        {status?.gitInstalled === false ? (
+          <div className="text-center py-8 space-y-4">
+            <p className="text-gray-500 dark:text-gray-300">
+              {t('git.notInstalled')}
+            </p>
+            <a
+              href="https://git-scm.com/downloads"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <Download className="w-4 h-4" />
+              {t('git.installButton')}
+            </a>
+          </div>
+        ) : status?.initialized === false ? (
           <div className="text-center py-8 space-y-4">
             <p className="text-gray-500 dark:text-gray-300">
               {t('git.notInitialized')}

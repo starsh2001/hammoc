@@ -171,6 +171,8 @@
       "branchCreated": "Branch {{value}} criada com sucesso"
     },
     "error": {
+      "notInstalled": "Git não está instalado no sistema.",
+      "authFailed": "A autenticação Git falhou. Configure chaves SSH ou credenciais.",
       "operationFailed": "A operação Git falhou.",
       "notInitialized": "O repositório Git não está inicializado.",
       "conflict": "Conflito de Git detectado.",

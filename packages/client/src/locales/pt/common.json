@@ -227,7 +227,8 @@
     "tasks": "Próximas tarefas",
     "newSession": "Nova sessão",
     "queueTask": "Tarefa de fila",
-    "fileExplore": "Explorar arquivos"
+    "fileExplore": "Explorar arquivos",
+    "refreshing": "Atualizando estado do projeto…"
   },
   "phase": {
     "prePrd": "Pré-PRD",
@@ -288,13 +289,13 @@
     "activeSessionsFormat": "{{active}}/{{total}} sessões ativas",
     "activeSessionsCount": "{{count}} sessão(ões) ativa(s)",
     "activeFormat": "{{active}}/{{total}} ativos",
-    "queueStatusFormat": "fila {{status}}",
+    "queueStatusFormat": "{{status}}",
     "terminalsFormat": "{{count}} terminal(is)"
   },
   "queueStatus": {
-    "running": "Executando",
-    "paused": "Pausado",
-    "error": "Erro",
+    "running": "Fila em execução",
+    "paused": "Fila pausada",
+    "error": "Erro de fila",
     "statusLabel": "Status da fila: {{status}}"
   },
   "files": {
@@ -409,6 +410,13 @@
     "hoursAgo": "{{count}}h atrás",
     "daysAgo": "{{count}}d atrás",
     "binaryFileDiffers": "Arquivo binário modificado",
+    "notInstalled": "Git não está instalado. Instale o Git para usar os recursos de controle de versão.",
+    "installButton": "Baixar Git",
+    "authFailed": {
+      "title": "Autenticação Git falhou",
+      "description": "Configure chaves SSH ou credenciais para acessar o repositório remoto.",
+      "docsLink": "Ver guia de configuração de autenticação"
+    },
     "notInitialized": "Repositório Git não inicializado",
     "changesCount": "{{count}} alterações",
     "commitMessagePlaceholder": "Digite a mensagem do commit...",

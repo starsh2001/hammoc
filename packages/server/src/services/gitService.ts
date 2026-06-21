@@ -17,7 +17,39 @@ import type {
 import { isBinaryFile } from '../utils/pathUtils.js';
 
 class GitService {
+  private isGitNotInstalled(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message.toLowerCase();
+    return msg.includes('enoent') || msg.includes('not found') || msg.includes('is not recognized');
+  }
+
+  private isAuthError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message.toLowerCase();
+    return (
+      msg.includes('could not read username') ||
+      msg.includes('could not read password') ||
+      msg.includes('authentication failed') ||
+      msg.includes('permission denied') ||
+      msg.includes('could not read from remote repository') ||
+      msg.includes('invalid credentials') ||
+      msg.includes('unauthorized') ||
+      msg.includes('terminal prompts disabled') ||
+      msg.includes('support for password authentication was removed')
+    );
+  }
+
   private wrapError(operation: string, error: unknown): Error {
+    if (this.isGitNotInstalled(error)) {
+      const e = new Error('Git is not installed');
+      (e as NodeJS.ErrnoException).code = 'GIT_NOT_INSTALLED';
+      return e;
+    }
+    if (this.isAuthError(error)) {
+      const e = new Error('Git authentication failed');
+      (e as NodeJS.ErrnoException).code = 'GIT_AUTH_FAILED';
+      return e;
+    }
     const message = error instanceof Error ? error.message : String(error);
     const wrapped = new Error(`Git ${operation} failed: ${message}`);
     if (error instanceof Error) {
@@ -29,9 +61,16 @@ class GitService {
   async getStatus(projectPath: string): Promise<GitStatusResponse> {
     const git = simpleGit(projectPath);
 
-    const isRepo = await git.checkIsRepo();
-    if (!isRepo) {
-      return { initialized: false };
+    try {
+      const isRepo = await git.checkIsRepo();
+      if (!isRepo) {
+        return { initialized: false, gitInstalled: true };
+      }
+    } catch (error) {
+      if (this.isGitNotInstalled(error)) {
+        return { initialized: false, gitInstalled: false };
+      }
+      throw this.wrapError('status', error);
     }
 
     try {

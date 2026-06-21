@@ -15,6 +15,7 @@ import {
   Check,
   CheckCircle,
   AlertCircle,
+  KeyRound,
   Plus,
   X,
   Columns2,
@@ -40,6 +41,7 @@ export function GitTab() {
   const branches = useGitStore((s) => s.branches);
   const isLoading = useGitStore((s) => s.isLoading);
   const error = useGitStore((s) => s.error);
+  const errorCode = useGitStore((s) => s.errorCode);
   const fetchLog = useGitStore((s) => s.fetchLog);
   const fetchBranches = useGitStore((s) => s.fetchBranches);
   const stageFiles = useGitStore((s) => s.stageFiles);
@@ -245,8 +247,40 @@ export function GitTab() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {/* Error banner */}
-      {error && (
+      {/* Auth error guide */}
+      {errorCode === 'GIT_AUTH_FAILED' && (
+        <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-2 mb-2">
+            <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-amber-800 dark:text-amber-200">{t('git.authFailed.title')}</span>
+            <button type="button" onClick={clearError} className="ml-auto text-amber-500 hover:text-amber-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">{t('git.authFailed.description')}</p>
+          <div className="space-y-1.5">
+            <div className="text-xs text-amber-700 dark:text-amber-300">
+              <span className="font-medium">SSH:</span>{' '}
+              <code className="bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded font-mono text-[11px]">ssh-keygen -t ed25519</code>
+            </div>
+            <div className="text-xs text-amber-700 dark:text-amber-300">
+              <span className="font-medium">HTTPS:</span>{' '}
+              <code className="bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded font-mono text-[11px]">git config --global credential.helper store</code>
+            </div>
+          </div>
+          <a
+            href="https://docs.github.com/en/authentication"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-2 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 underline"
+          >
+            {t('git.authFailed.docsLink')}
+          </a>
+        </div>
+      )}
+
+      {/* Error banner (non-auth errors) */}
+      {error && errorCode !== 'GIT_AUTH_FAILED' && (
         <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
           <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
           <span className="text-sm text-red-700 dark:text-red-400 flex-1">{error}</span>

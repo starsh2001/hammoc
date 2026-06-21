@@ -228,7 +228,8 @@
     "tasks": "다음 작업",
     "newSession": "새 세션",
     "queueTask": "큐 작업",
-    "fileExplore": "파일 탐색"
+    "fileExplore": "파일 탐색",
+    "refreshing": "프로젝트 상태 갱신 중…"
   },
   "phase": {
     "prePrd": "PRD 작성 전",
@@ -289,7 +290,7 @@
     "activeSessionsFormat": "{{active}}/{{total}} 활성 세션",
     "activeSessionsCount": "활성 세션 {{count}}개",
     "activeFormat": "{{active}}/{{total}} 활성",
-    "queueStatusFormat": "큐 {{status}}",
+    "queueStatusFormat": "{{status}}",
     "terminalsFormat": "{{count}}개 터미널",
     "title": "대시보드",
     "summary": "요약",
@@ -298,9 +299,9 @@
     "refreshTooltip": "새로고침"
   },
   "queueStatus": {
-    "running": "실행 중",
-    "paused": "일시 중지",
-    "error": "오류",
+    "running": "큐 실행 중",
+    "paused": "큐 일시 중지",
+    "error": "큐 오류",
     "statusLabel": "큐 상태: {{status}}"
   },
   "files": {
@@ -445,6 +446,13 @@
     "hoursAgo": "{{count}}시간 전",
     "daysAgo": "{{count}}일 전",
     "binaryFileDiffers": "바이너리 파일이 변경되었습니다",
+    "notInstalled": "Git이 설치되어 있지 않습니다. Git을 설치하면 버전 관리 기능을 사용할 수 있습니다.",
+    "installButton": "Git 다운로드",
+    "authFailed": {
+      "title": "Git 인증 실패",
+      "description": "원격 저장소에 접근하려면 SSH 키 또는 자격 증명을 설정해야 합니다.",
+      "docsLink": "인증 설정 가이드 보기"
+    },
     "notInitialized": "Git 저장소가 초기화되지 않았습니다",
     "changesCount": "{{count}} 변경",
     "commitMessagePlaceholder": "커밋 메시지 입력...",

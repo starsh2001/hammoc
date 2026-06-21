@@ -171,6 +171,8 @@
       "branchCreated": "ブランチ {{value}} が作成されました"
     },
     "error": {
+      "notInstalled": "Gitがシステムにインストールされていません。",
+      "authFailed": "Git認証に失敗しました。SSHキーまたは資格情報を設定してください。",
       "operationFailed": "Git操作に失敗しました。",
       "notInitialized": "Gitリポジトリが初期化されていません。",
       "conflict": "Gitコンフリクトが検出されました。",

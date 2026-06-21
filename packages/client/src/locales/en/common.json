@@ -228,7 +228,8 @@
     "tasks": "Next tasks",
     "newSession": "New session",
     "queueTask": "Queue task",
-    "fileExplore": "Browse files"
+    "fileExplore": "Browse files",
+    "refreshing": "Updating project status…"
   },
   "phase": {
     "prePrd": "Pre-PRD",
@@ -289,13 +290,13 @@
     "activeSessionsFormat": "{{active}}/{{total}} active sessions",
     "activeSessionsCount": "{{count}} active session(s)",
     "activeFormat": "{{active}}/{{total}} active",
-    "queueStatusFormat": "queue {{status}}",
+    "queueStatusFormat": "{{status}}",
     "terminalsFormat": "{{count}} terminal(s)"
   },
   "queueStatus": {
-    "running": "Running",
-    "paused": "Paused",
-    "error": "Error",
+    "running": "Queue running",
+    "paused": "Queue paused",
+    "error": "Queue error",
     "statusLabel": "Queue status: {{status}}"
   },
   "files": {
@@ -440,6 +441,13 @@
     "hoursAgo": "{{count}}h ago",
     "daysAgo": "{{count}}d ago",
     "binaryFileDiffers": "Binary file differs",
+    "notInstalled": "Git is not installed. Install Git to use version control features.",
+    "installButton": "Download Git",
+    "authFailed": {
+      "title": "Git authentication failed",
+      "description": "Set up SSH keys or credentials to access the remote repository.",
+      "docsLink": "View authentication setup guide"
+    },
     "notInitialized": "Git repository is not initialized",
     "changesCount": "{{count}} changes",
     "commitMessagePlaceholder": "Enter commit message...",

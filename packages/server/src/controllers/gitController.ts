@@ -27,6 +27,22 @@ function isValidBranchName(name: string): boolean {
   return true;
 }
 
+function handleKnownGitErrors(nodeError: NodeJS.ErrnoException, req: Request, res: Response): boolean {
+  if (nodeError.code === 'GIT_NOT_INSTALLED') {
+    res.status(GIT_ERRORS.GIT_NOT_INSTALLED.httpStatus).json({
+      error: { code: GIT_ERRORS.GIT_NOT_INSTALLED.code, message: req.t!('git.error.notInstalled') },
+    });
+    return true;
+  }
+  if (nodeError.code === 'GIT_AUTH_FAILED') {
+    res.status(GIT_ERRORS.GIT_AUTH_FAILED.httpStatus).json({
+      error: { code: GIT_ERRORS.GIT_AUTH_FAILED.code, message: req.t!('git.error.authFailed') },
+    });
+    return true;
+  }
+  return false;
+}
+
 export const gitController = {
   /**
    * GET /api/projects/:projectSlug/git/status
@@ -48,6 +64,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
         error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
@@ -77,6 +94,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
         error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
@@ -103,6 +121,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
         error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
@@ -173,6 +192,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       res.status(GIT_ERRORS.GIT_ERROR.httpStatus).json({
         error: { code: GIT_ERRORS.GIT_ERROR.code, message: req.t!('git.error.operationFailed') },
       });
@@ -211,6 +231,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
           error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
@@ -261,6 +282,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
           error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
@@ -317,6 +339,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
           error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
@@ -355,6 +378,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
           error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
@@ -393,6 +417,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
           error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
@@ -437,6 +462,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
           error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },
@@ -503,6 +529,7 @@ export const gitController = {
         res.status(404).json({ error: { code: 'PROJECT_NOT_FOUND', message: req.t!('project.error.notFound') } });
         return;
       }
+      if (handleKnownGitErrors(nodeError, req, res)) return;
       if (nodeError.code === 'GIT_NOT_INITIALIZED') {
         res.status(GIT_ERRORS.GIT_NOT_INITIALIZED.httpStatus).json({
           error: { code: GIT_ERRORS.GIT_NOT_INITIALIZED.code, message: req.t!('git.error.notInitialized') },

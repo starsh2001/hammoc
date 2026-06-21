@@ -9,6 +9,8 @@ export interface GitFileStatus {
 /** Git status response */
 export interface GitStatusResponse {
   initialized: boolean;
+  /** False when the git binary is not found on the system. */
+  gitInstalled?: boolean;
   branch?: string;
   ahead?: number;
   behind?: number;
@@ -64,10 +66,20 @@ export interface GitOperationResponse {
  * without using this constant, so the change has zero impact on read endpoints.
  */
 export const GIT_ERRORS = {
+  GIT_NOT_INSTALLED: {
+    code: 'GIT_NOT_INSTALLED',
+    httpStatus: 503,
+    message: 'Git is not installed on the system',
+  },
   GIT_NOT_INITIALIZED: {
     code: 'GIT_NOT_INITIALIZED',
     httpStatus: 400,
     message: 'Project is not a Git repository',
+  },
+  GIT_AUTH_FAILED: {
+    code: 'GIT_AUTH_FAILED',
+    httpStatus: 401,
+    message: 'Git authentication failed',
   },
   GIT_ERROR: {
     code: 'GIT_ERROR',
