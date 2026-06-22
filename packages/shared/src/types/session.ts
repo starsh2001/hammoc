@@ -57,6 +57,7 @@ export interface SessionListItem {
   modified: string; // ISO 8601 format
   isStreaming?: boolean; // true if an active stream is running for this session
   isWaiting?: boolean; // true if socket-connected but no JSONL file yet
+  hasPendingQuestion?: boolean; // true if an AskUserQuestion is awaiting user selection
   name?: string; // User-assigned session name (from .hammoc/session-names.json)
 }
 

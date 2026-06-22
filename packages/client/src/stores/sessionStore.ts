@@ -44,6 +44,8 @@ interface SessionActions {
   updateSessionStreaming: (sessionId: string, active: boolean) => void;
   /** Update a session's waiting status (called from socket listener) */
   updateSessionWaiting: (sessionId: string, waiting: boolean) => void;
+  /** Update a session's pending question status (called from socket listener) */
+  updateSessionPendingQuestion: (sessionId: string, hasPendingQuestion: boolean) => void;
   /** Delete a single session */
   deleteSession: (projectSlug: string, sessionId: string) => Promise<boolean>;
   /** Delete multiple sessions at once */
@@ -240,7 +242,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const idx = sessions.findIndex((s) => s.sessionId === sessionId);
     if (idx === -1) return;
     const updated = [...sessions];
-    updated[idx] = { ...updated[idx], isStreaming: active || undefined };
+    updated[idx] = {
+      ...updated[idx],
+      isStreaming: active || undefined,
+      ...(!active && { hasPendingQuestion: undefined }),
+    };
     set({ sessions: updated });
   },
 
@@ -274,6 +280,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         .filter(Boolean) as typeof sessions;
       set({ sessions: updated });
     }
+  },
+
+  updateSessionPendingQuestion: (sessionId: string, hasPendingQuestion: boolean) => {
+    const { sessions } = get();
+    const idx = sessions.findIndex((s) => s.sessionId === sessionId);
+    if (idx === -1) return;
+    const updated = [...sessions];
+    updated[idx] = { ...updated[idx], hasPendingQuestion: hasPendingQuestion || undefined };
+    set({ sessions: updated });
   },
 
   deleteSession: async (projectSlug: string, sessionId: string) => {
@@ -422,6 +437,13 @@ function registerStreamChangeListener() {
       const state = useSessionStore.getState();
       if (state.currentProjectSlug === data.projectSlug) {
         state.updateSessionWaiting(data.sessionId, data.waiting);
+      }
+    });
+
+    socket.on('session:question-change', (data: { sessionId: string; hasPendingQuestion: boolean; projectSlug: string }) => {
+      const state = useSessionStore.getState();
+      if (state.currentProjectSlug === data.projectSlug) {
+        state.updateSessionPendingQuestion(data.sessionId, data.hasPendingQuestion);
       }
     });
 

@@ -86,6 +86,7 @@
     "streaming": "Streaming",
     "waiting": "Waiting",
     "waitingStatus": "Connected",
+    "pendingQuestion": "Awaiting selection",
     "queueRunning": "Queue running",
     "queueRunningLabel": "Queue running",
     "queuePaused": "Queue paused",

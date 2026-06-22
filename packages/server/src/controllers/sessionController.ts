@@ -11,7 +11,7 @@ import { projectService } from '../services/projectService.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('sessionController');
-import { getActiveStreamSessionIds, getJoinedSessionIdsByProject, getActiveStreamMetaByProject } from '../handlers/websocket.js';
+import { getActiveStreamSessionIds, getJoinedSessionIdsByProject, getActiveStreamMetaByProject, sessionHasPendingQuestion } from '../handlers/websocket.js';
 
 export const sessionController = {
   /**
@@ -101,6 +101,7 @@ export const sessionController = {
               modified: now,
               isWaiting: true,
               ...(activeIds.has(id) && { isStreaming: true }),
+              ...(sessionHasPendingQuestion(id) && { hasPendingQuestion: true }),
               ...(sessionNames[id] && { name: sessionNames[id] }),
             });
           }
@@ -116,6 +117,7 @@ export const sessionController = {
             ...s,
             ...(activeIds.has(s.sessionId) && { isStreaming: true }),
             ...(joinedIds.has(s.sessionId) && !activeIds.has(s.sessionId) && { isWaiting: true }),
+            ...(sessionHasPendingQuestion(s.sessionId) && { hasPendingQuestion: true }),
             ...(sessionNames[s.sessionId] && { name: sessionNames[s.sessionId] }),
           })),
         ],

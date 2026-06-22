@@ -6,6 +6,7 @@ export interface DashboardProjectStatus {
   totalSessionCount: number;
   queueStatus: 'idle' | 'running' | 'paused' | 'error';
   terminalCount: number;
+  pendingQuestionCount?: number;
 }
 
 export interface DashboardStatusResponse {

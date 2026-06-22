@@ -82,6 +82,7 @@
     "streaming": "Transmitiendo",
     "waiting": "Esperando",
     "waitingStatus": "Conectado",
+    "pendingQuestion": "Esperando selección",
     "queueActive": "Ejecutor de cola activo",
     "queue": "Cola",
     "messageCount": "{{count}} mensajes",

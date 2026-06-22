@@ -15,6 +15,10 @@ function buildAriaLabel(status: DashboardProjectStatus, t: TFunction): string {
     parts.push(t('dashboard.activeSessionsFormat', { active: status.activeSessionCount, total: status.totalSessionCount }));
   }
 
+  if (status.pendingQuestionCount) {
+    parts.push(t('dashboard.pendingQuestionCount', { count: status.pendingQuestionCount }));
+  }
+
   if (status.queueStatus !== 'idle') {
     parts.push(t('dashboard.queueStatusFormat', { status: t(`queueStatus.${status.queueStatus}`) }));
   }
@@ -35,7 +39,8 @@ export function ProjectStatusIndicators({ status }: ProjectStatusIndicatorsProps
     status.activeSessionCount === 0 &&
     status.totalSessionCount === 0 &&
     status.terminalCount === 0 &&
-    status.queueStatus === 'idle';
+    status.queueStatus === 'idle' &&
+    !status.pendingQuestionCount;
 
   if (allZeroAndIdle) return null;
 
@@ -51,6 +56,14 @@ export function ProjectStatusIndicators({ status }: ProjectStatusIndicatorsProps
             <span className="w-2 h-2 bg-green-500 rounded-full" />
           )}
           <span>{status.activeSessionCount} active</span>
+        </div>
+      )}
+
+      {/* Pending question count */}
+      {status.pendingQuestionCount != null && status.pendingQuestionCount > 0 && (
+        <div className="flex items-center gap-1 text-cyan-600 dark:text-cyan-300">
+          <span className="w-2 h-2 bg-cyan-500 rounded-full" />
+          <span>{t('dashboard.pendingQuestionCount', { count: status.pendingQuestionCount })}</span>
         </div>
       )}
 

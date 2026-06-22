@@ -11,7 +11,7 @@ import type {
 import { ptyService } from './ptyService.js';
 import { projectService } from './projectService.js';
 import { getQueueInstances } from '../controllers/queueController.js';
-import { getActiveSessionCountsByProject } from '../handlers/websocket.js';
+import { getActiveSessionCountsByProject, getPendingQuestionCountsByProject } from '../handlers/websocket.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('dashboardService');
@@ -42,16 +42,19 @@ class DashboardService {
 
     const projects = await projectService.scanProjects();
     const activeCounts = getActiveSessionCountsByProject();
+    const pendingQuestionCounts = getPendingQuestionCountsByProject();
     const queueMap = getQueueInstances();
 
     const statuses: DashboardProjectStatus[] = projects.map((project) => {
       const slug = project.projectSlug;
+      const pqCount = pendingQuestionCounts.get(slug) ?? 0;
       return {
         projectSlug: slug,
         activeSessionCount: activeCounts.get(slug) ?? 0,
         totalSessionCount: project.sessionCount,
         queueStatus: mapQueueStatus(queueMap.get(slug)?.getState()),
         terminalCount: ptyService.getSessionsByProject(slug).length,
+        ...(pqCount > 0 && { pendingQuestionCount: pqCount }),
       };
     });
 
@@ -76,6 +79,7 @@ class DashboardService {
     }
 
     const activeCount = getActiveSessionCountsByProject().get(projectSlug) ?? 0;
+    const pqCount = getPendingQuestionCountsByProject().get(projectSlug) ?? 0;
     const queueStatus = mapQueueStatus(getQueueInstances().get(projectSlug)?.getState());
     const terminalCount = ptyService.getSessionsByProject(projectSlug).length;
     const totalSessionCount = await projectService.getProjectSessionCount(projectSlug);
@@ -86,6 +90,7 @@ class DashboardService {
       totalSessionCount,
       queueStatus,
       terminalCount,
+      ...(pqCount > 0 && { pendingQuestionCount: pqCount }),
     };
   }
 }

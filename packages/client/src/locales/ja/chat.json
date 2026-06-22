@@ -82,6 +82,7 @@
     "streaming": "ストリーミング中",
     "waiting": "待機中",
     "waitingStatus": "接続中",
+    "pendingQuestion": "選択待ち",
     "queueActive": "��ューランナー実行中",
     "queue": "キュー",
     "messageCount": "{{count}}件のメッセージ",

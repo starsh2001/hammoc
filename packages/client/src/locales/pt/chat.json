@@ -82,6 +82,7 @@
     "streaming": "Transmitindo",
     "waiting": "Aguardando",
     "waitingStatus": "Conectado",
+    "pendingQuestion": "Aguardando seleção",
     "queueActive": "Executor de fila ativo",
     "queue": "Fila",
     "messageCount": "{{count}} mensagens",

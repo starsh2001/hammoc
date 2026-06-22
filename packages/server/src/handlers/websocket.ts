@@ -557,6 +557,33 @@ export function isSessionStreaming(sessionId: string): boolean {
   return !!stream && stream.status === 'running';
 }
 
+/** Check if a session has any pending AskUserQuestion interactions */
+export function sessionHasPendingQuestion(sessionId: string): boolean {
+  const stream = activeStreams.get(sessionId);
+  if (!stream) return false;
+  for (const p of stream.pendingPermissions.values()) {
+    if (p.interactionType === 'question') return true;
+  }
+  return false;
+}
+
+/** Get pending AskUserQuestion counts grouped by project slug (in-memory, no I/O) */
+export function getPendingQuestionCountsByProject(): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const [sessionId, stream] of activeStreams.entries()) {
+    if (stream.status !== 'running') continue;
+    let hasQuestion = false;
+    for (const p of stream.pendingPermissions.values()) {
+      if (p.interactionType === 'question') { hasQuestion = true; break; }
+    }
+    if (hasQuestion) {
+      const slug = sessionProjectMap.get(sessionId);
+      if (slug) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
 /** Get session IDs that have active socket connections for a given project */
 export function getJoinedSessionIdsByProject(projectSlug: string): Set<string> {
   const sessionIds = new Set<string>();
@@ -672,6 +699,15 @@ function cleanupStream(streamKey: string, expectedStream?: ActiveStream) {
   // Only delete from activeStreams and clean up socket mappings if the stream
   // hasn't been replaced. When replaced, the new stream owns those resources.
   if (!replaced) {
+    // Clear pending question state before removing the stream
+    if (current) {
+      for (const p of current.pendingPermissions.values()) {
+        if (p.interactionType === 'question') {
+          emitQuestionChange(streamKey, false);
+          break;
+        }
+      }
+    }
     activeStreams.delete(streamKey);
     for (const [sockId, sessId] of socketToSession.entries()) {
       if (sessId === streamKey) socketToSession.delete(sockId);
@@ -834,6 +870,18 @@ function emitStreamChange(sessionId: string, active: boolean, projectSlug: strin
     if (room && room.size > 0) {
       io.to(`project:${projectSlug}`).emit('session:waiting-change', { sessionId, waiting: true, projectSlug });
     }
+  }
+}
+
+/**
+ * Emit session:question-change when an AskUserQuestion becomes pending or is resolved.
+ * Scoped to the project room so only relevant session list viewers receive it.
+ */
+function emitQuestionChange(sessionId: string, hasPendingQuestion: boolean): void {
+  const projectSlug = sessionProjectMap.get(sessionId);
+  if (projectSlug) {
+    io.to(`project:${projectSlug}`).emit('session:question-change', { sessionId, hasPendingQuestion, projectSlug });
+    triggerDashboardStatusChange(projectSlug);
   }
 }
 
@@ -1171,9 +1219,13 @@ export async function initializeWebSocket(
       const sessionId = socketToSession.get(socket.id);
       if (!sessionId) return;
       const stream = activeStreams.get(sessionId);
-      if (stream?.pendingPermissions.has(data.requestId)) {
-        stream.pendingPermissions.get(data.requestId)!.resolve({ approved: data.approved, response: data.response });
+      if (!stream) return;
+      const pending = stream.pendingPermissions.get(data.requestId);
+      if (pending) {
+        const wasQuestion = pending.interactionType === 'question';
+        pending.resolve({ approved: data.approved, response: data.response });
         stream.pendingPermissions.delete(data.requestId);
+        if (wasQuestion) emitQuestionChange(sessionId, sessionHasPendingQuestion(sessionId));
         // Broadcast the actual resolution to all OTHER viewers so their
         // tool/interactive cards can show the correct approve/deny state.
         // Also buffer via createStreamEmit so reconnecting clients see the
@@ -2869,6 +2921,7 @@ async function handleChatSend(
             resolve,
             interactionType: isAskUserQuestion ? 'question' : 'permission',
           });
+          if (isAskUserQuestion) emitQuestionChange(sessionIdRef.current || '', true);
         });
 
         if (isAskUserQuestion) {

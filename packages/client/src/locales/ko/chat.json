@@ -86,6 +86,7 @@
     "streaming": "스트리밍 중",
     "waiting": "대기 중",
     "waitingStatus": "대기 중",
+    "pendingQuestion": "선택 대기중",
     "queueRunning": "큐 실행중",
     "queueRunningLabel": "큐 실행중",
     "queuePaused": "큐 일시 중지",
