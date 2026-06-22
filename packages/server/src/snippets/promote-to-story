@@ -3,7 +3,9 @@
 *create-brownfield-story
 
 Read the issue file {arg1} and use it as context.
+
+Use the file `docs/stories/BS-1.global-skills-chipbar-scope.story.md` as the reference template for story format, section structure, and writing style.
 ---
 *doc-out
 
-Save the story document to the appropriate project directory.
+Save the story document to `docs/stories/` with the filename pattern `BS-{N}.{kebab-case-title}.story.md`, where {N} is one greater than the highest existing BS- number in that directory.
