@@ -59,6 +59,8 @@ const QUICK_KEYS: Array<{ label: string; seq: string; title?: string } | 'sep'> 
   { label: 'Tab', seq: '\t' },
   { label: 'Esc', seq: '\x1b' },
   'sep',
+  { label: '⌫', seq: '\x7f', title: 'Backspace' },
+  'sep',
   { label: '^C', seq: '\x03', title: 'Ctrl+C' },
   { label: '^D', seq: '\x04', title: 'Ctrl+D' },
   { label: '^Z', seq: '\x1a', title: 'Ctrl+Z' },
@@ -102,7 +104,7 @@ export function TerminalEmulator({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isComposingRef = useRef(false);
-  const sentLenRef = useRef(0);
+  const justEndedCompositionRef = useRef(false);
 
   const { resolvedTheme } = useTheme();
   const sendInput = useTerminalStore((s) => s.sendInput);
@@ -122,15 +124,10 @@ export function TerminalEmulator({
   useEffect(() => {
     if (inputRef.current) inputRef.current.value = '';
     isComposingRef.current = false;
-    sentLenRef.current = 0;
+    justEndedCompositionRef.current = false;
     hasSelectionRef.current = false;
     setSelUI(null);
   }, [terminalId]);
-
-  const clearInput = useCallback(() => {
-    if (inputRef.current) inputRef.current.value = '';
-    sentLenRef.current = 0;
-  }, []);
 
   // Toolbar copy button: selection if any, otherwise whole terminal
   const handleToolbarCopy = useCallback(() => {
@@ -162,20 +159,21 @@ export function TerminalEmulator({
       const s = useTerminalStore.getState().terminals.get(terminalId);
       if (s?.status !== 'connected') return;
       sendInput(terminalId, seq);
-      clearInput();
       requestAnimationFrame(() => inputRef.current?.focus());
     },
-    [sendInput, terminalId, clearInput]
+    [sendInput, terminalId]
   );
 
   const handleSend = useCallback(() => {
     const s = useTerminalStore.getState().terminals.get(terminalId);
     if (s?.status !== 'connected') return;
     sendInput(terminalId, '\r');
-    clearInput();
+    if (inputRef.current) inputRef.current.value = '';
     requestAnimationFrame(() => inputRef.current?.focus());
-  }, [sendInput, terminalId, clearInput]);
+  }, [sendInput, terminalId]);
 
+  // Key-relay model: each keystroke is sent to PTY immediately.
+  // The input bar stays empty except during IME composition.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
@@ -183,47 +181,50 @@ export function TerminalEmulator({
       const s = useTerminalStore.getState().terminals.get(terminalId);
       if (s?.status !== 'connected') return;
 
+      // Printable character → send + prevent (input stays empty)
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        sendInput(terminalId, e.key);
+        return;
+      }
+
       switch (e.key) {
         case 'Enter':
           e.preventDefault();
           sendInput(terminalId, '\r');
-          clearInput();
           break;
         case 'Backspace':
           e.preventDefault();
           sendInput(terminalId, '\x7f');
-          if (inputRef.current && inputRef.current.value.length > 0) {
-            inputRef.current.value = inputRef.current.value.slice(0, -1);
-            sentLenRef.current = inputRef.current.value.length;
-          }
           break;
         case 'Delete':
           e.preventDefault();
           sendInput(terminalId, '\x1b[3~');
-          clearInput();
           break;
         case 'Tab':
           e.preventDefault();
           sendInput(terminalId, '\t');
-          clearInput();
           break;
         case 'Escape':
           e.preventDefault();
           sendInput(terminalId, '\x1b');
-          clearInput();
           break;
         case 'ArrowUp':
           e.preventDefault();
           sendInput(terminalId, '\x1b[A');
-          clearInput();
           break;
         case 'ArrowDown':
           e.preventDefault();
           sendInput(terminalId, '\x1b[B');
-          clearInput();
           break;
         case 'ArrowLeft':
+          e.preventDefault();
+          sendInput(terminalId, '\x1b[D');
+          break;
         case 'ArrowRight':
+          e.preventDefault();
+          sendInput(terminalId, '\x1b[C');
+          break;
         case 'Home':
         case 'End':
           e.preventDefault();
@@ -234,14 +235,6 @@ export function TerminalEmulator({
             const isCtrl = e.ctrlKey && !e.metaKey;
 
             if (k === 'c') {
-              const input = e.currentTarget;
-              if (
-                input.selectionStart !== null &&
-                input.selectionEnd !== null &&
-                input.selectionStart !== input.selectionEnd
-              )
-                return;
-
               e.preventDefault();
               const sel = terminalRef.current?.getSelection();
               if (sel) {
@@ -250,16 +243,13 @@ export function TerminalEmulator({
                 setSelUI(null);
               } else if (isCtrl) {
                 sendInput(terminalId, '\x03');
-                clearInput();
               }
             } else if (k === 'd' && isCtrl) {
               e.preventDefault();
               sendInput(terminalId, '\x04');
-              clearInput();
             } else if (k === 'z' && isCtrl) {
               e.preventDefault();
               sendInput(terminalId, '\x1a');
-              clearInput();
             } else if (k === '=' || k === '+') {
               e.preventDefault();
               useTerminalStore.getState().increaseFontSize();
@@ -273,19 +263,26 @@ export function TerminalEmulator({
           }
       }
     },
-    [sendInput, terminalId, clearInput]
+    [sendInput, terminalId]
   );
 
+  // onChange only fires for IME composition display and post-composition
+  // spillover (e.g. the space that triggered compositionEnd, or paste).
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (isComposingRef.current) return;
-      const val = e.target.value;
-      if (val.length > sentLenRef.current) {
-        const added = val.slice(sentLenRef.current);
-        const s = useTerminalStore.getState().terminals.get(terminalId);
-        if (s?.status === 'connected') sendInput(terminalId, added);
+      const input = e.target as HTMLInputElement;
+      if (justEndedCompositionRef.current) {
+        justEndedCompositionRef.current = false;
+        input.value = '';
+        return;
       }
-      sentLenRef.current = val.length;
+      // Paste or post-composition character (e.g. space)
+      if (input.value) {
+        const s = useTerminalStore.getState().terminals.get(terminalId);
+        if (s?.status === 'connected') sendInput(terminalId, input.value);
+        input.value = '';
+      }
     },
     [sendInput, terminalId]
   );
@@ -297,13 +294,13 @@ export function TerminalEmulator({
   const handleCompositionEnd = useCallback(
     (e: React.CompositionEvent<HTMLInputElement>) => {
       isComposingRef.current = false;
-      const val = (e.target as HTMLInputElement).value;
-      if (val.length > sentLenRef.current) {
-        const added = val.slice(sentLenRef.current);
+      const input = e.target as HTMLInputElement;
+      if (input.value) {
         const s = useTerminalStore.getState().terminals.get(terminalId);
-        if (s?.status === 'connected') sendInput(terminalId, added);
+        if (s?.status === 'connected') sendInput(terminalId, input.value);
       }
-      sentLenRef.current = val.length;
+      input.value = '';
+      justEndedCompositionRef.current = true;
     },
     [sendInput, terminalId]
   );
@@ -408,6 +405,7 @@ export function TerminalEmulator({
       if (!line || col < 0 || col >= terminal.cols) return false;
       const c = line.getCell(col);
       if (!c) return false;
+      if (c.getWidth() === 0) return true; // second half of a wide char (CJK)
       const ch = c.getChars();
       return ch.length > 0 && !/\s/.test(ch);
     };
