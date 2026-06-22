@@ -50,11 +50,11 @@ function copyText(text: string): void {
   document.body.removeChild(textarea);
 }
 
-const QUICK_KEYS: Array<{ label: string; seq: string; title?: string } | 'sep'> = [
-  { label: '↑', seq: '\x1b[A', title: 'Up' },
-  { label: '↓', seq: '\x1b[B', title: 'Down' },
-  { label: '←', seq: '\x1b[D', title: 'Left' },
-  { label: '→', seq: '\x1b[C', title: 'Right' },
+const QUICK_KEYS: Array<{ label: string; seq: string; shiftSeq?: string; title?: string } | 'sep'> = [
+  { label: '↑', seq: '\x1b[A', shiftSeq: '\x1b[1;2A', title: 'Up' },
+  { label: '↓', seq: '\x1b[B', shiftSeq: '\x1b[1;2B', title: 'Down' },
+  { label: '←', seq: '\x1b[D', shiftSeq: '\x1b[1;2D', title: 'Left' },
+  { label: '→', seq: '\x1b[C', shiftSeq: '\x1b[1;2C', title: 'Right' },
   'sep',
   { label: 'Tab', seq: '\t' },
   { label: 'Esc', seq: '\x1b' },
@@ -104,7 +104,8 @@ export function TerminalEmulator({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isComposingRef = useRef(false);
-  const justEndedCompositionRef = useRef(false);
+  const justEndedRef = useRef(false);
+  const sentUpToRef = useRef(0);
 
   const { resolvedTheme } = useTheme();
   const sendInput = useTerminalStore((s) => s.sendInput);
@@ -113,6 +114,11 @@ export function TerminalEmulator({
   const session = useTerminalStore((s) => s.terminals.get(terminalId));
   const status = session?.status ?? null;
   const fontSize = useTerminalStore((s) => s.fontSize);
+
+  const [shiftActive, setShiftActive] = useState(false);
+
+  // Right-click context menu position (shown when xterm has a selection)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Touch selection UI (handles + copy popup positions)
   const [selUI, setSelUI] = useState<SelectionUI | null>(null);
@@ -124,9 +130,11 @@ export function TerminalEmulator({
   useEffect(() => {
     if (inputRef.current) inputRef.current.value = '';
     isComposingRef.current = false;
-    justEndedCompositionRef.current = false;
+    justEndedRef.current = false;
+    sentUpToRef.current = 0;
     hasSelectionRef.current = false;
     setSelUI(null);
+    setCtxMenu(null);
   }, [terminalId]);
 
   // Toolbar copy button: selection if any, otherwise whole terminal
@@ -176,7 +184,7 @@ export function TerminalEmulator({
   // The input bar stays empty except during IME composition.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+      if (e.nativeEvent.isComposing) return;
 
       const s = useTerminalStore.getState().terminals.get(terminalId);
       if (s?.status !== 'connected') return;
@@ -211,19 +219,19 @@ export function TerminalEmulator({
           break;
         case 'ArrowUp':
           e.preventDefault();
-          sendInput(terminalId, '\x1b[A');
+          sendInput(terminalId, e.shiftKey ? '\x1b[1;2A' : '\x1b[A');
           break;
         case 'ArrowDown':
           e.preventDefault();
-          sendInput(terminalId, '\x1b[B');
+          sendInput(terminalId, e.shiftKey ? '\x1b[1;2B' : '\x1b[B');
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          sendInput(terminalId, '\x1b[D');
+          sendInput(terminalId, e.shiftKey ? '\x1b[1;2D' : '\x1b[D');
           break;
         case 'ArrowRight':
           e.preventDefault();
-          sendInput(terminalId, '\x1b[C');
+          sendInput(terminalId, e.shiftKey ? '\x1b[1;2C' : '\x1b[C');
           break;
         case 'Home':
         case 'End':
@@ -266,23 +274,22 @@ export function TerminalEmulator({
     [sendInput, terminalId]
   );
 
-  // onChange only fires for IME composition display and post-composition
-  // spillover (e.g. the space that triggered compositionEnd, or paste).
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (isComposingRef.current) return;
       const input = e.target as HTMLInputElement;
-      if (justEndedCompositionRef.current) {
-        justEndedCompositionRef.current = false;
-        input.value = '';
+      if (justEndedRef.current) {
+        justEndedRef.current = false;
         return;
       }
-      // Paste or post-composition character (e.g. space)
-      if (input.value) {
+      if (isComposingRef.current) return;
+      // Non-composition text (paste, post-composition spillover)
+      const added = input.value.slice(sentUpToRef.current);
+      if (added) {
         const s = useTerminalStore.getState().terminals.get(terminalId);
-        if (s?.status === 'connected') sendInput(terminalId, input.value);
-        input.value = '';
+        if (s?.status === 'connected') sendInput(terminalId, added);
       }
+      input.value = '';
+      sentUpToRef.current = 0;
     },
     [sendInput, terminalId]
   );
@@ -295,12 +302,21 @@ export function TerminalEmulator({
     (e: React.CompositionEvent<HTMLInputElement>) => {
       isComposingRef.current = false;
       const input = e.target as HTMLInputElement;
-      if (input.value) {
+      const added = input.value.slice(sentUpToRef.current);
+      if (added) {
         const s = useTerminalStore.getState().terminals.get(terminalId);
-        if (s?.status === 'connected') sendInput(terminalId, input.value);
+        if (s?.status === 'connected') sendInput(terminalId, added);
       }
-      input.value = '';
-      justEndedCompositionRef.current = true;
+      sentUpToRef.current = input.value.length;
+      justEndedRef.current = true;
+      // Deferred clear: wait for next composition to start (if any).
+      // If a new composition started (e.g. next jamo), don't clear.
+      requestAnimationFrame(() => {
+        if (!isComposingRef.current && inputRef.current) {
+          inputRef.current.value = '';
+          sentUpToRef.current = 0;
+        }
+      });
     },
     [sendInput, terminalId]
   );
@@ -485,16 +501,28 @@ export function TerminalEmulator({
     document.addEventListener('touchend', onTouchEnd);
     document.addEventListener('touchcancel', onTouchEnd);
 
+    // Right-click context menu: show custom "Copy" when xterm has selection
+    const onContextMenu = (ev: MouseEvent) => {
+      if (terminal.hasSelection()) {
+        ev.preventDefault();
+        const rect = container.getBoundingClientRect();
+        setCtxMenu({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+      }
+    };
+    container.addEventListener('contextmenu', onContextMenu);
+
     // Hide popup/handles when selection clears or terminal scrolls
     const selDisp = terminal.onSelectionChange(() => {
       if (!terminal.hasSelection()) {
         hasSelectionRef.current = false;
         setSelUI(null);
+        setCtxMenu(null);
       }
     });
     const scrollDisp = terminal.onScroll(() => {
       hasSelectionRef.current = false;
       setSelUI(null);
+      setCtxMenu(null);
       terminal.clearSelection();
     });
 
@@ -506,6 +534,7 @@ export function TerminalEmulator({
     });
 
     return () => {
+      container.removeEventListener('contextmenu', onContextMenu);
       container.removeEventListener('touchstart', onTouchStart);
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
@@ -548,7 +577,11 @@ export function TerminalEmulator({
 
   return (
     <div className="relative flex flex-col" style={{ height }}>
-      <div ref={containerRef} className="relative w-full flex-1 min-h-0" />
+      <div
+        ref={containerRef}
+        className="relative w-full flex-1 min-h-0"
+        onClick={() => setCtxMenu(null)}
+      />
 
       {/* Touch selection handles + floating copy popup */}
       {selUI && (
@@ -597,6 +630,30 @@ export function TerminalEmulator({
         </>
       )}
 
+      {/* Right-click custom context menu */}
+      {ctxMenu && (
+        <div
+          className="absolute z-30"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1 min-w-[120px]">
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              onClick={() => {
+                const sel = terminalRef.current?.getSelection();
+                if (sel) copyText(sel);
+                terminalRef.current?.clearSelection();
+                setCtxMenu(null);
+              }}
+            >
+              <ClipboardCopy className="w-4 h-4" />
+              {t('terminal.copyAction')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {isConnected && (
         <div className="flex flex-col gap-1 px-2 py-1.5 bg-gray-50 dark:bg-[#1e2030] border-t border-gray-300 dark:border-gray-600">
           <div className="flex items-center gap-1 overflow-x-auto">
@@ -612,13 +669,25 @@ export function TerminalEmulator({
                   type="button"
                   className={KEY_BTN}
                   title={k.title ?? k.label}
-                  onClick={() => sendKey(k.seq)}
+                  onClick={() => {
+                    const seq = shiftActive && k.shiftSeq ? k.shiftSeq : k.seq;
+                    sendKey(seq);
+                    if (shiftActive) setShiftActive(false);
+                  }}
                 >
                   {k.label}
                 </button>
               )
             )}
             <span className="w-px h-5 bg-gray-300 dark:bg-gray-600 shrink-0" />
+            <button
+              type="button"
+              className={`${KEY_BTN} ${shiftActive ? 'ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-900/40' : ''}`}
+              title="Shift"
+              onClick={() => setShiftActive((v) => !v)}
+            >
+              ⇧
+            </button>
             <button
               type="button"
               className={KEY_BTN}
