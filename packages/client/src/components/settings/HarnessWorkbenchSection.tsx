@@ -19,7 +19,6 @@ import { AgentPanel } from './harness/AgentPanel';
 import { ClaudeMdPanel } from './harness/ClaudeMdPanel';
 import { SnippetPanel } from './harness/SnippetPanel';
 import { ModeBanner } from './harness/ModeBanner';
-import { LintCountBadge } from './harness/LintCountBadge';
 import { LintRulePreferencesDialog } from './harness/LintRulePreferencesDialog';
 import type { LintCardDomain } from '@hammoc/shared';
 import { useHarnessPluginStore } from '../../stores/harnessPluginStore';
@@ -44,7 +43,7 @@ import { BundleExportDialog } from './harness/BundleExportDialog';
 import { BundleImportDialog } from './harness/BundleImportDialog';
 import { useHarnessBundleStore } from '../../stores/harnessBundleStore';
 
-type HarnessSubSection =
+export type HarnessSubSection =
   | 'plugins'
   | 'skills'
   | 'mcps'
@@ -54,7 +53,7 @@ type HarnessSubSection =
   | 'claudeMd'
   | 'snippets';
 
-const SUB_SECTIONS: readonly HarnessSubSection[] = [
+export const HARNESS_SUB_SECTIONS: readonly HarnessSubSection[] = [
   'plugins',
   'skills',
   'mcps',
@@ -67,12 +66,10 @@ const SUB_SECTIONS: readonly HarnessSubSection[] = [
 
 interface Props {
   projectSlug: string;
+  activeSubSection: HarnessSubSection;
 }
 
-// Map sub-section nav keys → lint card domains so the count badge knows
-// which slice of `countsByDomain()` to surface. Sub-sections without a lint
-// domain (`plugins` / `claudeMd` / `snippets`) intentionally render no badge.
-const LINT_DOMAIN_BY_SECTION: Partial<Record<HarnessSubSection, LintCardDomain>> = {
+export const LINT_DOMAIN_BY_SECTION: Partial<Record<HarnessSubSection, LintCardDomain>> = {
   skills: 'skill',
   mcps: 'mcp',
   hooks: 'hook',
@@ -80,33 +77,12 @@ const LINT_DOMAIN_BY_SECTION: Partial<Record<HarnessSubSection, LintCardDomain>>
   agents: 'agent',
 };
 
-export function HarnessWorkbenchSection({ projectSlug }: Props) {
+export function HarnessWorkbenchSection({ projectSlug, activeSubSection }: Props) {
   const { t } = useTranslation('settings');
-  const [active, setActive] = useState<HarnessSubSection>('plugins');
   const [lintPrefsOpen, setLintPrefsOpen] = useState(false);
   const shareMode = useHarnessShareScopeStore((s) => s.mode);
-  const lintIssues = useHarnessLintStore((s) => s.issues);
   const secretDialogPayload = useSecretOnSharedDialogStore((s) => s.payload);
   const closeSecretDialog = useSecretOnSharedDialogStore((s) => s.close);
-
-  // Recompute the per-domain (error, warn) tally directly from the subscribed
-  // `lintIssues` array — calling `countsByDomain()` inside the selector would
-  // produce a new object on every render and break Object.is equality.
-  const lintCounts = lintIssues.reduce(
-    (acc, issue) => {
-      const slot = acc[issue.cardDomain];
-      if (issue.severity === 'error') slot.error += 1;
-      else slot.warn += 1;
-      return acc;
-    },
-    {
-      skill: { error: 0, warn: 0 },
-      mcp: { error: 0, warn: 0 },
-      hook: { error: 0, warn: 0 },
-      command: { error: 0, warn: 0 },
-      agent: { error: 0, warn: 0 },
-    } as Record<LintCardDomain, { error: number; warn: number }>,
-  );
 
   // Prefetch every sub-section's data in parallel as soon as the user enters
   // the workbench, so switching between sub-sections feels instant. Each
@@ -175,84 +151,39 @@ export function HarnessWorkbenchSection({ projectSlug }: Props) {
         </button>
         <BundleEntryButton projectSlug={projectSlug} />
       </div>
-    <div className="flex flex-col sm:flex-row gap-4">
-      {/* Sub-section nav: pill row on mobile (horizontal scroll, no wrap),
-          sticky vertical sidebar on >=sm. The negative horizontal margin lets
-          the scroll area extend to the parent's edge so the row feels like it
-          continues off-screen — a standard mobile tab pattern. */}
-      <nav
-        aria-label={t('harness.workbench.title')}
-        // Inline `scrollbar-width:none` is needed because index.css applies
-        // `* { scrollbar-width: thin }` globally — Tailwind's arbitrary
-        // variant has the same specificity and loses to the global rule.
-        style={{ scrollbarWidth: 'none' }}
-        className="-mx-4 sm:mx-0 px-4 sm:px-0 pb-1 sm:pb-0 flex sm:flex-col gap-1.5 sm:gap-1 sm:w-48 sm:shrink-0 overflow-x-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"
-      >
-        {SUB_SECTIONS.map((key) => {
-          const lintDomain = LINT_DOMAIN_BY_SECTION[key];
-          const counts = lintDomain ? lintCounts[lintDomain] : undefined;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActive(key)}
-              className={
-                'shrink-0 whitespace-nowrap px-3.5 sm:px-3 py-1.5 sm:py-2 text-center sm:text-left rounded-full sm:rounded-md text-sm transition-colors flex items-center gap-1.5 justify-between '
-                + (active === key
-                  ? 'bg-blue-600 text-white sm:bg-blue-50 sm:text-blue-700 sm:dark:bg-blue-900/30 sm:dark:text-blue-200 font-medium shadow-sm sm:shadow-none'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-800 sm:bg-transparent sm:dark:bg-transparent sm:hover:bg-gray-100 sm:dark:hover:bg-gray-800')
-              }
-            >
-              <span>{t(`harness.workbench.nav.${key}`)}</span>
-              {counts && (counts.error > 0 || counts.warn > 0) && (
-                // Render as a non-interactive span — the surrounding nav
-                // <button> already switches sections on any inner click via
-                // bubbling, so a clickable inner <button> would just nest
-                // interactive controls (HTML spec violation) without adding
-                // behavior. AC1.b ("click to jump to that sub-section") is
-                // still satisfied through the parent button.
-                <LintCountBadge errorCount={counts.error} warnCount={counts.warn} />
-              )}
-            </button>
-          );
-        })}
-      </nav>
-      <div className="flex-1 min-w-0">
-        {active === 'plugins' && <PluginPanel projectSlug={projectSlug} />}
-        {active === 'skills' && (
-          <SkillPanel
-            projectSlug={projectSlug}
-            onOpenLintPreferences={() => setLintPrefsOpen(true)}
-          />
-        )}
-        {active === 'mcps' && (
-          <McpPanel
-            projectSlug={projectSlug}
-            onOpenLintPreferences={() => setLintPrefsOpen(true)}
-          />
-        )}
-        {active === 'hooks' && (
-          <HookPanel
-            projectSlug={projectSlug}
-            onOpenLintPreferences={() => setLintPrefsOpen(true)}
-          />
-        )}
-        {active === 'commands' && (
-          <CommandPanel
-            projectSlug={projectSlug}
-            onOpenLintPreferences={() => setLintPrefsOpen(true)}
-          />
-        )}
-        {active === 'agents' && (
-          <AgentPanel
-            projectSlug={projectSlug}
-            onOpenLintPreferences={() => setLintPrefsOpen(true)}
-          />
-        )}
-        {active === 'claudeMd' && <ClaudeMdPanel projectSlug={projectSlug} />}
-        {active === 'snippets' && <SnippetPanel projectSlug={projectSlug} />}
-      </div>
-    </div>
+    {activeSubSection === 'plugins' && <PluginPanel projectSlug={projectSlug} />}
+    {activeSubSection === 'skills' && (
+      <SkillPanel
+        projectSlug={projectSlug}
+        onOpenLintPreferences={() => setLintPrefsOpen(true)}
+      />
+    )}
+    {activeSubSection === 'mcps' && (
+      <McpPanel
+        projectSlug={projectSlug}
+        onOpenLintPreferences={() => setLintPrefsOpen(true)}
+      />
+    )}
+    {activeSubSection === 'hooks' && (
+      <HookPanel
+        projectSlug={projectSlug}
+        onOpenLintPreferences={() => setLintPrefsOpen(true)}
+      />
+    )}
+    {activeSubSection === 'commands' && (
+      <CommandPanel
+        projectSlug={projectSlug}
+        onOpenLintPreferences={() => setLintPrefsOpen(true)}
+      />
+    )}
+    {activeSubSection === 'agents' && (
+      <AgentPanel
+        projectSlug={projectSlug}
+        onOpenLintPreferences={() => setLintPrefsOpen(true)}
+      />
+    )}
+    {activeSubSection === 'claudeMd' && <ClaudeMdPanel projectSlug={projectSlug} />}
+    {activeSubSection === 'snippets' && <SnippetPanel projectSlug={projectSlug} />}
     <LintRulePreferencesDialog open={lintPrefsOpen} onClose={() => setLintPrefsOpen(false)} />
     {/* Story 30.6 — Bundle dialogs mount once per workbench. Open/close state
         is owned by harnessBundleStore so dialog lifecycle stays inside the
