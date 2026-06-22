@@ -240,6 +240,8 @@ export function QuickPanel({
           <QuickGitPanel
             projectSlug={projectSlug}
             onNavigateToGitTab={onNavigateToGitTab}
+            isOverlay={isMobile}
+            onClose={onClose}
           />
         );
       case 'terminal':

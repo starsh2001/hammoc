@@ -8,6 +8,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QuickGitPanel } from '../QuickGitPanel';
 import type { GitStatusResponse, GitCommitInfo } from '@hammoc/shared';
 
+// Mock useNavigate (QuickGitPanel navigates to a new session for AI split commit)
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 // Mock formatRelativeTime
 vi.mock('../../../utils/formatters', () => ({
   formatRelativeTime: (_date: string) => '1일 전',
@@ -210,5 +220,43 @@ describe('QuickGitPanel', () => {
   it('fetches log with limit 3 on mount', () => {
     renderPanel();
     expect(mockFetchLog).toHaveBeenCalledWith('test-project', 3);
+  });
+
+  it('navigates to a new session with the %split-commit task on AI split commit click', () => {
+    renderPanel();
+    fireEvent.click(screen.getByTestId('quick-git-split-commit'));
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    const target = mockNavigate.mock.calls[0][0] as string;
+    const url = new URL(target, 'http://localhost');
+    expect(url.pathname).toMatch(/^\/project\/test-project\/session\/.+/);
+    expect(url.searchParams.get('task')).toBe('%split-commit');
+  });
+
+  it('hides the AI split commit button when there are no changed files', () => {
+    storeState.status = {
+      initialized: true,
+      branch: 'main',
+      staged: [],
+      unstaged: [],
+      untracked: [],
+    };
+    renderPanel();
+    expect(screen.queryByTestId('quick-git-split-commit')).toBeNull();
+  });
+
+  it('closes the panel before navigating when shown as an overlay', () => {
+    const onClose = vi.fn();
+    renderPanel({ isOverlay: true, onClose });
+    fireEvent.click(screen.getByTestId('quick-git-split-commit'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the panel open (side-by-side) when not an overlay', () => {
+    const onClose = vi.fn();
+    renderPanel({ isOverlay: false, onClose });
+    fireEvent.click(screen.getByTestId('quick-git-split-commit'));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 });

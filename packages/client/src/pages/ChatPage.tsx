@@ -542,6 +542,12 @@ export function ChatPage() {
           : {
               currentProjectSlug: projectSlug,
               currentSessionId: sessionId,
+              // Clear any prior session's messages so a self-navigation to a new
+              // sessionId (e.g. from an overlay panel like QuickGitPanel, which does
+              // not remount ChatPage) starts empty. stream:history overwrites this for
+              // existing sessions; for a brand-new session it stays empty, which the
+              // URL task-param auto-send below depends on (messages.length === 0 guard).
+              messages: [],
               isLoading: true,
             },
       );

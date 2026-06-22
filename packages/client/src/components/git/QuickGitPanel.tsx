@@ -5,21 +5,32 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { GitBranch, GitCommitHorizontal, Loader2, ExternalLink, Download } from 'lucide-react';
+import { GitBranch, GitCommitHorizontal, Loader2, ExternalLink, Download, Sparkles, ChevronRight } from 'lucide-react';
 import { useGitStatus } from '../../hooks/useGitStatus';
 import { useGitStore } from '../../stores/gitStore';
 import { formatRelativeTime } from '../../utils/formatters';
+import { generateUUID } from '../../utils/uuid';
 
 interface QuickGitPanelProps {
   projectSlug: string;
   onNavigateToGitTab?: () => void;
+  /** True when the panel overlays the chat (mobile / narrow). In that case actions
+   *  that navigate the chat away (e.g. AI split commit) should close the panel so the
+   *  new session is visible; in side-by-side layout the panel stays open. */
+  isOverlay?: boolean;
+  /** Close the panel (provided by the QuickPanel container). */
+  onClose?: () => void;
 }
 
 export function QuickGitPanel({
   projectSlug,
   onNavigateToGitTab,
+  isOverlay,
+  onClose,
 }: QuickGitPanelProps) {
+  const navigate = useNavigate();
   const { t } = useTranslation('common');
   const { status, refresh, changedFileCount } = useGitStatus(projectSlug);
   const commits = useGitStore((s) => s.commits);
@@ -64,6 +75,16 @@ export function QuickGitPanel({
     await initRepo(projectSlug);
     await refresh();
   }, [initRepo, projectSlug, refresh]);
+
+  const handleSplitCommit = useCallback(() => {
+    if (!projectSlug) return;
+    // Close the panel only when it overlays the chat, so the new session's split
+    // work is visible. In side-by-side layout the panel can stay open alongside it.
+    if (isOverlay) onClose?.();
+    const newSessionId = generateUUID();
+    const params = new URLSearchParams({ task: '%split-commit' });
+    navigate(`/project/${projectSlug}/session/${encodeURIComponent(newSessionId)}?${params.toString()}`);
+  }, [projectSlug, navigate, isOverlay, onClose]);
 
   const isCommitDisabled = !commitMessage.trim() || changedFileCount === 0 || isLoading;
   const recentCommits = commits.slice(0, 3);
@@ -135,6 +156,27 @@ export function QuickGitPanel({
                 )}
               </div>
             </div>
+
+            {/* AI split commit */}
+            {changedFileCount > 0 && (
+              <button
+                type="button"
+                onClick={handleSplitCommit}
+                data-testid="quick-git-split-commit"
+                className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-purple-300/80 dark:border-purple-400/30 bg-purple-50/40 dark:bg-purple-500/[0.06] hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:border-purple-400 dark:hover:border-purple-400/60 transition-colors text-left"
+              >
+                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 dark:text-gray-100 truncate">
+                    {t('git.splitCommitTitle')}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {t('git.splitCommitSubtitle')}
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-purple-500 dark:text-purple-400 flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            )}
 
             {/* Quick commit section */}
             <div className="space-y-2">
