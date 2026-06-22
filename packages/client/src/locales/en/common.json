@@ -717,7 +717,11 @@
   },
   "snippet": {
     "noMatch": "No matching snippets",
-    "listAria": "Snippet list"
+    "listAria": "Snippet list",
+    "expandAria": "Show snippet content",
+    "collapseAria": "Hide snippet content",
+    "loading": "Loading...",
+    "loadError": "Failed to load content"
   },
   "code": {
     "copied": "Copied",

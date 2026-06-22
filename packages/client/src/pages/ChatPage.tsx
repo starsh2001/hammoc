@@ -1189,6 +1189,7 @@ export function ChatPage() {
             onCommandRefresh={refreshCommands}
             snippets={snippets}
             onSnippetRefresh={refreshSnippets}
+            projectSlug={projectSlug}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
@@ -1259,6 +1260,7 @@ export function ChatPage() {
             onCommandRefresh={refreshCommands}
             snippets={snippets}
             onSnippetRefresh={refreshSnippets}
+            projectSlug={projectSlug}
             permissionMode={permissionMode}
             onPermissionModeChange={setPermissionMode}
             selectedModel={selectedModel}
@@ -1399,6 +1401,7 @@ export function ChatPage() {
           onCommandRefresh={refreshCommands}
           snippets={snippets}
           onSnippetRefresh={refreshSnippets}
+          projectSlug={projectSlug}
           permissionMode={permissionMode}
           onPermissionModeChange={setPermissionMode}
           selectedModel={selectedModel}

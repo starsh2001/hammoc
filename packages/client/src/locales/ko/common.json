@@ -726,7 +726,11 @@
   },
   "snippet": {
     "noMatch": "일치하는 스니펫이 없습니다",
-    "listAria": "스니펫 목록"
+    "listAria": "스니펫 목록",
+    "expandAria": "스니펫 내용 보기",
+    "collapseAria": "스니펫 내용 접기",
+    "loading": "불러오는 중...",
+    "loadError": "내용을 불러오지 못했습니다"
   },
   "code": {
     "copied": "복사됨",

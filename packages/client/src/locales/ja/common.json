@@ -690,7 +690,11 @@
   },
   "snippet": {
     "noMatch": "一致するスニペットがありません",
-    "listAria": "スニペット一覧"
+    "listAria": "スニペット一覧",
+    "expandAria": "スニペットの内容を表示",
+    "collapseAria": "スニペットの内容を閉じる",
+    "loading": "読み込み中...",
+    "loadError": "内容の読み込みに失敗しました"
   },
   "code": {
     "copied": "コピー済み",

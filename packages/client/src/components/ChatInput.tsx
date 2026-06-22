@@ -171,6 +171,8 @@ interface ChatInputProps {
   snippets?: SnippetItem[];
   /** Refresh snippet list from server (ISSUE-54) */
   onSnippetRefresh?: () => void;
+  /** Project slug for snippet content preview */
+  projectSlug?: string;
   /** Whether the session is queue-locked (Story 15.4) */
   queueLocked?: boolean;
   /** Whether all input actions are disabled (e.g. viewing non-active branch) */
@@ -223,6 +225,7 @@ export function ChatInput({
   onRemoveStarFavorite,
   snippets = [],
   onSnippetRefresh,
+  projectSlug,
   queueLocked = false,
   actionsDisabled = false,
   chainMode = false,
@@ -1072,6 +1075,7 @@ export function ChatInput({
             filter={snippetFilter}
             selectedIndex={snippetSelectedIndex}
             onSelect={handleSnippetSelect}
+            projectSlug={projectSlug}
           />
         )}
 

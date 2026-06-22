@@ -690,7 +690,11 @@
   },
   "snippet": {
     "noMatch": "No hay snippets coincidentes",
-    "listAria": "Lista de snippets"
+    "listAria": "Lista de snippets",
+    "expandAria": "Mostrar contenido del snippet",
+    "collapseAria": "Ocultar contenido del snippet",
+    "loading": "Cargando...",
+    "loadError": "Error al cargar el contenido"
   },
   "code": {
     "copied": "Copiado",
