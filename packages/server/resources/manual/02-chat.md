@@ -128,7 +128,7 @@ Monitor token usage in real-time:
 - **Rate limit dots** — 5h/7d utilization indicators in the input area
 - **Color thresholds** — Green (normal), Yellow (moderate), Red (high usage)
 - **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. At critical usage levels, clicking instead creates a new session
-- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session. A master switch in Advanced Settings (see §13.17) lets you disable auto-compaction entirely and manage compaction manually instead
+- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session. A master switch in Advanced Settings (see §13.18) lets you disable auto-compaction entirely and manage compaction manually instead
 
 ### 2.11 Aborting Responses
 
@@ -283,7 +283,7 @@ Browse all conversation branches in a read-only mode:
 
 ### 2.24 Max Budget Warning Banner
 
-When the **Max Budget (USD)** advanced setting (see §13.17) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
+When the **Max Budget (USD)** advanced setting (see §13.18) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
 
 - **Yellow warning** (80% threshold) — "Budget warning: $X.XXXX / $Y.YYYY used (ZZ%) — approaching Max Budget limit."
 - **Red critical warning** (95% threshold) — "Budget critical: $X.XXXX / $Y.YYYY used (ZZ%) — stream will auto-stop when limit is exceeded."

@@ -129,7 +129,15 @@ Set the default thinking effort for new sessions:
   - **Right** — Always opens on the right (default)
   - **Last Used** — Remembers the last side you used and restores it
 
-### 13.12 Notifications
+### 13.12 Display Name
+
+Set a preferred name for the agent to use when addressing you:
+
+- **Text input** — Enter any name (e.g., "Alex", "Jordan"). Leave empty for no specific form of address
+- The name is injected into the system prompt, so Claude consistently addresses you by this name throughout conversations
+- Prevents the agent from guessing your name from email addresses, account names, or other system context
+
+### 13.13 Notifications
 
 The Notifications tab contains two sections: Web Push and Telegram.
 
@@ -177,7 +185,7 @@ Get notified on your phone when Claude needs attention:
 
 **Environment Variables:** Bot Token and Chat ID can be set via environment variables, which take priority over saved values (shown with an amber "Env" indicator).
 
-### 13.13 Claude Account
+### 13.14 Claude Account
 
 Shows the Claude Code account that Hammoc is using, plus live subscription usage:
 
@@ -186,14 +194,14 @@ Shows the Claude Code account that Hammoc is using, plus live subscription usage
 - **Refresh** — Manually fetch the latest account info and usage from the API (spinner shown while refreshing). Toast confirms success or failure
 - If no data has been fetched yet, a helper line explains that account info fills in automatically after the first chat or after clicking Refresh
 
-### 13.14 Hammoc User
+### 13.15 Hammoc User
 
 Local Hammoc authentication (independent of your Claude Code account):
 
 - **Change password** — Enter your current password, new password, and confirm. Minimum 4 characters. After changing, you'll be signed out and redirected to the login page.
 - **Logout** — Sign out immediately.
 
-### 13.15 System Prompt
+### 13.16 System Prompt
 
 Customize Claude's behavior with a fully editable system prompt template:
 
@@ -207,7 +215,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 The system prompt applies to both conversation engines (SDK and CLI). The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install.
 
-### 13.16 Conversation Engine
+### 13.17 Conversation Engine
 
 Hammoc can run conversations through one of two engines. The engine picker in Settings shows them as **side-by-side comparison cards** with a Recommended / Beta badge:
 
@@ -228,14 +236,14 @@ Everything interactive works the same in CLI mode as in SDK mode: live tool-call
 
 **Live permission mode switch** — During a CLI chat, clicking the permission mode button (or pressing `Shift+Tab`) changes the mode immediately, not just for the next session.
 
-CLI engine settings have moved to **Advanced Settings** (see §13.17) under the "CLI engine only" group.
+CLI engine settings have moved to **Advanced Settings** (see §13.18) under the "CLI engine only" group.
 
-### 13.17 Advanced Settings
+### 13.18 Advanced Settings
 
 Settings in the Advanced tab are organized into three groups: Common (both engines), SDK engine only, and CLI engine only.
 
 **Common (both engines):**
-- **System prompt** — Customizable prompt template that applies to both engines (see §13.15)
+- **System prompt** — Customizable prompt template that applies to both engines (see §13.16)
 - **Server management** — Development mode: "Server Rebuild" button. Production mode: version display, update check, and install
 - **File checkpointing** — Chat sessions (default on, required for code rewind §2.20) and queue runner (default off)
 - **Card entrance animation** — Streaming cards fade/slide in one at a time (default on, both engines)
@@ -250,7 +258,7 @@ Settings in the Advanced tab are organized into three groups: Common (both engin
 
 **CLI engine settings:**
 
-These settings apply only while the CLI engine is active (see §13.16):
+These settings apply only while the CLI engine is active (see §13.17):
 
 - **Show thinking summaries** — Surface Claude's thinking summaries while generating a response (default on). Whether summaries actually appear can also depend on your Claude version.
 - **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
@@ -260,7 +268,7 @@ These settings apply only while the CLI engine is active (see §13.16):
 - **Claude screen mirror** — Show a read-only terminal mirroring Claude's raw output during CLI-mode chats; on by default. Useful when a card is slow to arrive or the progress counter freezes. The panel is draggable and resizable, with a copy button for the full buffer. Turn it off if you find it distracting.
 - **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path is invalid, Hammoc falls back to auto-detect.
 
-### 13.18 Help
+### 13.19 Help
 
 In-app usage guide within the Settings page:
 
@@ -270,7 +278,7 @@ In-app usage guide within the Settings page:
 - **BMad Method** — Quick guide to the BMad workflow
 - **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
 
-### 13.19 About
+### 13.20 About
 
 Displays app information:
 

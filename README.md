@@ -148,6 +148,7 @@ Real-time conversations with Claude through a rich web UI.
 - **Session renaming & deletion** — Keep conversations organized
 - **Quick session panel** — Access sessions without leaving the chat
 - **Active streaming indicator** — See which sessions are currently active
+- **Pending question indicator** — Spot sessions awaiting user input at a glance
 
 ### Slash Commands, Snippets & Favorites
 
@@ -209,11 +210,13 @@ Edit the `.claude/` configuration tree from inside Hammoc — no need to hand-ed
 - **Branch management** — Create, switch, and view branches
 - **Pull & Push** — Sync with remote repositories
 - **Quick Git panel** — Lightweight Git access from the chat view
-- **AI-assisted split-commit** — One-click chip delegates "split this messy working tree into logical commits" to Claude in a fresh session
+- **AI-assisted split-commit** — One-click chip delegates "split this messy working tree into logical commits" to Claude in a fresh session (available in both the full Git tab and the Quick Git panel)
+- **Git environment detection** — Actionable UI when Git is not installed or authentication fails
 
 ### Terminal
 
-- **PTY emulation** — Full terminal emulation powered by xterm.js
+- **PTY emulation** — Full terminal emulation powered by xterm.js with a touch-first input model: read-only viewport, dedicated input bar, quick-key buttons (arrows, Tab, Esc, Ctrl combos), and mobile touch selection with drag handles
+- **CJK / IME support** — Korean, Japanese, and Chinese input via Input Method Editor with composition preview
 - **Multiple tabs** — Run several terminal sessions simultaneously
 - **Security** — Restricted to local network by default; configurable via settings
 
@@ -243,6 +246,7 @@ Automate repetitive prompt sequences.
 - **Language** — English, 中文, 日本語, 한국어, Español, Português
 - **Chat timeout** — 1m, 3m, 5m (default), 10m, 30m
 - **Web Push & Telegram notifications** — Get notified on permission requests, completions, and errors
+- **Display name** — Set a preferred name for the agent to use when addressing you
 - **Claude account & usage** — Inspect the linked Claude Code account plus 5h / 7d usage quotas with live refresh
 - **System prompt editing** — Customize Claude's behavior per project
 - **Advanced** — Server restart, software updates, SDK parameters (thinking tokens, turns, budget — now applied to both chat and queue runs)

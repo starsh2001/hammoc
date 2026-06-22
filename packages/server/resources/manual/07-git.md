@@ -59,6 +59,7 @@ Lightweight Git access from the quick panel side bar:
 
 - **Branch name** with changed file count badge (e.g., "3 changes")
 - **Commit input** — Textarea for commit message
+- **AI split commit button** — A purple dashed button labeled "Split changes into logical commits / Claude handles it in a new session" appears when uncommitted changes exist. Clicking it creates a fresh session, sends the `%split-commit` snippet, and navigates you into that session. Hidden on a clean working tree. See §7.10 for details
 - **"Stage All & Commit"** — Single green button that automatically stages all unstaged/untracked files and commits in one action
 - **Success message** — Displayed briefly after a successful commit
 - **Recent commits** — Shows only the 3 most recent commits (hash, timestamp, message)
@@ -82,7 +83,12 @@ If the project directory is not a Git repository:
 
 ### 7.10 AI-Assisted Split Commit
 
-A purple dashed chip — **"Split changes into logical commits / Claude handles it in a new session"** — appears in the Git tab below the file list whenever there are uncommitted changes (staged, unstaged, or untracked). The chip is hidden on a clean working tree.
+A purple dashed chip — **"Split changes into logical commits / Claude handles it in a new session"** — appears whenever there are uncommitted changes (staged, unstaged, or untracked). The chip is hidden on a clean working tree.
+
+It appears in two places:
+
+- **Git tab** — Below the file list, as a dashed chip
+- **Quick Git panel** — Between the branch status and the commit textarea, as a purple button with a sparkles icon
 
 Clicking it:
 
@@ -90,5 +96,20 @@ Clicking it:
 2. Auto-sends the bundled `%split-commit` snippet, which asks Claude to inspect the working tree (`git status` / `git diff`), group changes into coherent units, and produce one conventional-style commit per group
 3. Navigates you into that session so you can watch the work and approve each commit
 
-The chip lives only on the full Git tab — the Quick Git panel keeps its single "Stage All & Commit" action for fast manual commits.
+### 7.11 Git Not-Installed & Auth-Failed Detection
+
+Hammoc detects common Git environment problems and shows actionable guidance instead of cryptic errors:
+
+**Git not installed:**
+- The Quick Git panel shows a friendly message explaining that Git is not installed
+- A **"Download Git"** button links directly to the official Git download page
+- No Git functionality is available until Git is installed
+
+**Authentication failed:**
+- When push or pull fails due to missing credentials, an amber credential setup guide banner appears in the Git tab
+- The banner shows two common credential setup methods:
+  - **SSH** — `ssh-keygen -t ed25519` command in a copyable monospace box
+  - **HTTPS** — `git config --global credential.helper store` command in a copyable monospace box
+- A link to the GitHub authentication documentation is provided
+- The banner remains visible until manually dismissed
 

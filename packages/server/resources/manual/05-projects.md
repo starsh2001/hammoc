@@ -11,7 +11,7 @@ Each project card displays:
 - **Session count** — Number of chat sessions
 - **Last modified** — When the project was last active
 - **BMad badge** — Indicates BMAD-METHOD enabled projects
-- **Status indicators** — Active sessions (green dot), queue status badge, terminal count (updates in real-time)
+- **Status indicators** — Active sessions (green dot), pending question count (cyan dot), queue status badge, terminal count (updates in real-time)
 
 Each card has a **kebab menu** (⋮) with:
 
@@ -55,7 +55,7 @@ The Settings tab has a two-pane layout:
 
 - **Default model** — Override the global model selection
 - **Permission mode** — Override the global permission mode (Plan, Ask before edits, Edit automatically). Note: Bypass permissions is not available at project level
-- **Conversation engine** — Override which engine this project runs on: **Use Global default**, **SDK**, or **CLI** (see §13.16). When set to anything other than Global default, a "Project override" badge appears next to the field. The effective engine is resolved as project override → global setting → SDK
+- **Conversation engine** — Override which engine this project runs on: **Use Global default**, **SDK**, or **CLI** (see §13.17). When set to anything other than Global default, a "Project override" badge appears next to the field. The effective engine is resolved as project override → global setting → SDK
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
 

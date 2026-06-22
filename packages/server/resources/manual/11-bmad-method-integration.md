@@ -71,6 +71,7 @@ For BMad projects, the overview page displays additional sections above the stan
 - Detects the current **workflow phase** (Pre-PRD, Pre-Architecture, Implementation, Completed)
 - Shows context-aware **action buttons** (primary/secondary) that navigate to the right agent + task command
 - Quick links: New Session, Queue Runner, File Explorer
+- **Disabled during refresh** — While the background status revalidation is running, all recommendation buttons are disabled (dimmed) and a spinner with "Updating project status..." appears, preventing launches based on stale cached state
 - See §11.5 for phase details
 
 **Document Status Card:**

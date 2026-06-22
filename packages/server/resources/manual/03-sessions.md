@@ -12,6 +12,7 @@ Access the session list via the sidebar or quick panel:
 - **Date** — When the session was last active
 - **Streaming indicator** — Green dot with animation when streaming
 - **Waiting indicator** — Amber pulsing dot with "Waiting" badge when a session is connected but not yet streaming
+- **Pending question indicator** — Cyan pulsing dot with "Awaiting selection" badge when a session has an active `AskUserQuestion` waiting for user input. Appears alongside the session entry so you can spot sessions that need attention without opening each one
 - **Queue badge** — Shown when queue runner is active on the session
 - **Early visibility** — New sessions appear in the list as soon as a message is sent, with no brief delay
 - Empty sessions are hidden by default (toggle with the eye icon)

@@ -259,7 +259,7 @@ Monitor token usage in real-time:
 - **Rate limit dots** — 5h/7d utilization indicators in the input area
 - **Color thresholds** — Green (normal), Yellow (moderate), Red (high usage)
 - **Context compaction** — Click the usage donut to trigger compaction, which summarizes the conversation to free up context space. At critical usage levels, clicking instead creates a new session
-- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session. A master switch in Advanced Settings (see §13.17) lets you disable auto-compaction entirely and manage compaction manually instead
+- **Auto-compact on overflow** — When message history hits the context window limit, Hammoc automatically compacts the context and retries the message instead of losing the session. A master switch in Advanced Settings (see §13.18) lets you disable auto-compaction entirely and manage compaction manually instead
 
 ### 2.11 Aborting Responses
 
@@ -414,7 +414,7 @@ Browse all conversation branches in a read-only mode:
 
 ### 2.24 Max Budget Warning Banner
 
-When the **Max Budget (USD)** advanced setting (see §13.17) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
+When the **Max Budget (USD)** advanced setting (see §13.18) is configured, a sticky banner appears at the top of the chat area once the session cost approaches the limit:
 
 - **Yellow warning** (80% threshold) — "Budget warning: $X.XXXX / $Y.YYYY used (ZZ%) — approaching Max Budget limit."
 - **Red critical warning** (95% threshold) — "Budget critical: $X.XXXX / $Y.YYYY used (ZZ%) — stream will auto-stop when limit is exceeded."
@@ -449,6 +449,7 @@ Access the session list via the sidebar or quick panel:
 - **Date** — When the session was last active
 - **Streaming indicator** — Green dot with animation when streaming
 - **Waiting indicator** — Amber pulsing dot with "Waiting" badge when a session is connected but not yet streaming
+- **Pending question indicator** — Cyan pulsing dot with "Awaiting selection" badge when a session has an active `AskUserQuestion` waiting for user input. Appears alongside the session entry so you can spot sessions that need attention without opening each one
 - **Queue badge** — Shown when queue runner is active on the session
 - **Early visibility** — New sessions appear in the list as soon as a message is sent, with no brief delay
 - Empty sessions are hidden by default (toggle with the eye icon)
@@ -653,7 +654,7 @@ Each project card displays:
 - **Session count** — Number of chat sessions
 - **Last modified** — When the project was last active
 - **BMad badge** — Indicates BMAD-METHOD enabled projects
-- **Status indicators** — Active sessions (green dot), queue status badge, terminal count (updates in real-time)
+- **Status indicators** — Active sessions (green dot), pending question count (cyan dot), queue status badge, terminal count (updates in real-time)
 
 Each card has a **kebab menu** (⋮) with:
 
@@ -697,7 +698,7 @@ The Settings tab has a two-pane layout:
 
 - **Default model** — Override the global model selection
 - **Permission mode** — Override the global permission mode (Plan, Ask before edits, Edit automatically). Note: Bypass permissions is not available at project level
-- **Conversation engine** — Override which engine this project runs on: **Use Global default**, **SDK**, or **CLI** (see §13.16). When set to anything other than Global default, a "Project override" badge appears next to the field. The effective engine is resolved as project override → global setting → SDK
+- **Conversation engine** — Override which engine this project runs on: **Use Global default**, **SDK**, or **CLI** (see §13.17). When set to anything other than Global default, a "Project override" badge appears next to the field. The effective engine is resolved as project override → global setting → SDK
 - **Hidden toggle** — Hide the project from the project list
 - **Reset to Global Defaults** — Remove all overrides at once
 
@@ -882,6 +883,7 @@ Lightweight Git access from the quick panel side bar:
 
 - **Branch name** with changed file count badge (e.g., "3 changes")
 - **Commit input** — Textarea for commit message
+- **AI split commit button** — A purple dashed button labeled "Split changes into logical commits / Claude handles it in a new session" appears when uncommitted changes exist. Clicking it creates a fresh session, sends the `%split-commit` snippet, and navigates you into that session. Hidden on a clean working tree. See §7.10 for details
 - **"Stage All & Commit"** — Single green button that automatically stages all unstaged/untracked files and commits in one action
 - **Success message** — Displayed briefly after a successful commit
 - **Recent commits** — Shows only the 3 most recent commits (hash, timestamp, message)
@@ -905,7 +907,12 @@ If the project directory is not a Git repository:
 
 ### 7.10 AI-Assisted Split Commit
 
-A purple dashed chip — **"Split changes into logical commits / Claude handles it in a new session"** — appears in the Git tab below the file list whenever there are uncommitted changes (staged, unstaged, or untracked). The chip is hidden on a clean working tree.
+A purple dashed chip — **"Split changes into logical commits / Claude handles it in a new session"** — appears whenever there are uncommitted changes (staged, unstaged, or untracked). The chip is hidden on a clean working tree.
+
+It appears in two places:
+
+- **Git tab** — Below the file list, as a dashed chip
+- **Quick Git panel** — Between the branch status and the commit textarea, as a purple button with a sparkles icon
 
 Clicking it:
 
@@ -913,7 +920,22 @@ Clicking it:
 2. Auto-sends the bundled `%split-commit` snippet, which asks Claude to inspect the working tree (`git status` / `git diff`), group changes into coherent units, and produce one conventional-style commit per group
 3. Navigates you into that session so you can watch the work and approve each commit
 
-The chip lives only on the full Git tab — the Quick Git panel keeps its single "Stage All & Commit" action for fast manual commits.
+### 7.11 Git Not-Installed & Auth-Failed Detection
+
+Hammoc detects common Git environment problems and shows actionable guidance instead of cryptic errors:
+
+**Git not installed:**
+- The Quick Git panel shows a friendly message explaining that Git is not installed
+- A **"Download Git"** button links directly to the official Git download page
+- No Git functionality is available until Git is installed
+
+**Authentication failed:**
+- When push or pull fails due to missing credentials, an amber credential setup guide banner appears in the Git tab
+- The banner shows two common credential setup methods:
+  - **SSH** — `ssh-keygen -t ed25519` command in a copyable monospace box
+  - **HTTPS** — `git config --global credential.helper store` command in a copyable monospace box
+- A link to the GitHub authentication documentation is provided
+- The banner remains visible until manually dismissed
 
 ---
 
@@ -921,11 +943,14 @@ The chip lives only on the full Git tab — the Quick Git panel keeps its single
 
 ### 8.1 Web Terminal
 
-Full terminal access in your browser:
+Full terminal access in your browser, designed for both desktop and touch devices:
 
 - **Shell emulation** — Real terminal connection to your system shell
 - **Working directory** — Opens in your project directory
 - Supports all shell commands, interactive programs, and TUI apps
+- **Read-only viewport + input bar** — The terminal display is read-only; all typing goes through a dedicated input bar at the bottom. Printable characters and special keys (Enter, Tab, Escape, Ctrl combos) are relayed to the shell immediately, so the input bar stays empty most of the time. During CJK/IME composition, the composed text appears temporarily in the input bar until committed
+- **Quick-key buttons** — A toolbar above the input bar provides one-tap access to keys that are hard to reach on touch keyboards: arrow keys (Up/Down/Left/Right), Tab, Esc, Backspace, Ctrl+C, Ctrl+D, Ctrl+Z, and a Copy button
+- **Shift toggle** — A dedicated Shift button in the quick-key bar. While active (highlighted), the next arrow key press sends a Shift+Arrow sequence to the shell (for text selection). The toggle deactivates automatically after one use
 - **Theme** — Automatically matches app theme (dark/light)
 - **Font** — Monospace font (JetBrains Mono, Fira Code, Cascadia Code)
 
@@ -975,6 +1000,26 @@ Lightweight terminal access from the quick panel side bar:
 - **"Open in Tab"** link — Navigate to the full Terminal tab
 - **Tab keyboard navigation** — ArrowLeft/Right to switch, Delete to close
 - **Security warning** — Same access denied warning when terminal access is restricted
+
+### 8.7 Touch Selection & Clipboard
+
+Mobile-optimized text selection for the terminal viewport:
+
+- **Long-press to select** — Press and hold (~400 ms) on terminal content to select the word at that position. Drag while holding to extend the selection
+- **Selection handles** — Two draggable blue handles appear at the start and end of the selection. Drag either handle to adjust the selection boundary
+- **CJK word selection** — Chinese, Japanese, and Korean wide characters are treated as word characters, so double-tap or long-press selects the full CJK word
+- **Floating copy button** — A "Copy" popup appears above the selection. Tap to copy and dismiss
+- **Custom right-click menu** — Right-clicking with a selection shows a custom context menu with a "Copy" option. With no selection, the browser's default context menu appears
+- **Clipboard fallback** — When the Clipboard API is unavailable (e.g., HTTP over LAN without HTTPS), a `document.execCommand('copy')` fallback is used
+- **Copy toolbar button** — The quick-key bar includes a Copy button that copies the current selection, or the entire terminal buffer if nothing is selected
+
+### 8.8 CJK / IME Input
+
+For users of Korean, Japanese, Chinese, and other languages that require an Input Method Editor:
+
+- **Composition preview** — While composing (e.g., assembling Korean jamo), the in-progress text appears in the input bar without being sent to the shell
+- **Commit on completion** — When the composition is finalized (pressing space, selecting a candidate, etc.), the composed text is sent to the shell and the input bar clears
+- **Consecutive compositions** — Starting a new composition immediately after completing one preserves the initial characters of the new composition (no flash or loss)
 
 ---
 
@@ -1511,6 +1556,7 @@ For BMad projects, the overview page displays additional sections above the stan
 - Detects the current **workflow phase** (Pre-PRD, Pre-Architecture, Implementation, Completed)
 - Shows context-aware **action buttons** (primary/secondary) that navigate to the right agent + task command
 - Quick links: New Session, Queue Runner, File Explorer
+- **Disabled during refresh** — While the background status revalidation is running, all recommendation buttons are disabled (dimmed) and a spinner with "Updating project status..." appears, preventing launches based on stale cached state
 - See §11.5 for phase details
 
 **Document Status Card:**
@@ -1961,7 +2007,15 @@ Set the default thinking effort for new sessions:
   - **Right** — Always opens on the right (default)
   - **Last Used** — Remembers the last side you used and restores it
 
-### 13.12 Notifications
+### 13.12 Display Name
+
+Set a preferred name for the agent to use when addressing you:
+
+- **Text input** — Enter any name (e.g., "Alex", "Jordan"). Leave empty for no specific form of address
+- The name is injected into the system prompt, so Claude consistently addresses you by this name throughout conversations
+- Prevents the agent from guessing your name from email addresses, account names, or other system context
+
+### 13.13 Notifications
 
 The Notifications tab contains two sections: Web Push and Telegram.
 
@@ -2009,7 +2063,7 @@ Get notified on your phone when Claude needs attention:
 
 **Environment Variables:** Bot Token and Chat ID can be set via environment variables, which take priority over saved values (shown with an amber "Env" indicator).
 
-### 13.13 Claude Account
+### 13.14 Claude Account
 
 Shows the Claude Code account that Hammoc is using, plus live subscription usage:
 
@@ -2018,14 +2072,14 @@ Shows the Claude Code account that Hammoc is using, plus live subscription usage
 - **Refresh** — Manually fetch the latest account info and usage from the API (spinner shown while refreshing). Toast confirms success or failure
 - If no data has been fetched yet, a helper line explains that account info fills in automatically after the first chat or after clicking Refresh
 
-### 13.14 Hammoc User
+### 13.15 Hammoc User
 
 Local Hammoc authentication (independent of your Claude Code account):
 
 - **Change password** — Enter your current password, new password, and confirm. Minimum 4 characters. After changing, you'll be signed out and redirected to the login page.
 - **Logout** — Sign out immediately.
 
-### 13.15 System Prompt
+### 13.16 System Prompt
 
 Customize Claude's behavior with a fully editable system prompt template:
 
@@ -2039,7 +2093,7 @@ Customize Claude's behavior with a fully editable system prompt template:
 
 The system prompt applies to both conversation engines (SDK and CLI). The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install.
 
-### 13.16 Conversation Engine
+### 13.17 Conversation Engine
 
 Hammoc can run conversations through one of two engines. The engine picker in Settings shows them as **side-by-side comparison cards** with a Recommended / Beta badge:
 
@@ -2060,14 +2114,14 @@ Everything interactive works the same in CLI mode as in SDK mode: live tool-call
 
 **Live permission mode switch** — During a CLI chat, clicking the permission mode button (or pressing `Shift+Tab`) changes the mode immediately, not just for the next session.
 
-CLI engine settings have moved to **Advanced Settings** (see §13.17) under the "CLI engine only" group.
+CLI engine settings have moved to **Advanced Settings** (see §13.18) under the "CLI engine only" group.
 
-### 13.17 Advanced Settings
+### 13.18 Advanced Settings
 
 Settings in the Advanced tab are organized into three groups: Common (both engines), SDK engine only, and CLI engine only.
 
 **Common (both engines):**
-- **System prompt** — Customizable prompt template that applies to both engines (see §13.15)
+- **System prompt** — Customizable prompt template that applies to both engines (see §13.16)
 - **Server management** — Development mode: "Server Rebuild" button. Production mode: version display, update check, and install
 - **File checkpointing** — Chat sessions (default on, required for code rewind §2.20) and queue runner (default off)
 - **Card entrance animation** — Streaming cards fade/slide in one at a time (default on, both engines)
@@ -2082,7 +2136,7 @@ Settings in the Advanced tab are organized into three groups: Common (both engin
 
 **CLI engine settings:**
 
-These settings apply only while the CLI engine is active (see §13.16):
+These settings apply only while the CLI engine is active (see §13.17):
 
 - **Show thinking summaries** — Surface Claude's thinking summaries while generating a response (default on). Whether summaries actually appear can also depend on your Claude version.
 - **Show generation progress** — Toggle the live "↓ N tokens · Ns" indicator shown during generation (default on).
@@ -2092,7 +2146,7 @@ These settings apply only while the CLI engine is active (see §13.16):
 - **Claude screen mirror** — Show a read-only terminal mirroring Claude's raw output during CLI-mode chats; on by default. Useful when a card is slow to arrive or the progress counter freezes. The panel is draggable and resizable, with a copy button for the full buffer. Turn it off if you find it distracting.
 - **Claude binary path** — Manually point Hammoc at a specific `claude` executable. Leave empty to auto-detect. If the path is invalid, Hammoc falls back to auto-detect.
 
-### 13.18 Help
+### 13.19 Help
 
 In-app usage guide within the Settings page:
 
@@ -2102,7 +2156,7 @@ In-app usage guide within the Settings page:
 - **BMad Method** — Quick guide to the BMad workflow
 - **Keyboard shortcuts** — Key bindings table (Enter, Shift+Enter, Escape, Ctrl+C, F7/Shift+F7, /)
 
-### 13.19 About
+### 13.20 About
 
 Displays app information:
 
