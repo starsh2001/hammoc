@@ -614,6 +614,7 @@
     "inputPlaceholder": "コマンドを入力...",
     "send": "送信",
     "copy": "ターミナルの内容をコピー",
+    "copyAction": "コピー",
     "createNotConnected": "ターミナルを作成できません: ソケットが接続されていません",
     "createTimeout": "ターミナル作成がタイムアウトしました — 再試行してください"
   },

@@ -652,6 +652,7 @@
     "inputPlaceholder": "Enter command...",
     "send": "Send",
     "copy": "Copy terminal content",
+    "copyAction": "Copy",
     "createNotConnected": "Cannot create terminal: socket not connected",
     "createTimeout": "Terminal create timed out — please try again"
   },

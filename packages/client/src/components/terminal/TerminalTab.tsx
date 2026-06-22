@@ -273,7 +273,7 @@ export function TerminalTab({ projectSlug }: TerminalTabProps) {
       {/* Terminal emulator area */}
       <div className="flex-1 min-h-0">
         {activeTerminalId ? (
-          <TerminalEmulator terminalId={activeTerminalId} autoFocus />
+          <TerminalEmulator terminalId={activeTerminalId} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <div className="p-4 bg-gray-100 dark:bg-[#263240] rounded-2xl mb-4">

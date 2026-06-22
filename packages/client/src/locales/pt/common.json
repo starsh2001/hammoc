@@ -614,6 +614,7 @@
     "inputPlaceholder": "Digite o comando...",
     "send": "Enviar",
     "copy": "Copiar conteúdo do terminal",
+    "copyAction": "Copiar",
     "createNotConnected": "Não é possível criar o terminal: socket não conectado",
     "createTimeout": "Criação do terminal expirou — tente novamente"
   },

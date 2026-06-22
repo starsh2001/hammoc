@@ -614,6 +614,7 @@
     "inputPlaceholder": "输入命令...",
     "send": "发送",
     "copy": "复制终端内容",
+    "copyAction": "复制",
     "createNotConnected": "无法创建终端: 套接字未连接",
     "createTimeout": "创建终端超时 — 请重试"
   },

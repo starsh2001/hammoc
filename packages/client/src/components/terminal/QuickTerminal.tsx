@@ -197,7 +197,7 @@ export function QuickTerminal({
             </p>
           </div>
         ) : terminalId ? (
-          <TerminalEmulator terminalId={terminalId} autoFocus />
+          <TerminalEmulator terminalId={terminalId} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
             <div className="p-3 bg-gray-100 dark:bg-[#263240] rounded-2xl mb-3">

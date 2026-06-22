@@ -5,14 +5,14 @@
  * All user input goes through the bottom input bar, which relays
  * keystrokes to the PTY in real-time while keeping typed text visible.
  *
- * The input bar is uncontrolled — the DOM value is managed via ref,
- * avoiding React/IME composition conflicts. onChange detects new text
- * (typed, pasted, IME-committed) via a length-based diff and sends
- * it to the PTY. Special keys (Enter, Tab, arrows, Ctrl combos)
- * are handled in onKeyDown and bypass the diff path.
+ * Touch selection: long-press + drag selects characters with draggable
+ * handles, then a floating "Copy" popup copies the selection. Copy uses
+ * a clipboard helper that falls back to execCommand in non-secure
+ * contexts (e.g. phone accessing the app over http://LAN-IP), where
+ * navigator.clipboard is unavailable.
  */
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -21,6 +21,34 @@ import '@xterm/xterm/css/xterm.css';
 import { useTerminalStore } from '../../stores/terminalStore';
 import { useTheme } from '../../hooks/useTheme';
 import { getXtermTheme } from './xtermTheme';
+
+/**
+ * Copy text to clipboard. Falls back to execCommand for non-secure
+ * contexts (HTTP over LAN), where navigator.clipboard is undefined.
+ */
+function copyText(text: string): void {
+  if (!text) return;
+  try {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(() => {});
+      return;
+    }
+  } catch {
+    /* fall through to execCommand */
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+  } catch {
+    /* nothing else we can do */
+  }
+  document.body.removeChild(textarea);
+}
 
 const QUICK_KEYS: Array<{ label: string; seq: string; title?: string } | 'sep'> = [
   { label: '↑', seq: '\x1b[A', title: 'Up' },
@@ -44,19 +72,28 @@ const KEY_BTN =
   'active:bg-gray-400 dark:active:bg-[#405060] ' +
   'transition-colors select-none';
 
+const HANDLE_SIZE = 24;
+
+interface SelectionUI {
+  sLeft: number;
+  sTop: number;
+  eLeft: number;
+  eTop: number;
+  copyLeft: number;
+  copyTop: number;
+}
+
 // ===== Component =====
 
 export interface TerminalEmulatorProps {
   terminalId: string;
   height?: string | number;
-  autoFocus?: boolean;
   onReady?: () => void;
 }
 
 export function TerminalEmulator({
   terminalId,
   height = '100%',
-  autoFocus = false,
   onReady,
 }: TerminalEmulatorProps) {
   const { t } = useTranslation('common');
@@ -75,10 +112,19 @@ export function TerminalEmulator({
   const status = session?.status ?? null;
   const fontSize = useTerminalStore((s) => s.fontSize);
 
+  // Touch selection UI (handles + copy popup positions)
+  const [selUI, setSelUI] = useState<SelectionUI | null>(null);
+  const hasSelectionRef = useRef(false);
+  const draggingRef = useRef<'start' | 'end' | null>(null);
+  const selSRef = useRef({ col: 0, row: 0 });
+  const selERef = useRef({ col: 0, row: 0 });
+
   useEffect(() => {
     if (inputRef.current) inputRef.current.value = '';
     isComposingRef.current = false;
     sentLenRef.current = 0;
+    hasSelectionRef.current = false;
+    setSelUI(null);
   }, [terminalId]);
 
   const clearInput = useCallback(() => {
@@ -86,24 +132,31 @@ export function TerminalEmulator({
     sentLenRef.current = 0;
   }, []);
 
-  // Copy terminal content (selection if any, otherwise all)
-  const handleCopy = useCallback(() => {
+  // Toolbar copy button: selection if any, otherwise whole terminal
+  const handleToolbarCopy = useCallback(() => {
     const terminal = terminalRef.current;
     if (!terminal) return;
-    const sel = terminal.getSelection();
-    if (sel) {
-      navigator.clipboard.writeText(sel).catch(() => {});
+    let text = terminal.getSelection();
+    if (!text) {
+      terminal.selectAll();
+      text = terminal.getSelection();
       terminal.clearSelection();
     } else {
-      terminal.selectAll();
-      const all = terminal.getSelection();
-      if (all) navigator.clipboard.writeText(all).catch(() => {});
       terminal.clearSelection();
     }
-    requestAnimationFrame(() => inputRef.current?.focus());
+    copyText(text);
+    setSelUI(null);
   }, []);
 
-  // Quick-key buttons: send sequence, clear input, refocus
+  // Floating popup copy: copy current selection, then dismiss
+  const handlePopupCopy = useCallback(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    copyText(terminal.getSelection());
+    terminal.clearSelection();
+    setSelUI(null);
+  }, []);
+
   const sendKey = useCallback(
     (seq: string) => {
       const s = useTerminalStore.getState().terminals.get(terminalId);
@@ -115,7 +168,6 @@ export function TerminalEmulator({
     [sendInput, terminalId, clearInput]
   );
 
-  // Send button = Enter
   const handleSend = useCallback(() => {
     const s = useTerminalStore.getState().terminals.get(terminalId);
     if (s?.status !== 'connected') return;
@@ -138,7 +190,12 @@ export function TerminalEmulator({
           clearInput();
           break;
         case 'Backspace':
+          e.preventDefault();
           sendInput(terminalId, '\x7f');
+          if (inputRef.current && inputRef.current.value.length > 0) {
+            inputRef.current.value = inputRef.current.value.slice(0, -1);
+            sentLenRef.current = inputRef.current.value.length;
+          }
           break;
         case 'Delete':
           e.preventDefault();
@@ -188,8 +245,9 @@ export function TerminalEmulator({
               e.preventDefault();
               const sel = terminalRef.current?.getSelection();
               if (sel) {
-                navigator.clipboard.writeText(sel).catch(() => {});
+                copyText(sel);
                 terminalRef.current?.clearSelection();
+                setSelUI(null);
               } else if (isCtrl) {
                 sendInput(terminalId, '\x03');
                 clearInput();
@@ -213,17 +271,14 @@ export function TerminalEmulator({
               useTerminalStore.getState().resetFontSize();
             }
           }
-          // Printable chars: no preventDefault → browser inserts → onChange sends
       }
     },
     [sendInput, terminalId, clearInput]
   );
 
-  // onChange detects new text (typed chars, paste, IME commit) via length diff
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (isComposingRef.current) return;
-
       const val = e.target.value;
       if (val.length > sentLenRef.current) {
         const added = val.slice(sentLenRef.current);
@@ -275,6 +330,12 @@ export function TerminalEmulator({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
+    if (terminal.textarea) {
+      terminal.textarea.setAttribute('inputmode', 'none');
+      terminal.textarea.setAttribute('tabindex', '-1');
+      terminal.textarea.style.pointerEvents = 'none';
+    }
+
     const unregisterData = registerDataCallback(terminalId, (data) => {
       terminal.write(data);
     });
@@ -297,64 +358,147 @@ export function TerminalEmulator({
     });
     resizeObserver.observe(containerRef.current);
 
-    // Redirect focus from xterm to input bar so the mobile keyboard
-    // doesn't open on the terminal and keystrokes always go through
-    // the input bar.
+    // ── Touch selection (long-press + drag) ──────────────────────
     const container = containerRef.current;
-    const handleFocusIn = () => {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    };
-    container.addEventListener('focusin', handleFocusIn);
-
-    // Touch-based line selection (long-press + drag)
     const LONG_PRESS_MS = 400;
     const MOVE_THRESHOLD = 10;
     let touchTimer: ReturnType<typeof setTimeout> | null = null;
     let selecting = false;
-    let startRow = -1;
-    let touchStartY = 0;
-    let touchStartX = 0;
+    let touchActive = false;
+    let tStartX = 0;
+    let tStartY = 0;
 
-    const touchToRow = (clientY: number): number => {
-      const rect = container.getBoundingClientRect();
-      const cellH = rect.height / terminal.rows;
-      const vRow = Math.floor((clientY - rect.top) / cellH);
-      return terminal.buffer.active.viewportY + Math.max(0, Math.min(vRow, terminal.rows - 1));
+    const toCell = (cx: number, cy: number) => {
+      const r = container.getBoundingClientRect();
+      const cw = r.width / terminal.cols;
+      const ch = r.height / terminal.rows;
+      const col = Math.max(0, Math.min(Math.floor((cx - r.left) / cw), terminal.cols - 1));
+      const vr = Math.max(0, Math.min(Math.floor((cy - r.top) / ch), terminal.rows - 1));
+      return { col, row: terminal.buffer.active.viewportY + vr };
+    };
+
+    const refreshUI = () => {
+      const sS = selSRef.current;
+      const sE = selERef.current;
+      let s = sS, e = sE;
+      if (s.row > e.row || (s.row === e.row && s.col > e.col)) { s = sE; e = sS; }
+      const len = s.row === e.row
+        ? e.col - s.col + 1
+        : (terminal.cols - s.col) + (e.row - s.row - 1) * terminal.cols + (e.col + 1);
+      terminal.select(s.col, s.row, len);
+
+      const r = container.getBoundingClientRect();
+      const cw = r.width / terminal.cols;
+      const ch = r.height / terminal.rows;
+      const vy = terminal.buffer.active.viewportY;
+      const half = HANDLE_SIZE / 2;
+      const midX = (s.col * cw + (e.col + 1) * cw) / 2;
+      setSelUI({
+        sLeft: s.col * cw - half,
+        sTop: (s.row - vy + 1) * ch,
+        eLeft: (e.col + 1) * cw - half,
+        eTop: (e.row - vy + 1) * ch,
+        copyLeft: Math.max(28, Math.min(midX, r.width - 28)),
+        copyTop: Math.max(2, (s.row - vy) * ch - 38),
+      });
+      hasSelectionRef.current = true;
+    };
+
+    const isWordCol = (line: ReturnType<typeof terminal.buffer.active.getLine>, col: number): boolean => {
+      if (!line || col < 0 || col >= terminal.cols) return false;
+      const c = line.getCell(col);
+      if (!c) return false;
+      const ch = c.getChars();
+      return ch.length > 0 && !/\s/.test(ch);
     };
 
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      touchStartX = t.clientX;
-      touchStartY = t.clientY;
+      tStartX = t.clientX;
+      tStartY = t.clientY;
       selecting = false;
+      touchActive = true;
+
+      if (hasSelectionRef.current) {
+        hasSelectionRef.current = false;
+        terminal.clearSelection();
+        setSelUI(null);
+      }
+
       touchTimer = setTimeout(() => {
+        if (!touchActive) return;
         selecting = true;
-        startRow = touchToRow(t.clientY);
-        terminal.selectLines(startRow, startRow);
+        const cell = toCell(t.clientX, t.clientY);
+        const line = terminal.buffer.active.getLine(cell.row);
+        let wStart = cell.col;
+        let wEnd = cell.col;
+
+        // If on the empty second half of a wide char, back up
+        if (!isWordCol(line, wStart) && isWordCol(line, wStart - 1)) wStart--;
+        wEnd = wStart;
+
+        if (isWordCol(line, wStart)) {
+          while (isWordCol(line, wStart - 1)) wStart--;
+          while (isWordCol(line, wEnd + 1)) wEnd++;
+          // Include the second cell of a trailing wide character
+          const ec = line?.getCell(wEnd);
+          if (ec && (ec.getWidth() > 1)) wEnd++;
+        }
+        selSRef.current = { col: wStart, row: cell.row };
+        selERef.current = { col: wEnd, row: cell.row };
+        refreshUI();
       }, LONG_PRESS_MS);
     };
+
     const onTouchMove = (e: TouchEvent) => {
       const t = e.touches[0];
+
+      if (draggingRef.current) {
+        e.preventDefault();
+        const cell = toCell(t.clientX, t.clientY);
+        if (draggingRef.current === 'start') selSRef.current = { ...cell };
+        else selERef.current = { ...cell };
+        refreshUI();
+        return;
+      }
+
       if (!selecting) {
-        if (
-          Math.abs(t.clientX - touchStartX) > MOVE_THRESHOLD ||
-          Math.abs(t.clientY - touchStartY) > MOVE_THRESHOLD
-        ) {
+        if (Math.abs(t.clientX - tStartX) > MOVE_THRESHOLD ||
+            Math.abs(t.clientY - tStartY) > MOVE_THRESHOLD) {
           if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
         }
         return;
       }
       e.preventDefault();
-      const curRow = touchToRow(t.clientY);
-      terminal.selectLines(Math.min(startRow, curRow), Math.max(startRow, curRow));
+      const cell = toCell(t.clientX, t.clientY);
+      selERef.current = { ...cell };
+      refreshUI();
     };
+
     const onTouchEnd = () => {
+      touchActive = false;
       if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+      draggingRef.current = null;
       selecting = false;
     };
+
     container.addEventListener('touchstart', onTouchStart, { passive: true });
-    container.addEventListener('touchmove', onTouchMove, { passive: false });
-    container.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchcancel', onTouchEnd);
+
+    // Hide popup/handles when selection clears or terminal scrolls
+    const selDisp = terminal.onSelectionChange(() => {
+      if (!terminal.hasSelection()) {
+        hasSelectionRef.current = false;
+        setSelUI(null);
+      }
+    });
+    const scrollDisp = terminal.onScroll(() => {
+      hasSelectionRef.current = false;
+      setSelUI(null);
+      terminal.clearSelection();
+    });
 
     let initRafId: number | null = null;
     initRafId = requestAnimationFrame(() => {
@@ -364,11 +508,13 @@ export function TerminalEmulator({
     });
 
     return () => {
-      container.removeEventListener('focusin', handleFocusIn);
       container.removeEventListener('touchstart', onTouchStart);
-      container.removeEventListener('touchmove', onTouchMove);
-      container.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
       if (touchTimer) clearTimeout(touchTimer);
+      selDisp.dispose();
+      scrollDisp.dispose();
       unregisterData();
       resizeObserver.disconnect();
       if (rafId) cancelAnimationFrame(rafId);
@@ -378,12 +524,6 @@ export function TerminalEmulator({
       fitAddonRef.current = null;
     };
   }, [terminalId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (autoFocus && status === 'connected') {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [autoFocus, status]);
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -410,7 +550,54 @@ export function TerminalEmulator({
 
   return (
     <div className="relative flex flex-col" style={{ height }}>
-      <div ref={containerRef} className="w-full flex-1 min-h-0" />
+      <div ref={containerRef} className="relative w-full flex-1 min-h-0" />
+
+      {/* Touch selection handles + floating copy popup */}
+      {selUI && (
+        <>
+          <div
+            className="absolute w-6 h-6 rounded-full bg-blue-500 border-2 border-white z-20"
+            style={{
+              left: selUI.sLeft,
+              top: selUI.sTop,
+              boxShadow: '0 1px 4px rgba(0,0,0,.35)',
+              touchAction: 'none',
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              draggingRef.current = 'start';
+            }}
+          />
+          <div
+            className="absolute w-6 h-6 rounded-full bg-blue-500 border-2 border-white z-20"
+            style={{
+              left: selUI.eLeft,
+              top: selUI.eTop,
+              boxShadow: '0 1px 4px rgba(0,0,0,.35)',
+              touchAction: 'none',
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              draggingRef.current = 'end';
+            }}
+          />
+          <button
+            type="button"
+            className="absolute z-20 flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gray-900/95 dark:bg-gray-700 rounded-lg active:bg-gray-800"
+            style={{
+              left: selUI.copyLeft,
+              top: selUI.copyTop,
+              transform: 'translateX(-50%)',
+              boxShadow: '0 2px 10px rgba(0,0,0,.4)',
+              touchAction: 'none',
+            }}
+            onClick={handlePopupCopy}
+          >
+            <ClipboardCopy className="w-4 h-4" />
+            {t('terminal.copyAction')}
+          </button>
+        </>
+      )}
 
       {isConnected && (
         <div className="flex flex-col gap-1 px-2 py-1.5 bg-gray-50 dark:bg-[#1e2030] border-t border-gray-300 dark:border-gray-600">
@@ -438,7 +625,7 @@ export function TerminalEmulator({
               type="button"
               className={KEY_BTN}
               title={t('terminal.copy')}
-              onClick={handleCopy}
+              onClick={handleToolbarCopy}
             >
               <ClipboardCopy className="w-3.5 h-3.5" />
             </button>
