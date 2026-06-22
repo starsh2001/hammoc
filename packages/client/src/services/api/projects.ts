@@ -16,6 +16,7 @@ import type {
   BmadVersionsResponse,
   UpdateProjectSettingsRequest,
   ProjectSettingsApiResponse,
+  ProjectSystemPromptResponse,
 } from '@hammoc/shared';
 
 export const projectsApi = {
@@ -50,13 +51,9 @@ export const projectsApi = {
   updateSettings: (projectSlug: string, settings: UpdateProjectSettingsRequest) =>
     api.patch<ProjectSettingsApiResponse>(`/projects/${projectSlug}/settings`, settings, { headers: socketIdHeader() }),
 
-  /** Get default system prompt template and resolved preview */
+  /** Get structured system prompt sections and resolved preview */
   getSystemPrompt: (projectSlug: string) =>
-    api.get<{
-      template: string;
-      resolved: string;
-      variables: readonly { name: string; description: string }[];
-    }>(`/projects/${projectSlug}/system-prompt`),
+    api.get<ProjectSystemPromptResponse>(`/projects/${projectSlug}/system-prompt`),
 
   /** Open project root directory in the system's default file explorer (localhost only) */
   openExplorer: (projectSlug: string) =>

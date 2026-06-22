@@ -9,8 +9,14 @@ import os from 'node:os';
 import { DEFAULT_PREFERENCES } from '@hammoc/shared';
 import type { UserPreferences, TelegramSettings, TelegramSettingsApiResponse, UpdateTelegramSettingsRequest } from '@hammoc/shared';
 import { config } from '../config/index.js';
+import { migrateSystemPrompt } from './workspaceContext.js';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('preferencesService');
 
 class PreferencesService {
+  private systemPromptMigrated = false;
+
   private getDataDir(): string {
     return path.join(os.homedir(), '.hammoc');
   }
@@ -20,16 +26,35 @@ class PreferencesService {
   }
 
   async readPreferences(): Promise<UserPreferences> {
+    let prefs: UserPreferences;
     try {
       const content = await fs.readFile(this.getPreferencesPath(), 'utf-8');
-      return JSON.parse(content) as UserPreferences;
+      prefs = JSON.parse(content) as UserPreferences;
     } catch {
-      // File doesn't exist — create with defaults (write directly to avoid recursion)
       const dataDir = this.getDataDir();
       await fs.mkdir(dataDir, { recursive: true });
       await fs.writeFile(this.getPreferencesPath(), JSON.stringify(DEFAULT_PREFERENCES, null, 2), 'utf-8');
       return { ...DEFAULT_PREFERENCES };
     }
+
+    if (!this.systemPromptMigrated && prefs.customSystemPrompt !== undefined && !prefs._systemPromptMigrationDone) {
+      this.systemPromptMigrated = true;
+      const result = migrateSystemPrompt(prefs.customSystemPrompt);
+      if (result.outcome !== 'none') {
+        log.info(`Legacy customSystemPrompt migrated: ${result.outcome}`);
+        prefs.customSystemPrompt = result.customSystemPrompt;
+        if (result._systemPromptMigrated) prefs._systemPromptMigrated = true;
+        prefs._systemPromptMigrationDone = true;
+        await this.writePreferences({
+          customSystemPrompt: result.customSystemPrompt ?? null as unknown as undefined,
+          ...(result._systemPromptMigrated ? { _systemPromptMigrated: true } : {}),
+          _systemPromptMigrationDone: true,
+        });
+      }
+    }
+    if (!this.systemPromptMigrated) this.systemPromptMigrated = true;
+
+    return prefs;
   }
 
   /**

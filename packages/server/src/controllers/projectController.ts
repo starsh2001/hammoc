@@ -22,7 +22,7 @@ import type { PermissionMode } from '@hammoc/shared';
 import { validateBoardConfig } from '@hammoc/shared';
 import { projectService } from '../services/projectService.js';
 import { broadcastProjectSettingsChange } from '../handlers/websocket.js';
-import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES, resolveTemplateVariables } from '../services/workspaceContext.js';
+import { SECTION_COMMON, SECTION_SDK, SECTION_CLI, SECTION_BMAD, TEMPLATE_VARIABLES, buildSystemPrompt, resolveTemplateVariables } from '../services/workspaceContext.js';
 import { preferencesService } from '../services/preferencesService.js';
 import { createLogger } from '../utils/logger.js';
 import { extractRequestIP, isLoopbackIP } from '../utils/networkUtils.js';
@@ -374,7 +374,7 @@ export const projectController = {
 
   /**
    * GET /api/projects/:projectSlug/system-prompt
-   * Return the default template and resolved preview for the project
+   * Return structured sections + resolved preview for the project
    */
   async getSystemPrompt(req: Request, res: Response): Promise<void> {
     try {
@@ -394,10 +394,26 @@ export const projectController = {
         return;
       }
 
-      const prefs = await preferencesService.readPreferences();
-      const resolved = resolveTemplateVariables(DEFAULT_WORKSPACE_TEMPLATE, projectPath, prefs.displayName);
+      const [prefs, isBmadProject, engineType] = await Promise.all([
+        preferencesService.readPreferences(),
+        projectService.checkBmadProject(projectPath),
+        projectService.getEffectiveEngineMode(projectPath) as Promise<'sdk' | 'cli'>,
+      ]);
+
+      const sections: { common: string; engineSpecific: string; bmad?: string } = {
+        common: SECTION_COMMON,
+        engineSpecific: engineType === 'sdk' ? SECTION_SDK : SECTION_CLI,
+      };
+      if (isBmadProject) sections.bmad = SECTION_BMAD;
+
+      const assembled = buildSystemPrompt(engineType, isBmadProject, prefs.customSystemPrompt);
+      const resolved = resolveTemplateVariables(assembled, projectPath, prefs.displayName);
+
       res.json({
-        template: DEFAULT_WORKSPACE_TEMPLATE,
+        sections,
+        engineType,
+        isBmadProject,
+        assembled,
         resolved,
         variables: TEMPLATE_VARIABLES,
       });

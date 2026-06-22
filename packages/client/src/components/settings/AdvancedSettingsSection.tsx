@@ -7,7 +7,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { RotateCcw, RefreshCw, Download } from 'lucide-react';
+import { RotateCcw, RefreshCw, Download, ChevronRight, X } from 'lucide-react';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { preferencesApi } from '../../services/api/preferences';
@@ -62,84 +62,83 @@ export function AdvancedSettingsSection() {
   const { preferences, updatePreference } = usePreferencesStore();
   const currentProjectSlug = useSessionStore((s) => s.currentProjectSlug);
 
-  // Default template and variables fetched from server
-  const [defaultTemplate, setDefaultTemplate] = useState<string | null>(null);
+  // Fixed sections text from server
+  const [fixedSectionsText, setFixedSectionsText] = useState<string>('');
   const [resolvedPreview, setResolvedPreview] = useState<string | null>(null);
   const [variables, setVariables] = useState<TemplateVariable[]>([]);
   const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [sectionsExpanded, setSectionsExpanded] = useState(false);
 
-  // Local state for system prompt with debounced save
+  // Local state for user area with debounced save
   const [promptText, setPromptText] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // True while the textarea is focused — guards against a multi-device sync
-  // update overwriting in-progress typing (see the sync effect below).
   const isPromptFocusedRef = useRef(false);
   const isCustomized = preferences.customSystemPrompt != null;
+  const showMigrationBanner = (preferences as Record<string, unknown>)._systemPromptMigrated === true;
 
-  // Fetch default template (project-independent)
+  // Fetch fixed sections from server
   useEffect(() => {
     setIsLoadingPrompt(true);
-    preferencesApi.getSystemPromptTemplate()
-      .then((data) => {
-        setDefaultTemplate(data.template);
-        setVariables(data.variables as TemplateVariable[]);
-        if (!preferences.customSystemPrompt) {
-          setPromptText(data.template);
-        }
-      })
-      .catch(() => {
-        // Silently fail
-      })
-      .finally(() => setIsLoadingPrompt(false));
-  }, []);
+    if (currentProjectSlug) {
+      projectsApi.getSystemPrompt(currentProjectSlug)
+        .then((data) => {
+          const parts = [data.sections.common, data.sections.engineSpecific];
+          if (data.sections.bmad) parts.push(data.sections.bmad);
+          setFixedSectionsText(parts.join('\n'));
+          setResolvedPreview(data.resolved);
+          setVariables(data.variables as TemplateVariable[]);
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingPrompt(false));
+    } else {
+      preferencesApi.getSystemPromptTemplate()
+        .then((data) => {
+          const parts = [data.sections.common, data.sections.sdk];
+          setFixedSectionsText(parts.join('\n'));
+          setVariables(data.variables as TemplateVariable[]);
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingPrompt(false));
+    }
+  }, [currentProjectSlug]);
 
-  // Fetch resolved preview when project is available
+  // Fetch resolved preview when project changes or user area changes
   useEffect(() => {
     if (!currentProjectSlug) return;
     projectsApi.getSystemPrompt(currentProjectSlug)
       .then((data) => {
         setResolvedPreview(data.resolved);
       })
-      .catch(() => {
-        // Silently fail
-      });
-  }, [currentProjectSlug]);
+      .catch(() => {});
+  }, [currentProjectSlug, preferences.customSystemPrompt]);
 
-  // Sync local state when preferences load from server, or when another device
-  // changes the system prompt (multi-device sync). Skip while the textarea is
-  // focused so an incoming change never clobbers in-progress typing.
+  // Sync local state when preferences change (multi-device sync)
   useEffect(() => {
     if (isPromptFocusedRef.current) return;
-    if (preferences.customSystemPrompt != null) {
-      setPromptText(preferences.customSystemPrompt);
-    } else if (defaultTemplate) {
-      setPromptText(defaultTemplate);
-    }
-  }, [preferences.customSystemPrompt, defaultTemplate]);
+    setPromptText(preferences.customSystemPrompt ?? '');
+  }, [preferences.customSystemPrompt]);
 
   const handlePromptChange = useCallback((value: string) => {
     setPromptText(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      // Save only if different from default template
-      if (value === defaultTemplate) {
-        updatePreference('customSystemPrompt', undefined);
-      } else {
-        updatePreference('customSystemPrompt', value || undefined);
-      }
+      updatePreference('customSystemPrompt', value || undefined);
       toast.success(t('toast.systemPromptSaved'));
     }, 1000);
-  }, [updatePreference, defaultTemplate]);
+  }, [updatePreference]);
 
   const handleRestoreDefault = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     updatePreference('customSystemPrompt', undefined);
-    if (defaultTemplate) {
-      setPromptText(defaultTemplate);
-    }
+    updatePreference('_systemPromptMigrated' as keyof typeof preferences, undefined);
+    setPromptText('');
     toast.success(t('toast.systemPromptRestored'));
-  }, [updatePreference, defaultTemplate]);
+  }, [updatePreference]);
+
+  const handleDismissMigration = useCallback(() => {
+    updatePreference('_systemPromptMigrated' as keyof typeof preferences, undefined);
+  }, [updatePreference]);
 
   // Cleanup debounce on unmount
   useEffect(() => {
@@ -317,41 +316,43 @@ export function AdvancedSettingsSection() {
         <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupCommonDesc')}</p>
       </div>
 
-      {/* System Prompt Template */}
+      {/* System Prompt */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label
-            htmlFor="custom-system-prompt"
-            className="block text-sm font-medium text-gray-900 dark:text-white"
-          >
+          <label className="block text-sm font-medium text-gray-900 dark:text-white">
             {t('advanced.systemPrompt')}
           </label>
-          {isCustomized && (
+          <div className="flex items-center gap-2">
+            {isCustomized && (
+              <button
+                type="button"
+                onClick={handleRestoreDefault}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium
+                           text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300
+                           bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50
+                           border border-blue-200 dark:border-blue-700 rounded-md transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                {t('advanced.restoreDefault')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Migration banner */}
+        {showMigrationBanner && (
+          <div className="mb-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg flex items-start gap-2">
+            <p className="text-xs text-amber-700 dark:text-amber-300 flex-1">
+              {t('advanced.migrationBanner')}
+            </p>
             <button
               type="button"
-              onClick={handleRestoreDefault}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium
-                         text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300
-                         bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50
-                         border border-blue-200 dark:border-blue-700 rounded-md transition-colors"
+              onClick={handleDismissMigration}
+              className="shrink-0 p-0.5 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300"
+              aria-label="Dismiss"
             >
-              <RotateCcw className="w-3 h-3" />
-              {t('advanced.restoreDefault')}
+              <X className="w-3.5 h-3.5" />
             </button>
-          )}
-        </div>
-
-        {/* Warning banner */}
-        <div className="mb-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-          <p className="text-xs text-amber-700 dark:text-amber-300">
-            <strong>{t('advanced.systemPromptWarning')}</strong> {t('advanced.systemPromptWarningDetail')}
-          </p>
-        </div>
-
-        {/* Customized indicator */}
-        {isCustomized && (
-          <div className="mb-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-600 dark:text-blue-400">
-            {t('advanced.customPromptActive')}
           </div>
         )}
 
@@ -360,17 +361,62 @@ export function AdvancedSettingsSection() {
             <span className="text-sm text-gray-400">{t('advanced.promptLoading')}</span>
           </div>
         ) : (
-          <textarea
-            id="custom-system-prompt"
-            value={promptText}
-            onChange={(e) => handlePromptChange(e.target.value)}
-            onFocus={() => { isPromptFocusedRef.current = true; }}
-            onBlur={() => { isPromptFocusedRef.current = false; }}
-            rows={16}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
-                       bg-white dark:bg-[#263240] text-gray-900 dark:text-white font-mono text-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-          />
+          <>
+            {/* Read-only fixed sections accordion */}
+            <div className="mb-3 border border-gray-300 dark:border-[#455568] rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setSectionsExpanded(!sectionsExpanded)}
+                aria-expanded={sectionsExpanded}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium
+                           text-gray-600 dark:text-gray-300
+                           bg-gray-50 dark:bg-[#1e2a35] hover:bg-gray-100 dark:hover:bg-[#253040]
+                           transition-colors"
+              >
+                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${sectionsExpanded ? 'rotate-90' : ''}`} />
+                {t('advanced.fixedSectionsLabel')}
+                <span className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">
+                  {t('advanced.fixedSectionsNote')}
+                </span>
+              </button>
+              {sectionsExpanded && (
+                <pre
+                  aria-readonly="true"
+                  className="px-3 py-2 text-xs font-mono bg-gray-50 dark:bg-[#1e2a35]
+                             text-gray-500 dark:text-gray-400 whitespace-pre-wrap
+                             max-h-60 overflow-y-auto border-t border-gray-200 dark:border-[#3a4d5e]"
+                >
+                  {fixedSectionsText}
+                </pre>
+              )}
+            </div>
+
+            {/* User area separator */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                {t('advanced.userAreaLabel')}
+              </span>
+              {isCustomized && (
+                <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded text-[10px] text-blue-600 dark:text-blue-400">
+                  {t('advanced.customPromptActive')}
+                </span>
+              )}
+            </div>
+
+            {/* User-editable textarea */}
+            <textarea
+              id="custom-system-prompt"
+              value={promptText}
+              onChange={(e) => handlePromptChange(e.target.value)}
+              onFocus={() => { isPromptFocusedRef.current = true; }}
+              onBlur={() => { isPromptFocusedRef.current = false; }}
+              placeholder={t('advanced.userAreaPlaceholder')}
+              rows={8}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-[#455568]
+                         bg-white dark:bg-[#263240] text-gray-900 dark:text-white font-mono text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+            />
+          </>
         )}
         <div className="mt-1 flex items-center justify-between">
           {!currentProjectSlug ? (
@@ -380,8 +426,14 @@ export function AdvancedSettingsSection() {
           ) : (
             <span />
           )}
-          <p className="text-xs text-gray-500 dark:text-gray-300">
-            {t('advanced.charCount', { count: promptText.length })}
+          <p
+            className="text-xs text-gray-500 dark:text-gray-300 cursor-default"
+            title={t('advanced.charCountBreakdown', {
+              system: fixedSectionsText.length,
+              user: promptText.length,
+            })}
+          >
+            {t('advanced.charCount', { count: fixedSectionsText.length + promptText.length })}
           </p>
         </div>
 
@@ -404,17 +456,24 @@ export function AdvancedSettingsSection() {
           </div>
         )}
 
-        {/* Resolved preview toggle */}
-        {resolvedPreview && (
+        {/* Preview Full Prompt */}
+        {currentProjectSlug && (
           <div className="mt-3">
             <button
               type="button"
-              onClick={() => setShowPreview(!showPreview)}
+              onClick={() => {
+                if (!showPreview) {
+                  projectsApi.getSystemPrompt(currentProjectSlug)
+                    .then((data) => setResolvedPreview(data.resolved))
+                    .catch(() => {});
+                }
+                setShowPreview(!showPreview);
+              }}
               className="text-xs text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-300 underline"
             >
               {t(showPreview ? 'advanced.previewClose' : 'advanced.previewOpen')}
             </button>
-            {showPreview && (
+            {showPreview && resolvedPreview && (
               <pre className="mt-2 p-3 text-xs font-mono bg-gray-100 dark:bg-[#1c2129] border border-gray-300 dark:border-[#3a4d5e] rounded-lg overflow-x-auto whitespace-pre-wrap text-gray-600 dark:text-gray-300 max-h-60 overflow-y-auto">
                 {resolvedPreview}
               </pre>

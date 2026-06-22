@@ -112,7 +112,7 @@ import { parseGridCards, collectToolHeaderKeys, restoreFlickeredToolBullets, typ
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile, parseTaskNotification } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
-import { DEFAULT_WORKSPACE_TEMPLATE, resolveTemplateVariables } from './workspaceContext.js';
+import { buildSystemPrompt, resolveTemplateVariables } from './workspaceContext.js';
 import type { BackgroundTaskTracker } from '../utils/backgroundTaskTracker.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
@@ -199,6 +199,13 @@ const CLI_MAX_BOOT_WAIT_MS = 4000; // boot readiness re-poll interval (inject as
 // "still painting"; injection is grid-gated so we keep polling. A genuine boot freeze is covered by the
 // soft screen-stall affordance (boot is now mirrored), pty.onExit (crash), and the user's Stop.
 const CLI_SUBMIT_GAP_MS = 1000; // Enter sent this long after the prompt text
+// Prompt injection is PACED in small chunks, not one bulk write. A single large pty.write of a long
+// prompt overruns the Windows ConPTY input path: only a fraction (~the last few hundred bytes) reaches
+// claude's input box and the head/middle is silently dropped (실측 2026-06-22: a 2439-byte prompt arrived
+// as 391 bytes; bracketed-paste framing did NOT help; paced chunks delivered 100%). Pacing lets the TUI
+// drain between writes so the buffer never overruns. Tuned from the same measurement (50 cps / 8ms = 100%).
+const CLI_INJECT_CHUNK_CHARS = 50; // code points per write (code-point sliced — never splits a char)
+const CLI_INJECT_CHUNK_GAP_MS = 8; // pause between chunk writes so the TUI drains its input buffer
 
 /**
  * Tool-approval interception (Story 32.6 — *constrained*; keys verified against
@@ -825,8 +832,8 @@ export class CliChatEngine implements ChatEngine {
     // workspaceContext). Verified: node-pty delivers the multi-line arg intact to the PTY child, and
     // billing is unaffected (the pool is set by interactive-vs-print, not prompt content — this only
     // adds input tokens to the same subscription pool).
-    const appendTemplate = options.customSystemPrompt || DEFAULT_WORKSPACE_TEMPLATE;
-    args.push('--append-system-prompt', resolveTemplateVariables(appendTemplate, cwd, options.displayName));
+    const assembled = buildSystemPrompt('cli', options.isBmadProject ?? false, options.customSystemPrompt);
+    args.push('--append-system-prompt', resolveTemplateVariables(assembled, cwd, options.displayName));
     // Session-scoped `--settings` JSON (the global ~/.claude/settings.json is never
     // modified). Thinking summaries (default ON): Opus 4.7+ omit summaries unless asked.
     const settingsObj: Record<string, unknown> = {};
@@ -1020,6 +1027,7 @@ export class CliChatEngine implements ChatEngine {
       let bootRecoverTimer: ReturnType<typeof setTimeout> | null = null; // Story 37.6: post-Esc re-classify timer
       let choiceMenuHandled = false; // Story 37.6 follow-up: one-shot handoff of a drivable confirm menu (resume prompt)
       let submitTimer: ReturnType<typeof setTimeout> | null = null;
+      let injectChunkTimer: ReturnType<typeof setTimeout> | null = null; // paces the chunked prompt write
       // Permission-dialog state (Story 32.6 — post-injection only). Story 37.4: detection reads
       // the settled screen grid (no rolling buffer); `permissionPending` is the per-modal re-fire
       // guard that the old buffer-clear consume used to provide.
@@ -1188,6 +1196,10 @@ export class CliChatEngine implements ChatEngine {
           clearTimeout(submitTimer);
           submitTimer = null;
         }
+        if (injectChunkTimer) {
+          clearTimeout(injectChunkTimer);
+          injectChunkTimer = null;
+        }
         if (questionSettleTimer) {
           clearTimeout(questionSettleTimer);
           questionSettleTimer = null;
@@ -1335,17 +1347,39 @@ export class CliChatEngine implements ChatEngine {
           bootRecoverTimer = null;
         }
         try {
-          pty.write(promptToInject);
-          submitTimer = setTimeout(() => {
-            submitTimer = null;
+          // Inject the prompt in small paced chunks (see CLI_INJECT_CHUNK_* notes) instead of one bulk
+          // write, which the Windows ConPTY input path truncates to its tail. The submit CR is sent as a
+          // SEPARATE write only AFTER the final chunk + the usual gap, preserving bracketed-paste safety
+          // (a CR close to typed text coalesces into a newline; the gap keeps it a real submit).
+          const codePoints = Array.from(promptToInject);
+          let chunkStart = 0;
+          const writeNextChunk = () => {
+            injectChunkTimer = null;
             if (settled) return;
+            if (chunkStart >= codePoints.length) {
+              // All chunks delivered — now schedule the submit Enter after the bracketed-paste-safe gap.
+              submitTimer = setTimeout(() => {
+                submitTimer = null;
+                if (settled) return;
+                try {
+                  pty.write('\r');
+                  onPhase?.('waiting'); // prompt submitted — awaiting the first response block
+                } catch (err) {
+                  fail(err instanceof Error ? err : new Error(String(err)));
+                }
+              }, CLI_SUBMIT_GAP_MS);
+              return;
+            }
             try {
-              pty.write('\r');
-              onPhase?.('waiting'); // prompt submitted — awaiting the first response block
+              pty.write(codePoints.slice(chunkStart, chunkStart + CLI_INJECT_CHUNK_CHARS).join(''));
             } catch (err) {
               fail(err instanceof Error ? err : new Error(String(err)));
+              return;
             }
-          }, CLI_SUBMIT_GAP_MS);
+            chunkStart += CLI_INJECT_CHUNK_CHARS;
+            injectChunkTimer = setTimeout(writeNextChunk, CLI_INJECT_CHUNK_GAP_MS);
+          };
+          writeNextChunk();
         } catch (err) {
           fail(err instanceof Error ? err : new Error(String(err)));
         }

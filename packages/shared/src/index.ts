@@ -89,6 +89,8 @@ export {
   SupportedLanguage,
   SUPPORTED_LANGUAGES,
   PermissionSyncPolicy,
+  SystemPromptSectionsResponse,
+  ProjectSystemPromptResponse,
 } from './types/preferences.js';
 
 // Story 3.5: History types for Session History Loading

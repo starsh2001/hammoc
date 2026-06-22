@@ -11,6 +11,7 @@ import type {
   UpdateTelegramSettingsRequest,
   WebPushSettingsApiResponse,
   WebPushSubscribeRequest,
+  SystemPromptSectionsResponse,
 } from '@hammoc/shared';
 
 export const preferencesApi = {
@@ -54,10 +55,7 @@ export const preferencesApi = {
   testWebPush: () =>
     api.post<{ success: boolean; error?: string }>('/preferences/webpush/test'),
 
-  /** Get default system prompt template (no project required) */
+  /** Get system prompt sections (no project required) */
   getSystemPromptTemplate: () =>
-    api.get<{
-      template: string;
-      variables: readonly { name: string; description: string }[];
-    }>('/preferences/system-prompt'),
+    api.get<SystemPromptSectionsResponse>('/preferences/system-prompt'),
 };

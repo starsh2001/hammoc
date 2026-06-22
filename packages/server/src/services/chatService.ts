@@ -14,7 +14,7 @@ import { InvalidPathError, parseSDKError } from '../utils/errors.js';
 import { StreamHandler } from './streamHandler.js';
 import { SessionService } from './sessionService.js';
 import { rewindSessionFiles } from './fileRewind.js';
-import { DEFAULT_WORKSPACE_TEMPLATE, resolveTemplateVariables } from './workspaceContext.js';
+import { buildSystemPrompt, resolveTemplateVariables } from './workspaceContext.js';
 import type { ChatEngine } from './chatEngine.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -108,15 +108,11 @@ export class ChatService implements ChatEngine {
     const resolvedAllowed = options.allowedTools ?? this.allowedTools;
     const resolvedDisallowed = options.disallowedTools ?? this.disallowedTools;
 
-    // Build systemPrompt: Claude Code preset + workspace context template.
-    // customSystemPrompt is a full template with {variable} placeholders
-    // (e.g. {gitBranch}, {gitStatus}) that are resolved at runtime.
-    // If not set, DEFAULT_WORKSPACE_TEMPLATE is used.
     const systemPrompt = (() => {
-      const template = options.customSystemPrompt || DEFAULT_WORKSPACE_TEMPLATE;
+      const assembled = buildSystemPrompt('sdk', options.isBmadProject ?? false, options.customSystemPrompt);
       const append = this.workingDirectory
-        ? resolveTemplateVariables(template, this.workingDirectory, options.displayName)
-        : template;
+        ? resolveTemplateVariables(assembled, this.workingDirectory, options.displayName)
+        : assembled;
       return {
         type: 'preset' as const,
         preset: 'claude_code' as const,

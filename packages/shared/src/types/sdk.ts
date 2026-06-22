@@ -69,8 +69,10 @@ export interface ChatOptions {
   sessionId?: string;
   /** Image attachments to include in the message (Story 5.5) */
   images?: ImageAttachment[];
-  /** Custom system prompt (replaces Claude Code default when set) */
+  /** User-editable additions appended after fixed system prompt sections */
   customSystemPrompt?: string;
+  /** Whether the project has .bmad-core (drives BMad section inclusion in system prompt) */
+  isBmadProject?: boolean;
   /** User's preferred form of address (injected into system prompt) */
   displayName?: string;
   /** Max thinking tokens for reasoning */

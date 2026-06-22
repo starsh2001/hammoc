@@ -2802,7 +2802,10 @@ async function handleChatSend(
     // Story 33.3: resolve the effective engine mode (override > global > 'sdk' default).
     // Captured once into a local so the progress-callback gating below reuses the same
     // decision (no second resolve, and `engineMode === 'cli'` stays consistent).
-    const engineMode = await projectService.getEffectiveEngineMode(workingDirectory);
+    const [engineMode, isBmadProject] = await Promise.all([
+      projectService.getEffectiveEngineMode(workingDirectory),
+      projectService.checkBmadProject(workingDirectory),
+    ]);
     // Auto-compaction master switch (both engines). Default ON. Gates the engine-internal
     // auto-compact (forwarded into each engine's settings) AND Hammoc's overflow-triggered
     // /compact recovery below, so one toggle controls all auto-compaction.
@@ -2838,6 +2841,7 @@ async function handleChatSend(
       // Advanced settings from preferences
       customSystemPrompt: effectivePrefs.customSystemPrompt,
       displayName: effectivePrefs.displayName,
+      isBmadProject,
       // maxThinkingTokens: legacy path; SDK docs say it takes precedence for backward-compat,
       // which conflicts with adaptive mode on Opus 4.7+ (rejects enabled+budget). Skip on
       // adaptive-capable models so the explicit `thinking` field governs.

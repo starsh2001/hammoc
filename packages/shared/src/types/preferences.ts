@@ -80,7 +80,9 @@ export interface UserPreferences {
   telegram?: TelegramSettings;
   webPush?: WebPushSettings;
   // Advanced settings
-  customSystemPrompt?: string;      // replaces default Claude Code system prompt
+  customSystemPrompt?: string;      // user-editable additions appended after fixed system prompt sections
+  _systemPromptMigrated?: boolean;  // set by migration when legacy prompt needed manual review
+  _systemPromptMigrationDone?: boolean; // persistent marker: migration ran to completion, do not re-run
   maxThinkingTokens?: number;       // SDK maxThinkingTokens
   maxTurns?: number;                // SDK maxTurns (conversation turn limit)
   maxBudgetUsd?: number;            // SDK maxBudgetUsd (cost limit per query)
@@ -232,4 +234,30 @@ export interface WebPushSubscribeRequest {
  */
 export interface PromptHistoryData {
   history: string[];
+}
+
+/** Response from GET /api/preferences/system-prompt */
+export interface SystemPromptSectionsResponse {
+  sections: {
+    common: string;
+    sdk: string;
+    cli: string;
+    bmad: string;
+  };
+  userArea?: string;
+  variables: readonly { name: string; description: string }[];
+}
+
+/** Response from GET /api/projects/:slug/system-prompt */
+export interface ProjectSystemPromptResponse {
+  sections: {
+    common: string;
+    engineSpecific: string;
+    bmad?: string;
+  };
+  engineType: 'sdk' | 'cli';
+  isBmadProject: boolean;
+  assembled: string;
+  resolved: string;
+  variables: readonly { name: string; description: string }[];
 }

@@ -460,16 +460,15 @@ describe('CliChatEngine', () => {
       const i = (spawnArg.args as string[]).indexOf('--append-system-prompt');
       expect(i).toBeGreaterThanOrEqual(0);
       const appended = (spawnArg.args as string[])[i + 1];
-      // The default Hammoc context — identity + the clickable-link convention SDK mode injects.
       expect(appended).toContain('# Hammoc Context');
       expect(appended).toContain('You are running inside Hammoc');
-      // {homeDir} is resolved at runtime (not left as a literal placeholder) — same substitution as SDK mode.
+      expect(appended).toContain('## Engine: CLI');
       expect(appended).not.toContain('{homeDir}');
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;
     });
 
-    it('honors customSystemPrompt over the default template in --append-system-prompt', async () => {
+    it('appends customSystemPrompt as user area in --append-system-prompt', async () => {
       const engine = new CliChatEngine({ workingDirectory: '/proj' });
       const promise = engine.sendMessageWithCallbacks(
         'hi',
@@ -484,8 +483,8 @@ describe('CliChatEngine', () => {
       expect(i).toBeGreaterThanOrEqual(0);
       const appended = (spawnArg.args as string[])[i + 1];
       expect(appended).toContain('Custom override referencing');
-      expect(appended).not.toContain('# Hammoc Context');
-      // {variable} resolution still applies to the custom prompt (parity with SDK mode).
+      expect(appended).toContain('# Hammoc Context');
+      expect(appended).toContain('# Custom Instructions');
       expect(appended).not.toContain('{homeDir}');
       await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
       await promise;
@@ -652,11 +651,11 @@ describe('CliChatEngine', () => {
 
       await vi.waitFor(
         () => {
+          // Prompt injection is PACED across multiple chunk writes (CLI_INJECT_CHUNK_*), so the full
+          // prompt no longer lands in a single write — reassemble it by concatenating the string writes.
           const writes = h.fakePty.write.mock.calls.map((c) => c[0]);
-          const injected = writes.find(
-            (w): w is string => typeof w === 'string' && w.includes('what is in these'),
-          );
-          expect(injected).toBeTruthy();
+          const injected = writes.filter((w): w is string => typeof w === 'string').join('');
+          expect(injected).toContain('what is in these');
           expect(injected).toContain(a);
           expect(injected).toContain(b);
           expect(injected).toMatch(/Read tool/i);

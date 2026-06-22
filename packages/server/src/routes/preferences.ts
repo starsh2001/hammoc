@@ -8,7 +8,7 @@ import { preferencesService } from '../services/preferencesService.js';
 import { notificationService } from '../services/notificationService.js';
 import { webPushService } from '../services/webPushService.js';
 import { invalidateI18nCache } from '../middleware/i18n.js';
-import { DEFAULT_WORKSPACE_TEMPLATE, TEMPLATE_VARIABLES } from '../services/workspaceContext.js';
+import { SECTION_COMMON, SECTION_SDK, SECTION_CLI, SECTION_BMAD, TEMPLATE_VARIABLES } from '../services/workspaceContext.js';
 import type { UpdateTelegramSettingsRequest, WebPushSubscribeRequest } from '@hammoc/shared';
 import { broadcastPreferencesChange } from '../handlers/websocket.js';
 
@@ -168,10 +168,16 @@ router.post('/webpush/test', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/preferences/system-prompt — Get default system prompt template (no project required)
-router.get('/system-prompt', (_req: Request, res: Response) => {
+// GET /api/preferences/system-prompt — Get system prompt sections (no project required)
+router.get('/system-prompt', async (_req: Request, res: Response) => {
+  let userArea: string | undefined;
+  try {
+    const prefs = await preferencesService.readPreferences();
+    userArea = prefs.customSystemPrompt;
+  } catch { /* no user area */ }
   res.json({
-    template: DEFAULT_WORKSPACE_TEMPLATE,
+    sections: { common: SECTION_COMMON, sdk: SECTION_SDK, cli: SECTION_CLI, bmad: SECTION_BMAD },
+    userArea,
     variables: TEMPLATE_VARIABLES,
   });
 });

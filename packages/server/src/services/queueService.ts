@@ -95,6 +95,7 @@ export class QueueService {
   private lastPromptResponse: string = '';
   /** Whether the last executeItem call produced a prompt (for @loop until check) */
   private lastItemWasPrompt: boolean = false;
+  private isBmadProject: boolean = false;
   private lang: string = 'en';
   constructor(
     private projectService: ProjectService,
@@ -125,6 +126,7 @@ export class QueueService {
     } catch { /* keep default 'en' */ }
 
     this.workingDirectory = await this.projectService.resolveOriginalPath(projectSlug);
+    this.isBmadProject = await this.projectService.checkBmadProject(this.workingDirectory);
     // Story 33.3: instantiate the effective engine (override > global > 'sdk' default).
     // cliBinaryPath comes from the same global prefs (undefined on read failure
     // = auto-detect, graceful).
@@ -1038,6 +1040,7 @@ export class QueueService {
       const prefs = await this.preferencesService.getEffectivePreferences();
       if (prefs.customSystemPrompt !== undefined) opts.customSystemPrompt = prefs.customSystemPrompt;
       if (prefs.displayName !== undefined) opts.displayName = prefs.displayName;
+      opts.isBmadProject = this.isBmadProject;
       const adaptiveCapable = supportsAdaptiveThinking(this.currentModel);
       if (!adaptiveCapable && prefs.maxThinkingTokens !== undefined) {
         opts.maxThinkingTokens = prefs.maxThinkingTokens;
