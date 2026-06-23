@@ -15,6 +15,7 @@ import type { SnippetItem } from './command.js';
 import type { HarnessScope, HarnessExternalChangeEvent } from './harness.js';
 import type { UserPreferences } from './preferences.js';
 import type { ProjectSettingsApiResponse } from './project.js';
+import type { AccountSwitchedEvent, AccountRemovedEvent } from './accounts.js';
 
 // ===== Prompt Chain =====
 
@@ -132,6 +133,10 @@ export interface ClientToServerEvents {
   'auth:submit-code': (data: { code: string }) => void;
   'auth:logout': () => void;
 }
+
+// (Account switch/remove are driven over REST — see /api/accounts. The server
+// only BROADCASTS the resulting account:switched / account:removed events below
+// so other connected tabs stay in sync; clients do not emit them.)
 
 // ===== Server to Client Events =====
 
@@ -272,6 +277,10 @@ export interface ServerToClientEvents {
   'auth:code-prompt': () => void;
   'auth:complete': (data: { account: AccountInfo | null }) => void;
   'auth:error': (data: { message: string }) => void;
+  // Story BS-8: multi-account cross-tab sync. switched/removed carry email + tier only
+  // (never tokens, AC15) so every connected client refreshes its account list/active marker.
+  'account:switched': (data: AccountSwitchedEvent) => void;
+  'account:removed': (data: AccountRemovedEvent) => void;
 }
 
 // ===== Inter-server Events =====

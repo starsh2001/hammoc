@@ -60,6 +60,7 @@ import { imageStorageService } from '../services/imageStorageService.js';
 import { isSnippetRef, resolveSnippet, listSnippets, SnippetError } from '../utils/snippetResolver.js';
 import { ClaudeLoginSession, deleteCredentials, type LoginMethod } from '../services/claudeLoginService.js';
 import { accountInfoService } from '../services/accountInfoService.js';
+import { accountStorageService } from '../services/accountStorageService.js';
 import type { HistoryMessage, ImageRef } from '@hammoc/shared';
 const log = createLogger('websocket');
 
@@ -2418,6 +2419,12 @@ export async function initializeWebSocket(
         onComplete: (account) => {
           socket.emit('auth:complete', { account });
           socketLoginSessions.delete(socket.id);
+          // Story BS-8: accumulate the just-written credential into the multi-account store.
+          // Login already made this account active, so the credentials file holds its credential
+          // and accountInfoService supplied the email (or null → fallback key, AC1a). Fire-and-forget.
+          accountStorageService.captureActiveCredential(account?.email ?? null).catch((err) => {
+            log.warn(`BS-8: failed to capture credential after login: ${err instanceof Error ? err.message : String(err)}`);
+          });
         },
         onError: (message) => {
           socket.emit('auth:error', { message });

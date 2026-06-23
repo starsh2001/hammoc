@@ -171,3 +171,6 @@ export * from './types/contextBuilder.js';
 
 // Story 31.4: Plugin marketplace catalog DTOs (Epic 31)
 export * from './types/marketplace.js';
+
+// Story BS-8: Multi-account management DTOs (credential store + switch)
+export * from './types/accounts.js';

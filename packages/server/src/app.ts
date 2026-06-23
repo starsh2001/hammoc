@@ -19,6 +19,7 @@ import sessionsRoutes from './routes/sessions.js';
 import commandsRoutes from './routes/commands.js';
 import preferencesRoutes from './routes/preferences.js';
 import accountRoutes from './routes/account.js';
+import accountsRoutes from './routes/accounts.js';
 import debugRoutes from './routes/debug.js';
 import fileSystemRoutes from './routes/fileSystem.js';
 import bmadStatusRoutes from './routes/bmadStatus.js';
@@ -149,6 +150,10 @@ export async function createApp(): Promise<Express> {
 
   // Account info routes (Claude Code subscription/provider)
   app.use('/api/account', accountRoutes);
+
+  // Multi-account management routes (Story BS-8) — credential store + switch/remove.
+  // Plural path to keep the URL boundary distinct from the singular active-account info above.
+  app.use('/api/accounts', accountsRoutes);
 
   // File System routes (Story 11.1) - file reading and directory listing
   app.use('/api/projects', fileSystemRoutes);

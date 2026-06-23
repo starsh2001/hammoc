@@ -139,6 +139,8 @@
 - P6. 엔진 모드 토글 & CLI 설정 패널 `[EDGE]`
 - P7. 설정 멀티 기기 동기화 (한 브라우저 변경 → 타 브라우저 실시간 반영) `[EDGE]`
 - P8. 디버그 설정 페이지 (HAMMOC_DEBUG 게이트) `[EDGE]`
+- P9. 계정 섹션 — 로그인/로그아웃 토글 (Story BS-7) `[CORE]`
+- P10. 멀티 계정 관리 — 목록/전환/삭제/추가 (Story BS-8) `[CORE]`
 
 ### Q. BMad Method
 - Q1. BMad 초기화 `[CORE]`
