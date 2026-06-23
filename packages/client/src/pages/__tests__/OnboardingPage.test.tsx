@@ -128,7 +128,9 @@ describe('OnboardingPage', () => {
   it('should render checklist items when loaded', () => {
     render(<OnboardingPage />, { wrapper: Wrapper });
 
-    expect(screen.getByText('Claude Code 설치')).toBeInTheDocument();
+    // BS-7: the standalone "Claude Code 설치" checklist item was removed; authentication
+    // is now handled by the inline ClaudeLoginFlow mounted under the "계정 인증" item.
+    expect(screen.queryByText('Claude Code 설치')).not.toBeInTheDocument();
     expect(screen.getByText('계정 인증')).toBeInTheDocument();
     expect(screen.getByText('API 키 설정')).toBeInTheDocument();
   });

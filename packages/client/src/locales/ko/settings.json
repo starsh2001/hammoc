@@ -379,6 +379,10 @@
             "resetAt": "초기화: {{reset}}",
             "usageEmpty": "사용량 정보가 없습니다. Claude.ai 구독자에게만 제공됩니다."
         },
+        "claudeLogout": {
+            "button": "로그아웃",
+            "done": "Claude에서 로그아웃되었습니다"
+        },
         "changePassword": "비밀번호 변경",
         "currentPassword": "현재 비밀번호",
         "newPassword": "새 비밀번호",

@@ -4,7 +4,7 @@
  * Story 1.6: Session Management - Added session events
  */
 
-import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, ThinkingEffort, SubscriptionRateLimit, ApiHealthStatus } from './sdk.js';
+import type { StreamChunk, ToolCall, Message, PermissionRequest, PermissionMode, ChatUsage, ThinkingEffort, SubscriptionRateLimit, ApiHealthStatus, AccountInfo } from './sdk.js';
 import type { ToolResult, CompactMetadata, TaskNotificationData } from './streaming.js';
 import type { ImageAttachment, ImageRef } from './message.js';
 import type { QueueItem, QueueProgressEvent, QueueItemCompleteEvent, QueueErrorEvent, QueueItemsUpdatedEvent } from './queue.js';
@@ -124,6 +124,13 @@ export interface ClientToServerEvents {
   // Story 28.0.5: Harness workbench external-change subscription (Epic 28)
   'harness:subscribe': (data: { scope: HarnessScope; projectSlug?: string }) => void;
   'harness:unsubscribe': (data: { scope: HarnessScope; projectSlug?: string }) => void;
+  // Story BS-7: Claude Code in-app login (interactive /login over a disposable PTY).
+  // auth:start spawns the login PTY + drives boot → /login; select-method injects the chosen
+  // option (1/2/3); submit-code writes the pasted auth code; logout deletes the credentials file.
+  'auth:start': () => void;
+  'auth:select-method': (data: { method: 1 | 2 | 3 }) => void;
+  'auth:submit-code': (data: { code: string }) => void;
+  'auth:logout': () => void;
 }
 
 // ===== Server to Client Events =====
@@ -254,6 +261,17 @@ export interface ServerToClientEvents {
   // projectSlug and the client ignores payloads for projects it isn't viewing.
   'preferences:changed': (data: { preferences: UserPreferences }) => void;
   'project:settings-changed': (data: { projectSlug: string; settings: ProjectSettingsApiResponse }) => void;
+  // Story BS-7: Claude Code in-app login flow state (server → client).
+  // method-prompt: the login-method menu is on screen → client presents the 3 options.
+  // url: the OAuth authorize URL was captured → client renders it as a tappable link.
+  // code-prompt: the "Paste code here" prompt is ready → client shows the code input.
+  // complete: credentials were written → fresh account info (or null if the post-auth fetch failed).
+  // error: login failed / timed out → short reason for a client toast + retry affordance.
+  'auth:method-prompt': () => void;
+  'auth:url': (data: { url: string }) => void;
+  'auth:code-prompt': () => void;
+  'auth:complete': (data: { account: AccountInfo | null }) => void;
+  'auth:error': (data: { message: string }) => void;
 }
 
 // ===== Inter-server Events =====

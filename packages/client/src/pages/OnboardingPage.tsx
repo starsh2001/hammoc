@@ -7,6 +7,7 @@ import {
   ChecklistItem,
   ChecklistSkeletonList,
 } from '../components/onboarding';
+import { ClaudeLoginFlow } from '../components/ClaudeLoginFlow';
 import { OnboardingErrorBoundary } from '../components/common/OnboardingErrorBoundary';
 import { ToastContainer } from '../components/common/Toast';
 import { OnboardingChecklistItem } from '../types/onboarding';
@@ -72,6 +73,12 @@ function OnboardingContent() {
   // 상태 다시 확인 핸들러
   const handleRefresh = useCallback(async () => {
     await refetch();
+  }, [refetch]);
+
+  // BS7-2: stable onComplete so ClaudeLoginFlow's socket-listener effect doesn't
+  // re-subscribe (socket.off → socket.on) on every Onboarding render.
+  const handleLoginComplete = useCallback(() => {
+    void refetch();
   }, [refetch]);
 
   return (
@@ -144,6 +151,14 @@ function OnboardingContent() {
                     onCopySuccess={handleCopySuccess}
                     onCopyError={handleCopyError}
                   />
+                  {/* Story BS-7 (AC17/AC18): inline login flow under the authentication item when
+                      unauthenticated. On completion, refetch CLI status → authenticated flips to
+                      complete and the isReady effect auto-advances. */}
+                  {item.id === 'authenticated' && !cliStatus.authenticated && (
+                    <div className="mt-2 pl-1">
+                      <ClaudeLoginFlow onComplete={handleLoginComplete} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

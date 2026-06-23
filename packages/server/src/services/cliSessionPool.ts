@@ -74,6 +74,16 @@ interface SpawnClaudeOptions {
    * `resolveClaudeBinary`). Empty / undefined = auto-detect.
    */
   binaryPathOverride?: string;
+  /**
+   * Story BS-7: per-call environment overrides merged in LAST (after the inherited
+   * process.env minus the "inside claude" signal vars and after Windows PATH
+   * normalization). The CLI login flow uses this to pass `BROWSER=none` so the
+   * interactive `claude` never opens a system browser during `/login` — a mobile
+   * client has no host browser to hand off to, so the OAuth URL must be relayed in-UI.
+   * Keeping it a merge on the single `buildEnv()` path avoids a parallel ad-hoc
+   * `pty.spawn` that would bypass the pool's PATH/signal handling.
+   */
+  extraEnv?: Record<string, string>;
 }
 
 class CliSessionPool {
@@ -149,16 +159,19 @@ class CliSessionPool {
 
   /**
    * Build the spawn environment: process.env minus undefined values and minus
-   * the "inside claude" signal vars, with Windows PATH normalized.
+   * the "inside claude" signal vars, with Windows PATH normalized. Story BS-7:
+   * `extraEnv` is merged LAST (after PATH normalization, so a caller could even
+   * override PATH if ever needed) — the login flow passes `{ BROWSER: 'none' }`.
    */
-  private buildEnv(): Record<string, string> {
+  private buildEnv(extraEnv?: Record<string, string>): Record<string, string> {
     const base = Object.fromEntries(
       Object.entries(process.env).filter((e): e is [string, string] => e[1] != null),
     );
     for (const signal of CLAUDE_ENV_SIGNALS) {
       delete base[signal];
     }
-    return this.normalizePathForWindows(base);
+    const normalized = this.normalizePathForWindows(base);
+    return extraEnv ? { ...normalized, ...extraEnv } : normalized;
   }
 
   /**
@@ -230,7 +243,7 @@ class CliSessionPool {
    * a watcher disposer via `registerDisposer`.
    */
   spawnClaude(opts: SpawnClaudeOptions): CliPtyHandle {
-    const env = this.buildEnv();
+    const env = this.buildEnv(opts.extraEnv);
     const bin = this.resolveClaudeBinary(env, opts.binaryPathOverride);
     const handle = randomUUID();
 

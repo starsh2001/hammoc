@@ -58,6 +58,8 @@ import { buildRawMessageTree, getActiveRawBranch, getDefaultRawBranchSelections,
 import { sessionBufferManager } from '../services/sessionBufferManager.js';
 import { imageStorageService } from '../services/imageStorageService.js';
 import { isSnippetRef, resolveSnippet, listSnippets, SnippetError } from '../utils/snippetResolver.js';
+import { ClaudeLoginSession, deleteCredentials, type LoginMethod } from '../services/claudeLoginService.js';
+import { accountInfoService } from '../services/accountInfoService.js';
 import type { HistoryMessage, ImageRef } from '@hammoc/shared';
 const log = createLogger('websocket');
 
@@ -69,6 +71,9 @@ const warnedMissing1M = new Set<string>();
 
 // Socket-to-terminal mapping: socket.id → Set of terminalIds (Story 17.1)
 const socketTerminals = new Map<string, Set<string>>();
+
+// Story BS-7: one in-flight Claude Code login session per socket (disposable PTY).
+const socketLoginSessions = new Map<string, ClaudeLoginSession>();
 
 // Story 20.1: Session-to-project mapping for dashboard triggers
 const sessionProjectMap = new Map<string, string>();
@@ -2390,6 +2395,62 @@ export async function initializeWebSocket(
       }
     });
 
+    // Story BS-7: Claude Code in-app login flow over a disposable PTY.
+    // auth:start spawns the login session; the session drives boot → /login and reports each
+    // phase back through these socket emits. One session per socket (a re-start disposes the prior).
+    socket.on('auth:start', async () => {
+      const prior = socketLoginSessions.get(socket.id);
+      if (prior) {
+        prior.dispose();
+        socketLoginSessions.delete(socket.id);
+      }
+      // The login PTY uses the same binary-path override as chat (global preference).
+      let cliBinaryPath: string | undefined;
+      try {
+        cliBinaryPath = (await preferencesService.readPreferences()).cliBinaryPath;
+      } catch {
+        cliBinaryPath = undefined;
+      }
+      const session = new ClaudeLoginSession({
+        onMethodPrompt: () => socket.emit('auth:method-prompt'),
+        onUrl: (url) => socket.emit('auth:url', { url }),
+        onCodePrompt: () => socket.emit('auth:code-prompt'),
+        onComplete: (account) => {
+          socket.emit('auth:complete', { account });
+          socketLoginSessions.delete(socket.id);
+        },
+        onError: (message) => {
+          socket.emit('auth:error', { message });
+          socketLoginSessions.delete(socket.id);
+        },
+      });
+      socketLoginSessions.set(socket.id, session);
+      session.start(cliBinaryPath);
+    });
+
+    socket.on('auth:select-method', (data: { method: LoginMethod }) => {
+      socketLoginSessions.get(socket.id)?.selectMethod(data.method);
+    });
+
+    socket.on('auth:submit-code', (data: { code: string }) => {
+      socketLoginSessions.get(socket.id)?.submitCode(data.code);
+    });
+
+    socket.on('auth:logout', async () => {
+      const ok = deleteCredentials();
+      // Re-read usage credentials freshly (the deleted file → no token) so probing reflects logout.
+      rateLimitProbeService.invalidateTokenCache();
+      if (!ok) {
+        socket.emit('auth:error', { message: 'Failed to delete credentials' });
+        return;
+      }
+      // Refresh the in-memory account cache so a subsequent /account read reflects the logout.
+      // The client transitions to the inline login flow optimistically (no success event needed).
+      accountInfoService.refresh().catch(() => {
+        /* best-effort — the file is gone regardless */
+      });
+    });
+
     // Disconnect: detach socket from stream, DON'T abort or deny permissions
     socket.on('disconnect', () => {
       const sessionId = socketToSession.get(socket.id);
@@ -2463,6 +2524,14 @@ export async function initializeWebSocket(
       const terminalIds = socketTerminals.get(socket.id);
       if (terminalIds) {
         socketTerminals.delete(socket.id);
+      }
+
+      // Story BS-7: dispose any in-flight login PTY for this socket (the disposable login session
+      // must not outlive its only client — it has no background-completion semantics like chat).
+      const loginSession = socketLoginSessions.get(socket.id);
+      if (loginSession) {
+        loginSession.dispose();
+        socketLoginSessions.delete(socket.id);
       }
 
       connectedClients--;

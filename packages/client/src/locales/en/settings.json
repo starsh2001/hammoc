@@ -379,6 +379,10 @@
             "resetAt": "Resets {{reset}}",
             "usageEmpty": "Rate limit info not available. Available for Claude.ai subscribers."
         },
+        "claudeLogout": {
+            "button": "Sign out",
+            "done": "Signed out of Claude"
+        },
         "changePassword": "Change Password",
         "currentPassword": "Current Password",
         "newPassword": "New Password",

@@ -44,6 +44,17 @@ class RateLimitProbeService {
   }
 
   /**
+   * Story BS-7: drop the cached access token so the next read re-loads from disk immediately.
+   * The token is otherwise cached for {@link TOKEN_CACHE_TTL_MS}; after an in-app login/logout
+   * the credentials file just changed, so this keeps usage probing reading the fresh file (AC24)
+   * instead of a stale (or just-deleted) token for up to the cache TTL.
+   */
+  invalidateTokenCache(): void {
+    this.cachedToken = null;
+    this.tokenCachedAt = 0;
+  }
+
+  /**
    * Read OAuth access token from ~/.claude/.credentials.json
    */
   private readAccessToken(): string | null {

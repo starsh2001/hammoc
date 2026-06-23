@@ -45,6 +45,7 @@ vi.mock('../../utils/logger.js', () => ({
 }));
 
 // Import after mocks.
+import os from 'os';
 import { cliSessionPool } from '../cliSessionPool.js';
 import { ptyService } from '../ptyService.js';
 import * as nodePty from 'node-pty';
@@ -102,6 +103,27 @@ describe('cliSessionPool', () => {
       const { handle } = cliSessionPool.spawnClaude({ cwd: '/proj', args: [] });
       expect(cliSessionPool.size).toBe(1);
       expect(cliSessionPool.has(handle)).toBe(true);
+    });
+  });
+
+  describe('extraEnv (Story BS-7 — BROWSER=none for in-app login)', () => {
+    it('merges extraEnv LAST into the spawn env without dropping inherited vars', () => {
+      process.env.HAMMOC_TEST_VAR = 'keep-me';
+      cliSessionPool.spawnClaude({ cwd: os.tmpdir(), args: [], extraEnv: { BROWSER: 'none' } });
+
+      const spawnEnv = (vi.mocked(nodePty.spawn).mock.calls[0][2] as { env: Record<string, string> }).env;
+      expect(spawnEnv.BROWSER).toBe('none'); // merged in
+      expect(spawnEnv.HAMMOC_TEST_VAR).toBe('keep-me'); // inherited env preserved (no clobber)
+
+      delete process.env.HAMMOC_TEST_VAR;
+    });
+
+    it('a login-style spawn (tmpdir + extraEnv) does not register a terminal-pool session (AC23)', () => {
+      ptyService.createSession('/proj', 'proj-slug'); // one real terminal
+      cliSessionPool.spawnClaude({ cwd: os.tmpdir(), args: [], extraEnv: { BROWSER: 'none' } });
+
+      expect(cliSessionPool.size).toBe(1);
+      expect(ptyService.getSessionsByProject('proj-slug')).toHaveLength(1); // untouched
     });
   });
 

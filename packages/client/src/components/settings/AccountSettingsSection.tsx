@@ -5,10 +5,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, LogOut } from 'lucide-react';
 import { useChatStore } from '../../stores/chatStore';
 import { accountApi } from '../../services/api/account';
-import type { AccountInfoResponse } from '@hammoc/shared';
+import { getSocket } from '../../services/socket';
+import { ClaudeLoginFlow } from '../ClaudeLoginFlow';
+import type { AccountInfoResponse, AccountInfo } from '@hammoc/shared';
 
 function UsageBar({
   label,
@@ -94,6 +96,26 @@ export function AccountSettingsSection() {
     }
   }, [t]);
 
+  // Story BS-7: logout deletes the credentials file (server) and transitions this section
+  // to the inline login flow in-place (optimistic — no page navigation).
+  const handleLogout = useCallback(() => {
+    getSocket().emit('auth:logout');
+    // Switch to the inline login flow in-place; usage bars are hidden in the logged-out branch,
+    // so the (now stale) cached rate limit is no longer shown.
+    setAccountInfo({ account: null, fetchedAt: Date.now() });
+    toast.success(t('account.claudeLogout.done'));
+  }, [t]);
+
+  // Story BS-7: login completion transitions back to the account-info display with fresh data.
+  const handleLoginComplete = useCallback((acct: AccountInfo | null) => {
+    setAccountInfo({ account: acct, fetchedAt: Date.now() });
+    accountApi.getUsage()
+      .then((res) => {
+        if (res.rateLimit) useChatStore.getState().setSubscriptionRateLimit(res.rateLimit);
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
+
   const formatFetchedAt = (ts: number | null): string => {
     if (!ts) return t('account.info.never');
     return new Date(ts).toLocaleString();
@@ -102,24 +124,48 @@ export function AccountSettingsSection() {
   const account = accountInfo?.account ?? null;
   const dash = '—';
 
+  // Logged-out state (AC20): show the inline login flow in place of the account info.
+  if (!account) {
+    return (
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+          {t('account.info.title')}
+        </h3>
+        <ClaudeLoginFlow onComplete={handleLoginComplete} />
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
           {t('account.info.title')}
         </h3>
-        <button
-          type="button"
-          onClick={handleRefreshAccount}
-          disabled={isRefreshing}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs
-                     text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#455568]
-                     hover:bg-gray-50 dark:hover:bg-[#263240]
-                     disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? t('account.info.refreshing') : t('account.info.refresh')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefreshAccount}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs
+                       text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-[#455568]
+                       hover:bg-gray-50 dark:hover:bg-[#263240]
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? t('account.info.refreshing') : t('account.info.refresh')}
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs
+                       text-red-600 dark:text-red-400 border border-gray-300 dark:border-[#455568]
+                       hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            {t('account.claudeLogout.button')}
+          </button>
+        </div>
       </div>
 
       <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
@@ -142,12 +188,6 @@ export function AccountSettingsSection() {
         <dt className="text-gray-500 dark:text-gray-400">{t('account.info.fetchedAt')}</dt>
         <dd className="text-gray-900 dark:text-white">{formatFetchedAt(accountInfo?.fetchedAt ?? null)}</dd>
       </dl>
-
-      {!account && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {t('account.info.emptyHint')}
-        </p>
-      )}
 
       {/* Subscription rate limit progress bars */}
       <div className="pt-2">
