@@ -97,13 +97,8 @@ export class CliService {
    */
   async checkAuthentication(): Promise<boolean> {
     try {
-      const credentialsPath = path.join(os.homedir(), '.claude');
-      const exists = fs.existsSync(credentialsPath);
-      if (!exists) {
-        return false;
-      }
-      const files = fs.readdirSync(credentialsPath);
-      return files.length > 0;
+      const credentialsFile = path.join(os.homedir(), '.claude', '.credentials.json');
+      return fs.existsSync(credentialsFile);
     } catch {
       return false;
     }

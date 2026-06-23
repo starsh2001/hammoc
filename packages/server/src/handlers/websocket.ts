@@ -962,11 +962,13 @@ export async function initializeWebSocket(
   // Session middleware for WebSocket (Story 2.5 - Task 4)
   const sessionMiddleware = await createSessionMiddleware();
 
-  // Parse session from cookie for Socket.io connections
+  // Parse session from cookie for Socket.io connections.
+  // cookie-session + on-headers expect a response-like object; a real
+  // ServerResponse would try to send headers over the upgraded WebSocket.
   io.use((socket, next) => {
-    // Express middleware adapter for Socket.io
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sessionMiddleware(socket.request as any, {} as any, next as any);
+    const res = { getHeader() {}, setHeader() {}, writeHead() {} } as any;
+    sessionMiddleware(socket.request as any, res, next as any);
   });
 
   // Authentication middleware (Story 2.5 - Task 4)

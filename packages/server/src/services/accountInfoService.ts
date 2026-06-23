@@ -96,12 +96,12 @@ class AccountInfoService {
 
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const iter = q[Symbol.asyncIterator]();
-      const first = await iter.next();
-      if (first.done) {
-        log.warn('bootstrap query ended before init message');
-        return null;
-      }
+      // initializationResult() resolves from the SDK control-init handshake and does
+      // NOT require pumping the message stream. We must NOT await iter.next() first:
+      // this bootstrap prompt never yields input, so the current bundled CLI emits no
+      // SDKMessage to advance the iterator — iter.next() then blocks until the abort
+      // timeout (verified on both host and container: iter.next() stalls the full
+      // FETCH_TIMEOUT_MS, while initializationResult() alone returns the account in ~1s).
       const initResult = await q.initializationResult();
       return initResult?.account ?? null;
     } catch (err) {

@@ -1,0 +1,10 @@
+services:
+  hammoc-onboarding:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - TERMINAL_ENABLED=false
+      # Distinct cookie so this test container doesn't clobber a host Hammoc session
+      - SESSION_COOKIE_NAME=bmad-session-docker

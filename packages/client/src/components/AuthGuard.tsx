@@ -21,40 +21,9 @@ interface AuthGuardProps {
   children: ReactNode;
 }
 
-// Module-level flag (persists across component remounts)
+// Module-level flag (persists across component remounts within the same page load)
 let hasFetchedCliStatus = false;
 let cachedCliStatus: CLIStatusResponse | null = null;
-
-// Restore from sessionStorage on page reload (avoids redundant CLI checks)
-const SESSION_CACHE_KEY = 'cli-status-cache';
-const SESSION_CACHE_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
-
-function loadCachedCliStatus(): CLIStatusResponse | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
-    if (!raw) return null;
-    const { status, timestamp } = JSON.parse(raw);
-    if (Date.now() - timestamp > SESSION_CACHE_MAX_AGE_MS) return null;
-    // Only trust cache if CLI was ready (don't cache failure states)
-    if (status?.authenticated || status?.apiKeySet) return status;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function saveCachedCliStatus(status: CLIStatusResponse): void {
-  try {
-    sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ status, timestamp: Date.now() }));
-  } catch { /* quota exceeded etc. */ }
-}
-
-// Try restoring on module load
-const restoredStatus = loadCachedCliStatus();
-if (restoredStatus) {
-  hasFetchedCliStatus = true;
-  cachedCliStatus = restoredStatus;
-}
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { t } = useTranslation('common');
@@ -88,7 +57,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
         setCliStatus(status);
         cachedCliStatus = status;
         hasFetchedCliStatus = true;
-        saveCachedCliStatus(status);
         // Only require onboarding if neither authenticated nor API key is set.
         // cliInstalled can be false due to PATH issues even when CLI is actually present.
         const needsSetup = !status.authenticated && !status.apiKeySet;
