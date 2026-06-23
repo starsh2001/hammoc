@@ -131,6 +131,16 @@ export interface UserPreferences {
   // Global preference; the panel toggle writes here. Absent → 'size/4'.
   // Per spike #1 only 'size/4' is currently selectable.
   observabilityTokenizer?: ObservabilityTokenizer;
+  // Story BS-6 — debug/diagnostics toggles, surfaced only when HAMMOC_DEBUG=1.
+  // All optional; absence means "use the original env var as fallback" (backward compatible).
+  // Session-start options (CLI traces) take effect on the NEXT CLI session; runtime
+  // options (log levels, test endpoints) take effect immediately on the origin device.
+  debugCliTrace?: boolean;          // ↔ HAMMOC_CLI_DEBUG — per-turn decision JSONL
+  debugPtyDump?: boolean;           // ↔ HAMMOC_CLI_PTY_DUMP — raw PTY frame capture
+  debugToolTrace?: boolean;         // ↔ HAMMOC_CLI_TOOL_TRACE — tool-completion parser trace
+  debugServerLogLevel?: 'ERROR' | 'WARN' | 'INFO' | 'DEBUG' | 'VERBOSE'; // ↔ LOG_LEVEL (runtime)
+  debugClientLogLevel?: 'ERROR' | 'WARN' | 'INFO' | 'DEBUG' | 'VERBOSE'; // ↔ VITE_LOG_LEVEL (runtime)
+  debugTestEndpoints?: boolean;     // ↔ ENABLE_TEST_ENDPOINTS — /api/debug/* routes
 }
 
 /** Controls when permission mode changes are broadcast to other browsers viewing the same session */

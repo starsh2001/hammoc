@@ -116,6 +116,17 @@ export const config = {
   },
 
   /**
+   * Debug / diagnostics gate (Story BS-6)
+   * HAMMOC_DEBUG=1 activates the debug section in the settings page, where all
+   * diagnostic toggles (CLI traces, log levels, test endpoints) can be flipped at
+   * runtime instead of via individual env vars. When unset the section is hidden and
+   * the original env vars still work as fallbacks (backward compatible).
+   */
+  debug: {
+    enabled: process.env.HAMMOC_DEBUG === '1' || process.env.HAMMOC_DEBUG === 'true',
+  },
+
+  /**
    * Package metadata from root package.json
    */
   pkg: readPackageMeta(),

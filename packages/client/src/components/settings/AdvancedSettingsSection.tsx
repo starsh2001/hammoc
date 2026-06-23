@@ -15,6 +15,7 @@ import { projectsApi } from '../../services/api/projects';
 import { api } from '../../services/api/client.js';
 import { SettingsSyncNotice } from './SettingsSyncNotice';
 import { CliModeSettingsPanel } from './CliModeSettingsPanel';
+import { DebugSettingsPanel } from './DebugSettingsPanel';
 
 /**
  * Poll server health after restart/update.
@@ -159,12 +160,14 @@ export function AdvancedSettingsSection() {
 
   // Server info
   const [isDevMode, setIsDevMode] = useState<boolean | null>(null);
+  const [isDebugMode, setIsDebugMode] = useState<boolean>(false);
   const [serverVersion, setServerVersion] = useState('');
 
   useEffect(() => {
-    api.get<{ isDevMode: boolean; version: string }>('/server/info')
+    api.get<{ isDevMode: boolean; isDebugMode?: boolean; version: string }>('/server/info')
       .then((data) => {
         setIsDevMode(data.isDevMode);
+        setIsDebugMode(data.isDebugMode ?? false);
         setServerVersion(data.version);
       })
       .catch(() => { /* ignore */ });
@@ -675,6 +678,20 @@ export function AdvancedSettingsSection() {
         <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupCliDesc')}</p>
       </div>
       <CliModeSettingsPanel />
+
+      {/* ===== Debug / Diagnostics group (Story BS-6) — gated by HAMMOC_DEBUG ===== */}
+      {/* Completely absent from the DOM unless the server reports isDebugMode. */}
+      {isDebugMode && (
+        <>
+          <div className="pt-2 border-t border-gray-200 dark:border-[#3a4d5e]">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {t('advanced.groupDebug')}
+            </h3>
+            <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{t('advanced.groupDebugDesc')}</p>
+          </div>
+          <DebugSettingsPanel />
+        </>
+      )}
     </div>
   );
 }

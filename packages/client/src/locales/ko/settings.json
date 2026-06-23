@@ -225,7 +225,22 @@
         "groupSdk": "SDK 전용",
         "groupSdkDesc": "대화 엔진이 SDK일 때만 적용되는 설정입니다.",
         "groupCli": "CLI 전용",
-        "groupCliDesc": "대화 엔진이 CLI일 때만 적용되는 설정입니다."
+        "groupCliDesc": "대화 엔진이 CLI일 때만 적용되는 설정입니다.",
+        "groupDebug": "디버그 / 진단",
+        "groupDebugDesc": "HAMMOC_DEBUG=1 설정 시에만 표시됩니다.",
+        "debugCliTrace": "CLI 결정 트레이스",
+        "debugCliTraceDesc": "턴별 분류/출력 결정을 JSONL로 기록",
+        "debugPtyDump": "PTY 프레임 덤프",
+        "debugPtyDumpDesc": "원시 PTY 바이트(ANSI 시퀀스 포함)를 캡처",
+        "debugToolTrace": "도구 완료 트레이스",
+        "debugToolTraceDesc": "도구 완료 파서 결정의 구조화 트레이스",
+        "debugServerLogLevel": "서버 로그 레벨",
+        "debugServerLogLevelDesc": "서버 로그 레벨을 런타임으로 변경",
+        "debugClientLogLevel": "클라이언트 로그 레벨",
+        "debugClientLogLevelDesc": "브라우저 콘솔 로그 레벨 변경",
+        "debugTestEndpoints": "테스트 엔드포인트",
+        "debugTestEndpointsDesc": "/api/debug/* 진단 라우트 활성화",
+        "nextSession": "다음 세션부터 적용"
     },
     "confirm": {
         "serverRestart": "서버를 재빌드하고 재시작합니다. 진행할까요?",

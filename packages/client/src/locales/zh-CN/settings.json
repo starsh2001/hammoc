@@ -222,7 +222,22 @@
         "groupSdk": "仅 SDK 引擎",
         "groupSdkDesc": "仅当对话引擎为 SDK 时生效的设置。",
         "groupCli": "仅 CLI 引擎",
-        "groupCliDesc": "仅当对话引擎为 CLI 时生效的设置。"
+        "groupCliDesc": "仅当对话引擎为 CLI 时生效的设置。",
+        "groupDebug": "调试 / 诊断",
+        "groupDebugDesc": "仅在设置 HAMMOC_DEBUG=1 时显示。",
+        "debugCliTrace": "CLI 决策跟踪",
+        "debugCliTraceDesc": "按轮次记录分类/输出决策（JSONL）",
+        "debugPtyDump": "PTY 帧转储",
+        "debugPtyDumpDesc": "捕获包含 ANSI 序列的原始 PTY 字节",
+        "debugToolTrace": "工具完成跟踪",
+        "debugToolTraceDesc": "工具完成解析器决策的结构化跟踪",
+        "debugServerLogLevel": "服务器日志级别",
+        "debugServerLogLevelDesc": "在运行时覆盖服务器端日志级别",
+        "debugClientLogLevel": "客户端日志级别",
+        "debugClientLogLevelDesc": "覆盖浏览器控制台日志级别",
+        "debugTestEndpoints": "测试端点",
+        "debugTestEndpointsDesc": "启用 /api/debug/* 诊断路由",
+        "nextSession": "从下个会话开始生效"
     },
     "confirm": {
         "serverRestart": "这将重新构建并重启服务器。确定要继续吗？",

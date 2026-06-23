@@ -222,7 +222,22 @@
         "groupSdk": "Apenas motor SDK",
         "groupSdkDesc": "Configurações aplicadas apenas quando o motor de conversa é SDK.",
         "groupCli": "Apenas motor CLI",
-        "groupCliDesc": "Configurações aplicadas apenas quando o motor de conversa é CLI."
+        "groupCliDesc": "Configurações aplicadas apenas quando o motor de conversa é CLI.",
+        "groupDebug": "Depuração / Diagnóstico",
+        "groupDebugDesc": "Visível apenas quando HAMMOC_DEBUG=1 está definido.",
+        "debugCliTrace": "Rastreamento de decisões da CLI",
+        "debugCliTraceDesc": "Registra as decisões de classificação/emissão por turno (JSONL)",
+        "debugPtyDump": "Despejo de quadros PTY",
+        "debugPtyDumpDesc": "Captura os bytes PTY brutos com sequências ANSI",
+        "debugToolTrace": "Rastreamento de conclusão de ferramentas",
+        "debugToolTraceDesc": "Rastreamento estruturado das decisões do analisador de conclusão de ferramentas",
+        "debugServerLogLevel": "Nível de log do servidor",
+        "debugServerLogLevelDesc": "Substitui o nível de log do servidor em tempo de execução",
+        "debugClientLogLevel": "Nível de log do cliente",
+        "debugClientLogLevelDesc": "Substitui o nível de log do console do navegador",
+        "debugTestEndpoints": "Endpoints de teste",
+        "debugTestEndpointsDesc": "Habilita as rotas de diagnóstico /api/debug/*",
+        "nextSession": "Aplica-se a partir da próxima sessão"
     },
     "confirm": {
         "serverRestart": "Isso irá recompilar e reiniciar o servidor. Continuar?",

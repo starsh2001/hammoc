@@ -225,7 +225,22 @@
         "groupSdk": "SDK engine only",
         "groupSdkDesc": "Settings used only when the conversation engine is set to SDK.",
         "groupCli": "CLI engine only",
-        "groupCliDesc": "Settings used only when the conversation engine is set to CLI."
+        "groupCliDesc": "Settings used only when the conversation engine is set to CLI.",
+        "groupDebug": "Debug / Diagnostics",
+        "groupDebugDesc": "Visible only when HAMMOC_DEBUG=1 is set.",
+        "debugCliTrace": "CLI Decision Trace",
+        "debugCliTraceDesc": "Record per-turn classification/emit decisions (JSONL)",
+        "debugPtyDump": "PTY Frame Dump",
+        "debugPtyDumpDesc": "Capture raw PTY bytes with ANSI sequences",
+        "debugToolTrace": "Tool Completion Trace",
+        "debugToolTraceDesc": "Structured trace of tool-completion parser decisions",
+        "debugServerLogLevel": "Server Log Level",
+        "debugServerLogLevelDesc": "Override the server-side log level at runtime",
+        "debugClientLogLevel": "Client Log Level",
+        "debugClientLogLevelDesc": "Override the browser console log level",
+        "debugTestEndpoints": "Test Endpoints",
+        "debugTestEndpointsDesc": "Enable /api/debug/* diagnostic routes",
+        "nextSession": "Applies from next session"
     },
     "confirm": {
         "serverRestart": "This will rebuild and restart the server. Continue?",

@@ -10,7 +10,9 @@ import { webPushService } from '../services/webPushService.js';
 import { invalidateI18nCache } from '../middleware/i18n.js';
 import { SECTION_COMMON, SECTION_SDK, SECTION_CLI, SECTION_BMAD, TEMPLATE_VARIABLES } from '../services/workspaceContext.js';
 import type { UpdateTelegramSettingsRequest, WebPushSubscribeRequest } from '@hammoc/shared';
+import { parseLogLevel } from '@hammoc/shared';
 import { broadcastPreferencesChange } from '../handlers/websocket.js';
+import { setLogLevel } from '../utils/logger.js';
 
 const router = Router();
 
@@ -204,6 +206,14 @@ router.patch('/', async (req: Request, res: Response) => {
     // Invalidate cached language when preference changes
     if (req.body.language) {
       invalidateI18nCache();
+    }
+    // Story BS-6: apply a server log level change at runtime (no restart). The field
+    // persisted automatically via the wholesale writePreferences merge above; here we
+    // additionally push it to the live logger. Guard against an undefined parse result
+    // (invalid level string → leave the current level untouched).
+    if (req.body.debugServerLogLevel !== undefined) {
+      const level = parseLogLevel(req.body.debugServerLogLevel);
+      if (level !== undefined) setLogLevel(level);
     }
     // Reload notification service when telegram/webPush settings change via the merge endpoint,
     // so the in-memory service state matches the newly persisted file.

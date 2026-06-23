@@ -210,7 +210,7 @@ export const serverController = {
     const host = config.server.host;
     // Detect LAN-accessible IPv4 address
     const localIP = getLocalNetworkIP();
-    res.json({ isDevMode, version, packageName: name, hostname, host, port, localIP });
+    res.json({ isDevMode, isDebugMode: config.debug.enabled, version, packageName: name, hostname, host, port, localIP });
   },
 
   /** POST /api/server/restart - rebuild & restart (dev only, local network only) */

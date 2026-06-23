@@ -71,12 +71,18 @@ const h = vi.hoisted(() => {
   // identity-stability is the only behavior change vs. fresh-per-call.
   const logger = { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), verbose: vi.fn() };
 
-  return { fakePty, disposers, cliSessionPool, state, sessionService, rewindSessionFiles, logger };
+  // Story BS-6: the engine reads debug toggles from preferences at spawn. Default to an empty
+  // object (no preference) so existing tests keep the env-fallback behavior; the BS-6 resolution
+  // tests override readPreferences per-case.
+  const preferencesService = { readPreferences: vi.fn(async () => ({} as Record<string, unknown>)) };
+
+  return { fakePty, disposers, cliSessionPool, state, sessionService, rewindSessionFiles, logger, preferencesService };
 });
 
 vi.mock('../cliSessionPool.js', () => ({ cliSessionPool: h.cliSessionPool }));
 vi.mock('../sessionService.js', () => ({ sessionService: h.sessionService, SessionService: class {} }));
 vi.mock('../fileRewind.js', () => ({ rewindSessionFiles: h.rewindSessionFiles }));
+vi.mock('../preferencesService.js', () => ({ preferencesService: h.preferencesService }));
 vi.mock('../../utils/logger.js', () => ({
   createLogger: () => h.logger,
 }));
@@ -256,6 +262,8 @@ describe('CliChatEngine', () => {
       if (fn) fn();
       h.disposers.delete(handle);
     });
+    // Reset BS-6 debug preferences to "none set" before each test (per-case overrides set their own).
+    h.preferencesService.readPreferences.mockImplementation(async () => ({}));
     h.state.sessionsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cli-engine-'));
   });
 
@@ -739,6 +747,58 @@ describe('CliChatEngine', () => {
       const response = await promise;
       expect(onComplete).toHaveBeenCalledTimes(1);
       expect(response.content).toBe('working…all done');
+    });
+  });
+
+  describe('Story BS-6 — debug toggle resolution (preference-first, env fallback)', () => {
+    // Observable: `cliDebug` gates the `--debug-file` spawn arg; `ptyDump`/`toolTrace` gate the
+    // [CLI-PTY-DUMP]/[CLI-TOOL-TRACE] log lines (logger is a spy). All resolve preference ?? env.
+    const ENV_KEYS = ['HAMMOC_CLI_DEBUG', 'HAMMOC_CLI_PTY_DUMP', 'HAMMOC_CLI_TOOL_TRACE'] as const;
+    let savedEnv: Record<string, string | undefined>;
+    beforeEach(() => {
+      savedEnv = {};
+      for (const k of ENV_KEYS) { savedEnv[k] = process.env[k]; delete process.env[k]; }
+    });
+    afterEach(() => {
+      for (const k of ENV_KEYS) {
+        if (savedEnv[k] === undefined) delete process.env[k];
+        else process.env[k] = savedEnv[k];
+      }
+    });
+
+    async function spawnArgsFor(prefs: Record<string, unknown>): Promise<string[]> {
+      h.preferencesService.readPreferences.mockImplementation(async () => prefs);
+      const engine = new CliChatEngine({ workingDirectory: '/proj' });
+      const promise = engine.sendMessageWithCallbacks('hi', { onComplete: vi.fn(), onError: vi.fn() }, { sessionId: SID }, undefined, vi.fn());
+      await wait(30);
+      const args = h.cliSessionPool.spawnClaude.mock.calls[0][0].args as string[];
+      await writeSession(SID, [userLine('u1'), assistantLine('a1', { text: 'ok' })]);
+      await promise;
+      return args;
+    }
+
+    it('CLI Decision Trace resolves from the debugCliTrace preference (true → --debug-file)', async () => {
+      const args = await spawnArgsFor({ debugCliTrace: true });
+      expect(args).toContain('--debug-file');
+    });
+
+    it('CLI Decision Trace falls back to HAMMOC_CLI_DEBUG when no preference is set', async () => {
+      process.env.HAMMOC_CLI_DEBUG = '1';
+      const args = await spawnArgsFor({}); // no debug preference
+      expect(args).toContain('--debug-file');
+    });
+
+    it('an explicit false preference overrides a set env var (no --debug-file)', async () => {
+      process.env.HAMMOC_CLI_DEBUG = '1';
+      const args = await spawnArgsFor({ debugCliTrace: false });
+      expect(args).not.toContain('--debug-file');
+    });
+
+    it('Tool trace activates when the PTY dump preference is true (implicit coupling preserved)', async () => {
+      await spawnArgsFor({ debugPtyDump: true }); // debugToolTrace unset → rides along with ptyDump
+      const logged = h.logger.info.mock.calls.map((c) => String(c[0]));
+      expect(logged.some((m) => m.includes('[CLI-TOOL-TRACE]'))).toBe(true);
+      expect(logged.some((m) => m.includes('[CLI-PTY-DUMP]'))).toBe(true);
     });
   });
 

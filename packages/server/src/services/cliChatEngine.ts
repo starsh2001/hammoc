@@ -80,6 +80,7 @@ import fs from 'fs/promises';
 import { watch, mkdirSync, writeFileSync, createWriteStream, type FSWatcher, type WriteStream } from 'fs';
 import { sessionService } from './sessionService.js';
 import { cliSessionPool } from './cliSessionPool.js';
+import { preferencesService } from './preferencesService.js';
 import { createCliScreenModel, CLI_SCREEN_COLS, CLI_SCREEN_ROWS, type CliBulletColor } from './cliScreenModel.js';
 import { setCliScreen } from './cliScreenCache.js';
 import { createTrailingThrottle } from '../utils/trailingThrottle.js';
@@ -790,6 +791,17 @@ export class CliChatEngine implements ChatEngine {
     const sessionsDir = sessionService.getSessionsDir(cwd);
     const resumeId = typeof options.resume === 'string' && options.resume.length > 0 ? options.resume : undefined;
 
+    // Story BS-6: resolve the CLI debug instrumentation flags once per spawn. Preference-first
+    // (set via the HAMMOC_DEBUG settings panel), falling back to the original env vars so
+    // existing HAMMOC_CLI_* usage keeps working when no preference is set. Tool trace rides
+    // along with PTY dump (the original env coupling preserved). These are referenced below at
+    // the four gated sites (debug-file, PTY dump, tool trace, and the pre-inject snapshot deep
+    // inside attemptInjectFromGrid).
+    const debugPrefs = await preferencesService.readPreferences();
+    const cliDebug = debugPrefs.debugCliTrace ?? !!process.env.HAMMOC_CLI_DEBUG;
+    const ptyDump = debugPrefs.debugPtyDump ?? !!process.env.HAMMOC_CLI_PTY_DUMP;
+    const toolTrace = debugPrefs.debugToolTrace ?? (!!process.env.HAMMOC_CLI_TOOL_TRACE || ptyDump);
+
     // Build interactive claude args. NEVER --print / --output-format stream-json:
     // headless output bills like the SDK, which is the whole reason CLI mode exists.
     const args: string[] = [];
@@ -866,7 +878,7 @@ export class CliChatEngine implements ChatEngine {
     // captured per spawn, to diagnose why claude self-compacts on some long-idle resumes.
     // No-op unless the env flag is set; *.log is gitignored. Best-effort — instrumentation
     // must never break a turn.
-    if (process.env.HAMMOC_CLI_DEBUG) {
+    if (cliDebug) {
       try {
         const dbgDir = path.join(process.cwd(), 'logs', 'claude-debug');
         mkdirSync(dbgDir, { recursive: true });
@@ -942,7 +954,7 @@ export class CliChatEngine implements ChatEngine {
     // raw bytes (ANSI intact) are appended to a gitignored logs/cli-pty-dump/*.log.
     // Best-effort — instrumentation must never break a turn.
     let ptyDumpStream: WriteStream | null = null;
-    if (process.env.HAMMOC_CLI_PTY_DUMP) {
+    if (ptyDump) {
       try {
         const dumpDir = path.join(process.cwd(), 'logs', 'cli-pty-dump');
         mkdirSync(dumpDir, { recursive: true });
@@ -962,7 +974,7 @@ export class CliChatEngine implements ChatEngine {
     // Activate when EITHER its own flag OR the PTY-dump flag is set — so when only HAMMOC_CLI_PTY_DUMP can
     // be toggled (already on), the tool-completion trace rides along with no extra env. (Temporary debug
     // convenience; both are gitignored *.log and OFF in normal runs.)
-    if (process.env.HAMMOC_CLI_TOOL_TRACE || process.env.HAMMOC_CLI_PTY_DUMP) {
+    if (toolTrace) {
       try {
         const traceDir = path.join(process.cwd(), 'logs', 'cli-tool-trace');
         mkdirSync(traceDir, { recursive: true });
@@ -978,7 +990,7 @@ export class CliChatEngine implements ChatEngine {
     };
 
     // Unified CLI decision log — per-turn session file, opt-in via HAMMOC_CLI_DEBUG (no-op when unset).
-    const dlog = new CliDebugLog(resumeId ?? options.sessionId ?? 'new');
+    const dlog = new CliDebugLog(resumeId ?? options.sessionId ?? 'new', cliDebug);
     this.currentDebugLog?.close();
     this.currentDebugLog = dlog;
 
@@ -1469,7 +1481,7 @@ export class CliChatEngine implements ChatEngine {
           if (injected || settled) return;
           const grid = screen.readGrid();
           const classification = classifyPreInjectScreen(grid);
-          if (process.env.HAMMOC_CLI_DEBUG) snapshotPreInject(grid, classification);
+          if (cliDebug) snapshotPreInject(grid, classification);
           if (classification === 'input-box') {
             void alignModeThenInject(); // AC1 — verified input box (align mode → inject)
             return;

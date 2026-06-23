@@ -11,7 +11,7 @@
 import { create } from 'zustand';
 import type { UserPreferences, SupportedLanguage, CommandFavoriteEntry } from '@hammoc/shared';
 import { preferencesApi } from '../services/api/preferences';
-import { debugLogger } from '../utils/debugLogger';
+import { debugLogger, setDebugLogLevel } from '../utils/debugLogger';
 import { getSocket } from '../services/socket';
 import i18n from '../i18n';
 
@@ -158,6 +158,10 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
         if (prefs.language) {
           i18n.changeLanguage(prefs.language);
         }
+        // Story BS-6: apply a stored client log level to the live debug logger on load.
+        if (prefs.debugClientLogLevel) {
+          setDebugLogLevel(prefs.debugClientLogLevel);
+        }
         // Sync chat-store fields that derive from preferences (handles origin change
         // where the localStorage cache was empty when chatStore was first created).
         try {
@@ -196,6 +200,10 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     const updated = { ...get().preferences, [key]: value };
     set({ preferences: updated });
     writeCache(updated);
+    // Story BS-6: apply a client log level change immediately on the origin device.
+    if (key === 'debugClientLogLevel' && typeof value === 'string') {
+      setDebugLogLevel(value);
+    }
     schedulePatch({ [key]: value } as Partial<UserPreferences>);
   },
 

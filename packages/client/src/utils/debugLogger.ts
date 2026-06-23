@@ -242,6 +242,22 @@ class DebugLogger {
 
 export const debugLogger = new DebugLogger();
 
+/**
+ * Story BS-6: set the client debug log level at runtime from the debug settings panel.
+ * Parses a level name ('ERROR'…'VERBOSE') and forwards to the singleton's existing
+ * setLevel(). Because debugLogger is a singleton, the change applies immediately to every
+ * call site — no per-instance propagation. Invalid strings are ignored (level unchanged).
+ */
+export function setDebugLogLevel(level: string): void {
+  const parsed = parseLogLevel(level);
+  if (parsed !== undefined) debugLogger.setLevel(parsed);
+}
+
+/** Current client debug log level (for the panel to display the active value). */
+export function getDebugLogLevel(): LogLevel {
+  return debugLogger.getLevel();
+}
+
 // Convenience namespace for categorized logging (DEBUG level)
 export const debugLog = {
   socket: (event: string, data?: Record<string, unknown>) =>

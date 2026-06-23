@@ -7,10 +7,11 @@
  * land in ONE chronological file so a post-mortem can diff server-emitted vs
  * client-received at each timestamp.
  *
- * Activation: opt-in via the HAMMOC_CLI_DEBUG env var (off by default). When unset the logger
- * is a no-op — no directory, no file, no writes — so a released install never accumulates
- * per-turn JSONL files on the user's disk. When set, one WriteStream per turn (best-effort)
- * writes under `logs/cli-debug/` (gitignored).
+ * Activation: opt-in via the `enabled` constructor flag (off by default), which the caller
+ * resolves from the debugCliTrace preference with a HAMMOC_CLI_DEBUG env var fallback
+ * (Story BS-6). When disabled the logger is a no-op — no directory, no file, no writes — so
+ * a released install never accumulates per-turn JSONL files on the user's disk. When enabled,
+ * one WriteStream per turn (best-effort) writes under `logs/cli-debug/` (gitignored).
  *
  * Format (one JSON line per entry):
  *   {"ts":"2026-06-20T10:15:32.123Z","src":"S","ev":"grid-card-emit","d":{...}}
@@ -35,13 +36,15 @@ export class CliDebugLog {
   private stream: WriteStream | null = null;
   readonly filePath: string;
 
-  constructor(sessionId: string) {
+  constructor(sessionId: string, enabled: boolean) {
     const sid = sessionId || 'unknown';
     const fname = `${sid}-${Date.now()}.jsonl`;
     this.filePath = path.join(LOG_DIR, fname);
-    // Opt-in: only open the trace file when HAMMOC_CLI_DEBUG is set. Off by default → the
-    // stream stays null and every write() below is a no-op (no directory, no file created).
-    if (!process.env.HAMMOC_CLI_DEBUG) return;
+    // Opt-in: only open the trace file when enabled (resolved by the caller from the
+    // debugCliTrace preference, falling back to the HAMMOC_CLI_DEBUG env var — Story BS-6).
+    // Off by default → the stream stays null and every write() below is a no-op (no
+    // directory, no file created).
+    if (!enabled) return;
     try {
       mkdirSync(LOG_DIR, { recursive: true });
       this.stream = createWriteStream(this.filePath, { encoding: 'utf8' });

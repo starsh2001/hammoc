@@ -222,7 +222,22 @@
         "groupSdk": "SDK 専用",
         "groupSdkDesc": "会話エンジンが SDK のときだけ適用される設定です。",
         "groupCli": "CLI 専用",
-        "groupCliDesc": "会話エンジンが CLI のときだけ適用される設定です。"
+        "groupCliDesc": "会話エンジンが CLI のときだけ適用される設定です。",
+        "groupDebug": "デバッグ / 診断",
+        "groupDebugDesc": "HAMMOC_DEBUG=1 が設定されている場合のみ表示されます。",
+        "debugCliTrace": "CLI 判定トレース",
+        "debugCliTraceDesc": "ターンごとの分類/出力判定を JSONL で記録",
+        "debugPtyDump": "PTY フレームダンプ",
+        "debugPtyDumpDesc": "ANSI シーケンスを含む生の PTY バイトをキャプチャ",
+        "debugToolTrace": "ツール完了トレース",
+        "debugToolTraceDesc": "ツール完了パーサー判定の構造化トレース",
+        "debugServerLogLevel": "サーバーログレベル",
+        "debugServerLogLevelDesc": "サーバー側のログレベルを実行時に上書き",
+        "debugClientLogLevel": "クライアントログレベル",
+        "debugClientLogLevelDesc": "ブラウザコンソールのログレベルを上書き",
+        "debugTestEndpoints": "テストエンドポイント",
+        "debugTestEndpointsDesc": "/api/debug/* 診断ルートを有効化",
+        "nextSession": "次のセッションから適用"
     },
     "confirm": {
         "serverRestart": "リビルドしてサーバーを再起動します。続行しますか？",

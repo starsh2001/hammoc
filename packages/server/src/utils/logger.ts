@@ -20,7 +20,10 @@ import { LogLevel, parseLogLevel } from '@hammoc/shared';
 // Reads process.env directly (not from config/index.ts) to avoid circular dependency
 const envLevel = parseLogLevel(process.env.LOG_LEVEL);
 const isProduction = process.env.NODE_ENV === 'production';
-const currentLevel: LogLevel = envLevel ?? (isProduction ? LogLevel.INFO : LogLevel.DEBUG);
+// `let` (not `const`) so the debug settings panel can change the active level at runtime
+// via setLogLevel() — see Story BS-6. Initialized from process.env.LOG_LEVEL at module
+// load (config is intentionally NOT imported here to avoid a circular dependency).
+let currentLevel: LogLevel = envLevel ?? (isProduction ? LogLevel.INFO : LogLevel.DEBUG);
 
 // Ensure logs directory exists
 const logsDir = path.join(process.cwd(), 'logs');
@@ -100,4 +103,14 @@ export function createLogger(module: string): Logger {
 /** Get current effective log level (for display/diagnostics) */
 export function getEffectiveLogLevel(): LogLevel {
   return currentLevel;
+}
+
+/**
+ * Change the active log level at runtime (Story BS-6 debug settings panel).
+ * Takes effect immediately for all loggers (they share this module-level `currentLevel`),
+ * with no server restart. Does not persist — the caller (preferences route) persists the
+ * preference separately, and the level re-initializes from env on the next boot.
+ */
+export function setLogLevel(level: LogLevel): void {
+  currentLevel = level;
 }

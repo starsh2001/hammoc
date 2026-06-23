@@ -35,6 +35,7 @@ import { createSessionMiddleware } from './middleware/session.js';
 import { authMiddlewareWithExclusions } from './middleware/auth.js';
 import { i18nMiddleware } from './middleware/i18n.js';
 import { config } from './config/index.js';
+import { preferencesService } from './services/preferencesService.js';
 import { createLogger } from './utils/logger.js';
 
 // Initialize server i18n (Epic 22)
@@ -191,10 +192,25 @@ export async function createApp(): Promise<Express> {
   // Debug routes (server-side logging + test helpers) — dev mode or explicit opt-in.
   // Integration test launcher runs in production mode but sets ENABLE_TEST_ENDPOINTS=true
   // to enable R-01-01 kill-ws test helper.
-  if (
+  if (config.debug.enabled) {
+    // Story BS-6: under the HAMMOC_DEBUG gate the routes are always mounted, but wrapped
+    // with a runtime guard so the "Test Endpoints" toggle (debugTestEndpoints preference)
+    // can enable/disable /api/debug/* live without a restart. The original env var still
+    // works as a fallback when the preference is unset.
+    app.use('/api/debug', async (req: Request, res: Response, next: express.NextFunction) => {
+      const prefs = await preferencesService.readPreferences();
+      const allowed = prefs.debugTestEndpoints || process.env.ENABLE_TEST_ENDPOINTS === 'true';
+      if (!allowed) {
+        res.status(403).json({ error: { code: 'DEBUG_ENDPOINTS_DISABLED', message: 'Debug endpoints disabled' } });
+        return;
+      }
+      next();
+    }, debugRoutes);
+  } else if (
     process.env.NODE_ENV === 'development' ||
     process.env.ENABLE_TEST_ENDPOINTS === 'true'
   ) {
+    // Existing behavior when HAMMOC_DEBUG is not set: static env var check only.
     app.use('/api/debug', debugRoutes);
   }
 

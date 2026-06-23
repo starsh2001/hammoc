@@ -1,6 +1,6 @@
 # P. 전역 설정
 
-**범위**: 언어 / 테마 / 채팅 타임아웃 / 고급 설정 / 서버 업데이트 / 엔진 모드 토글 / 멀티 기기 동기화.
+**범위**: 언어 / 테마 / 채팅 타임아웃 / 고급 설정 / 서버 업데이트 / 엔진 모드 토글 / 멀티 기기 동기화 / 디버그 설정 페이지.
 **선행 도메인**: A.
 
 ---
@@ -263,3 +263,61 @@ await new Promise(r => setTimeout(r, 1500));
 **엣지케이스**:
 - E1. 기기 로컬 설정 비동기화: 실제 퀵 패널 너비 드래그·보드 뷰 모드 등은 브라우저 로컬이라 탭2 로 전파되지 않는다(의도된 동작).
 - E2. 시스템 프롬프트 입력 중 보호: 탭2 에서 고급 설정의 시스템 프롬프트 textarea 에 포커스·입력 중일 때 탭1 이 같은 값을 바꿔도 탭2 의 입력 중 텍스트가 덮어써지지 않음(포커스 가드). 자동화 어려우면 수동 회귀.
+
+---
+
+## P8. 디버그 설정 페이지 (HAMMOC_DEBUG 게이트) `[EDGE]`
+
+> **범위 (Story BS-6)**: 단일 `HAMMOC_DEBUG=1` 환경변수로 고급 설정 안에 "디버그 / 진단" 그룹이 활성화되어, 개별 환경변수 + 서버 재시작 없이 진단 옵션들을 런타임 토글한다. 게이트 OFF(미설정) 시 섹션은 DOM 에서 완전히 사라지고, 기존 개별 환경변수(`HAMMOC_CLI_DEBUG` 등)는 그대로 폴백으로 동작한다(하위 호환). 6개 옵션 중 세션 시작 시 적용(CLI 트레이스 3종)은 "다음 세션부터 적용" 뱃지를, 즉시 적용(로그 레벨 2종·테스트 엔드포인트)은 뱃지가 없다. 본 리프는 *게이트 노출/은닉·옵션 렌더·영속*만 검증한다.
+
+### P-08-01: 게이트 미설정 시 디버그 섹션 은닉 `[EDGE]`
+**절차**: (기본 런처 — 기본 런처는 `HAMMOC_DEBUG` 를 설정하지 않으므로 게이트 OFF 상태)
+1. `<TARGET>/api/server/info` 호출 → `isDebugMode === false` 확인.
+2. `<TARGET>/settings/advanced` 진입 → 고급 설정 본문에 "디버그 / 진단" 그룹 헤더가 **렌더되지 않는지** 확인 (locale 무관하게 ko 기본 환경에서는 `main` 컨테이너 `innerText` 에 `디버그 / 진단` 문자열이 없어야 함).
+
+```js
+// 게이트 OFF: 서버 플래그 + DOM 부재 동시 검증
+const info = await fetch('/api/server/info').then(r => r.json());
+// 기대: info.isDebugMode === false
+const present = document.querySelector('main')?.innerText.includes('디버그 / 진단');
+// 기대: present === false
+```
+
+**기대 결과**:
+- `/api/server/info.isDebugMode === false`
+- 고급 설정에 디버그 그룹 헤더·토글이 DOM 에서 완전히 부재 (AC-3).
+- 기존 `/api/debug/*` 라우트는 런처의 `ENABLE_TEST_ENDPOINTS=true` 로 여전히 마운트됨(하위 호환 — 게이트와 무관).
+
+### P-08-02: HAMMOC_DEBUG=1 시 디버그 섹션 노출 + 6개 옵션 `[EDGE]`
+**절차**:
+1. 보조 런처를 `HAMMOC_DEBUG=1` 환경변수와 함께 백그라운드 기동(런처 `buildEnv` 가 `process.env` 를 상속하므로 환경변수 prefix 로 전달됨):
+   ```bash
+   HAMMOC_DEBUG=1 node scripts/run-integration-test.mjs --port=21216
+   ```
+2. 최대 30초 폴링으로 `<TARGET_SECONDARY>/api/health` 200 대기. 준비되면 `browser_tabs(action="new")` → **`http://localhost:21216`** 접속(반드시 `localhost` — `127.0.0.1` 은 주 서버와 쿠키 origin 불일치로 자동 로그인 실패).
+3. `http://localhost:21216/api/server/info` → `isDebugMode === true` 확인.
+4. `http://localhost:21216/settings/advanced` 진입 → 고급 설정 하단(CLI 그룹 아래)에 "디버그 / 진단" 그룹 헤더 + 부제("HAMMOC_DEBUG=1 설정 시에만 표시됩니다.")가 렌더되는지 확인.
+5. 6개 옵션 렌더 확인:
+   - 체크박스 3종: `CLI 결정 트레이스`, `PTY 프레임 덤프`, `도구 완료 트레이스` — 각각 옆에 `다음 세션부터 적용` 뱃지 노출.
+   - select 2종: `서버 로그 레벨`, `클라이언트 로그 레벨` — 각 `ERROR/WARN/INFO/DEBUG/VERBOSE` 5개 옵션. 뱃지 없음.
+   - 체크박스 1종: `테스트 엔드포인트` — 뱃지 없음.
+6. 영속 검증(즉시 적용 경로): `서버 로그 레벨` select 를 `VERBOSE` 로 바꾸고(native setter + `change`) ~1.5초(PATCH debounce) 후 `http://localhost:21216/api/preferences.debugServerLogLevel === 'VERBOSE'` 확인.
+7. 영속 검증(세션 시작 경로): `CLI 결정 트레이스` 체크박스 클릭 → `/api/preferences.debugCliTrace === true` 확인.
+8. 복구: 변경한 preference 키들을 원복(서버 로그 레벨 select 를 원래 값으로, `debugCliTrace` 토글 OFF). 탭 닫기(`browser_tabs(action="close", index=<보조탭>)`) 후 보조 런처 종료:
+   ```bash
+   grep "\[primary\] PID" <launcher-secondary.log> | tail -1
+   # Windows:  taskkill /PID <pid> /T /F
+   # macOS/Linux: kill <pid>
+   ```
+
+**기대 결과**:
+- `/api/server/info.isDebugMode === true`.
+- 디버그 그룹 헤더 + 6개 옵션(체크박스 4 + select 2)이 DOM 에 존재.
+- 세션 시작 토글 3종에만 "다음 세션부터 적용" 뱃지 노출(로그 레벨·테스트 엔드포인트는 뱃지 없음).
+- 로그 레벨 select 각 5개 옵션(ERROR~VERBOSE).
+- `debugServerLogLevel`·`debugCliTrace` 가 `/api/preferences` 에 영속.
+- 종료 시 변경 키 원복(런타임에 디버그 설정 잔류 금지).
+
+**엣지케이스**:
+- E1. 게이트 OFF 환경에서 개별 환경변수(`HAMMOC_CLI_DEBUG=1`)는 여전히 동작(폴백) — UI 토글 없이도 CLI 트레이스가 켜진다(자동화 어려우면 수동 회귀).
+- E2. preference 미설정 = 환경변수 폴백 — 디버그 토글을 한 번도 건드리지 않으면 모든 토글이 OFF(환경변수만 폴백).
