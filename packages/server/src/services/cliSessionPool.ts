@@ -171,7 +171,14 @@ class CliSessionPool {
       delete base[signal];
     }
     const normalized = this.normalizePathForWindows(base);
-    return extraEnv ? { ...normalized, ...extraEnv } : normalized;
+    // Disable the CLI's self-updater by default. Hammoc pins the bundled SDK binary version
+    // (package.json is the SSoT — required so newly-released models are recognized), so an
+    // in-place self-update would drift the engine out from under us. It also stalls the
+    // interactive REPL on boot: "Auto-updating…" runs before the login menu / first prompt
+    // can appear, adding tens of seconds (measured: login menu went from >30s to ~1.7s).
+    // A value already present in process.env still wins (explicit opt-in to updates).
+    const withDefaults: Record<string, string> = { DISABLE_AUTOUPDATER: '1', ...normalized };
+    return extraEnv ? { ...withDefaults, ...extraEnv } : withDefaults;
   }
 
   /**
