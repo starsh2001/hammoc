@@ -1,109 +1,42 @@
 /**
- * AuthGuard - Protected route wrapper with CLI status check
- * [Source: Story 2.2 - Task 8, Story 2.6 - Task 5]
+ * AuthGuard - Protected route wrapper (BS-9 redesign)
  *
- * 역할:
- * 1. 사용자 인증 확인 -> 미인증 시 /login으로 리다이렉트
- * 2. CLI 상태 확인 -> 미설정 시 /onboarding으로 리다이렉트
- * 3. CLI 상태를 Context로 제공 -> 하위 컴포넌트에서 재사용
+ * Redirect chain (strict priority order):
+ * 1. !isPasswordConfigured → /onboarding (fresh install, needs wizard)
+ * 2. !isAuthenticated → /login (returning user, needs login)
+ * 3. !onboardingComplete → /onboarding (authenticated but wizard incomplete)
+ * 4. else → render children
  */
 
-import { useEffect, useState, useCallback, ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useEffect, ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { api, ApiError } from '../services/api/client';
-import type { CLIStatusResponse } from '@hammoc/shared';
-import { CliStatusProvider } from '../contexts/CliStatusContext';
+import { usePreferencesStore } from '../stores/preferencesStore';
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface AuthGuardProps {
   children: ReactNode;
 }
 
-// Module-level flag (persists across component remounts within the same page load)
-let hasFetchedCliStatus = false;
-let cachedCliStatus: CLIStatusResponse | null = null;
-
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { t } = useTranslation('common');
-  const { isAuthenticated, isLoading: authLoading, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, isPasswordConfigured, checkAuth } = useAuthStore();
   const location = useLocation();
 
-  // CLI 상태 관리
-  const [cliStatus, setCliStatus] = useState<CLIStatusResponse | null>(cachedCliStatus);
-  const [cliLoading, setCLILoading] = useState(!hasFetchedCliStatus);
-  const [cliError, setCLIError] = useState<string | null>(null);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const prefsLoaded = usePreferencesStore((s) => s.loaded);
+  const onboardingComplete = usePreferencesStore((s) => s.preferences.onboardingComplete);
 
-  // CLI 상태 조회 함수 (재사용 가능)
-  const fetchCliStatus = useCallback(async (forceRefresh = false) => {
-    // Skip if already fetched (unless force refresh)
-    if (!forceRefresh && hasFetchedCliStatus) {
-      return;
-    }
-
-    setCLILoading(true);
-    setCLIError(null);
-
-    // Retry up to 2 times on network errors (server may not be ready yet)
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 1500;
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const status = await api.get<CLIStatusResponse>('/cli-status');
-        console.log('[AuthGuard] CLI status response:', status);
-        setCliStatus(status);
-        cachedCliStatus = status;
-        hasFetchedCliStatus = true;
-        // Only require onboarding if neither authenticated nor API key is set.
-        // cliInstalled can be false due to PATH issues even when CLI is actually present.
-        const needsSetup = !status.authenticated && !status.apiKeySet;
-        setNeedsOnboarding(needsSetup);
-        setCLILoading(false);
-        return;
-      } catch (err) {
-        console.error('[AuthGuard] CLI status fetch failed (attempt', attempt + 1, '):', err);
-
-        // 401 = session expired → force re-check auth (will redirect to login)
-        if (err instanceof ApiError && err.status === 401) {
-          console.warn('[AuthGuard] Session expired during CLI status check, re-checking auth');
-          setCLILoading(false);
-          useAuthStore.getState().recheckAuth();
-          return;
-        }
-
-        if (attempt < MAX_RETRIES) {
-          // Wait before retrying
-          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-          continue;
-        }
-        // All retries exhausted — show error but don't redirect to onboarding
-        // for transient network failures (e.g. server just restarted)
-        setCLIError(err instanceof Error ? err.message : t('error.cliStatusFailed'));
-        setNeedsOnboarding(false);
-        setCLILoading(false);
-      }
-    }
-  }, []);
-
-  // Check auth status on mount
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
-  // 인증 완료 후 CLI 상태 확인 (앱 시작 시 한 번만)
+  // Initialize preferences if authenticated (needed to read onboardingComplete)
   useEffect(() => {
-    if (isAuthenticated && !authLoading && location.pathname !== '/onboarding') {
-      fetchCliStatus();
-    } else if (location.pathname === '/onboarding') {
-      // Onboarding 페이지에서는 로딩 완료 상태로 설정
-      setCLILoading(false);
+    if (isAuthenticated && !prefsLoaded) {
+      usePreferencesStore.getState().init();
     }
-  }, [isAuthenticated, authLoading, location.pathname, fetchCliStatus]);
+  }, [isAuthenticated, prefsLoaded]);
 
-  // 1. 인증 로딩 중
+  // 1. Auth loading — show spinner
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#1c2129]">
@@ -112,47 +45,30 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // 2. 미인증 → 로그인 페이지
+  // 2. No password configured → wizard (fresh install)
+  if (isPasswordConfigured === false) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  // 3. Not authenticated → login page
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3. CLI 상태 확인 중 (Onboarding 페이지가 아닌 경우에만)
-  if (cliLoading && location.pathname !== '/onboarding') {
+  // 4. Wait for preferences to load before checking onboardingComplete
+  if (!prefsLoaded) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1c2129]"
-        role="status"
-        aria-label={t('loading')}
-      >
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
-            aria-hidden="true"
-          />
-          <p className="text-sm text-gray-500 dark:text-gray-300">
-            {t('cliStatusChecking')}
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-[#1c2129]">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
-  // 4. Onboarding 필요 → Onboarding 페이지 (현재 경로가 아닌 경우)
-  if (needsOnboarding && location.pathname !== '/onboarding') {
+  // 5. Authenticated but onboarding incomplete → wizard
+  if (!onboardingComplete) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // 5. CLI 상태를 Context로 제공하여 하위 컴포넌트에서 재사용
-  const cliStatusValue = {
-    cliStatus,
-    isLoading: cliLoading,
-    error: cliError,
-    refetch: fetchCliStatus,
-    isReady: cliStatus?.authenticated === true || cliStatus?.apiKeySet === true,
-  };
-
-  return (
-    <CliStatusProvider value={cliStatusValue}>{children}</CliStatusProvider>
-  );
+  // 6. All good — render children
+  return <>{children}</>;
 }

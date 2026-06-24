@@ -30,6 +30,9 @@ export interface UserPreferences {
   // How the agent should address the user (injected into system prompt).
   // Empty or absent → no specific address, and the agent must not guess.
   displayName?: string;
+  // Set to true when the onboarding wizard completes. AuthGuard checks this flag
+  // to decide whether to redirect to /onboarding.
+  onboardingComplete?: boolean;
   permissionMode?: PermissionMode | 'latest';
   /** Stores the actual last-used mode when permissionMode is 'latest' */
   lastPermissionMode?: PermissionMode;

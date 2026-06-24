@@ -125,6 +125,15 @@ async function main() {
     log.info('No password configured. Please set up via web browser.');
   }
 
+  // Load persisted API key from config.json if not already in env
+  if (!process.env.ANTHROPIC_API_KEY) {
+    const cfg = authConfig.getConfig() as Record<string, unknown> | null;
+    if (cfg && typeof cfg === 'object' && typeof (cfg as Record<string, unknown>).anthropicApiKey === 'string') {
+      process.env.ANTHROPIC_API_KEY = (cfg as Record<string, unknown>).anthropicApiKey as string;
+      log.info('Loaded ANTHROPIC_API_KEY from config.json');
+    }
+  }
+
   // Create Express app (async for session secret loading)
   const app = await createApp();
 

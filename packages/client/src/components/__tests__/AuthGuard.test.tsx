@@ -1,6 +1,6 @@
+// @vitest-environment jsdom
 /**
- * AuthGuard Tests
- * [Source: Story 2.2 - Task 11, Story 2.6 - Task 5]
+ * AuthGuard Tests (BS-9: Onboarding wizard redirect chain)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -8,13 +8,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthGuard } from '../AuthGuard';
 import { useAuthStore } from '../../stores/authStore';
-import { api } from '../../services/api/client';
+import { usePreferencesStore } from '../../stores/preferencesStore';
 
-// Mock api client
 vi.mock('../../services/api/client', () => ({
-  api: {
-    get: vi.fn(),
-  },
+  api: { get: vi.fn() },
   ApiError: class ApiError extends Error {
     constructor(public status: number, public code: string, message: string) {
       super(message);
@@ -23,18 +20,11 @@ vi.mock('../../services/api/client', () => ({
   setUnauthorizedHandler: vi.fn(),
 }));
 
-const mockCliStatusReady = {
-  cliInstalled: true,
-  authenticated: true,
-  apiKeySet: false,
-  setupCommands: {
-    install: 'npm install -g @anthropic-ai/claude-code',
-    login: 'claude',
-    apiKey: 'export ANTHROPIC_API_KEY=<key>',
-  },
-};
+vi.mock('../../services/socket', () => ({
+  getSocket: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })),
+  disconnectSocket: vi.fn(),
+}));
 
-// Helper to render with router
 const renderWithRouter = (initialPath: string = '/protected') => {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -55,141 +45,102 @@ const renderWithRouter = (initialPath: string = '/protected') => {
 };
 
 describe('AuthGuard', () => {
-  beforeEach(async () => {
-    // Reset AuthGuard module-level cache by re-importing
-    vi.resetModules();
-    // Reset store state
+  beforeEach(() => {
+    vi.clearAllMocks();
     useAuthStore.setState({
       isAuthenticated: false,
+      isPasswordConfigured: null,
       isLoading: false,
       error: null,
       rateLimitInfo: null,
+      checkAuth: vi.fn().mockResolvedValue(undefined),
     });
-    vi.clearAllMocks();
-    // Default mock for CLI status - ready state
-    vi.mocked(api.get).mockResolvedValue(mockCliStatusReady);
+    usePreferencesStore.setState({
+      preferences: {},
+      overrides: [],
+      loaded: false,
+    });
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('loading state', () => {
-    it('should show LoadingSpinner when isLoading', () => {
-      useAuthStore.setState({ isLoading: true });
+  it('should show spinner when auth is loading', () => {
+    useAuthStore.setState({ isLoading: true });
+    renderWithRouter();
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+  });
 
-      renderWithRouter();
-
-      expect(screen.getByRole('status')).toBeInTheDocument();
-      expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+  it('should redirect to /onboarding when password is not configured', async () => {
+    useAuthStore.setState({ isPasswordConfigured: false, isLoading: false });
+    renderWithRouter();
+    await waitFor(() => {
+      expect(screen.getByText('Onboarding Page')).toBeInTheDocument();
     });
   });
 
-  describe('authenticated state', () => {
-    it('should render children when authenticated and CLI ready', async () => {
-      useAuthStore.setState({
-        isAuthenticated: true,
-        isLoading: false,
-        checkAuth: vi.fn().mockResolvedValue(undefined),
-      });
-
-      vi.mocked(api.get).mockResolvedValue(mockCliStatusReady);
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        expect(screen.getByText('Protected Content')).toBeInTheDocument();
-      });
+  it('should redirect to /login when not authenticated (password exists)', async () => {
+    useAuthStore.setState({
+      isAuthenticated: false,
+      isPasswordConfigured: true,
+      isLoading: false,
     });
-
-    // Note: This test is affected by AuthGuard's module-level caching
-    it.skip('should redirect to onboarding when CLI not ready', async () => {
-      useAuthStore.setState({
-        isAuthenticated: true,
-        isLoading: false,
-        checkAuth: vi.fn().mockResolvedValue(undefined),
-      });
-
-      vi.mocked(api.get).mockResolvedValue({
-        ...mockCliStatusReady,
-        cliInstalled: false,
-        authenticated: false,
-      });
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        expect(screen.getByText('Onboarding Page')).toBeInTheDocument();
-      });
+    renderWithRouter();
+    await waitFor(() => {
+      expect(screen.getByText('Login Page')).toBeInTheDocument();
     });
   });
 
-  describe('unauthenticated state', () => {
-    it('should redirect to /login when not authenticated', async () => {
-      useAuthStore.setState({
-        isAuthenticated: false,
-        isLoading: false,
-        checkAuth: vi.fn().mockResolvedValue(undefined),
-      });
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        expect(screen.getByText('Login Page')).toBeInTheDocument();
-      });
+  it('should redirect to /onboarding when authenticated but onboarding incomplete', async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      isPasswordConfigured: true,
+      isLoading: false,
+    });
+    usePreferencesStore.setState({
+      preferences: { onboardingComplete: false },
+      loaded: true,
+    });
+    renderWithRouter();
+    await waitFor(() => {
+      expect(screen.getByText('Onboarding Page')).toBeInTheDocument();
     });
   });
 
-  describe('checkAuth', () => {
-    it('should call checkAuth on mount', () => {
-      const checkAuthMock = vi.fn().mockResolvedValue(undefined);
-      useAuthStore.setState({
-        isAuthenticated: false,
-        isLoading: false,
-        checkAuth: checkAuthMock,
-      });
-
-      renderWithRouter();
-
-      expect(checkAuthMock).toHaveBeenCalled();
+  it('should render children when fully authenticated and onboarded', async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      isPasswordConfigured: true,
+      isLoading: false,
+    });
+    usePreferencesStore.setState({
+      preferences: { onboardingComplete: true },
+      loaded: true,
+    });
+    renderWithRouter();
+    await waitFor(() => {
+      expect(screen.getByText('Protected Content')).toBeInTheDocument();
     });
   });
 
-  describe('CLI status check', () => {
-    // Note: These tests are affected by AuthGuard's module-level caching
-    // (hasFetchedCliStatus, cachedCliStatus). The caching is intentional for
-    // performance but makes test isolation difficult without refactoring.
-    it.skip('should call CLI status API when authenticated', async () => {
-      useAuthStore.setState({
-        isAuthenticated: true,
-        isLoading: false,
-        checkAuth: vi.fn().mockResolvedValue(undefined),
-      });
+  it('should call checkAuth on mount', () => {
+    const checkAuthMock = vi.fn().mockResolvedValue(undefined);
+    useAuthStore.setState({ checkAuth: checkAuthMock });
+    renderWithRouter();
+    expect(checkAuthMock).toHaveBeenCalled();
+  });
 
-      renderWithRouter();
-
-      await waitFor(() => {
-        expect(api.get).toHaveBeenCalledWith('/cli-status');
-      });
+  it('should show spinner while preferences are loading', async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      isPasswordConfigured: true,
+      isLoading: false,
     });
-
-    it.skip('should show CLI status loading state', async () => {
-      useAuthStore.setState({
-        isAuthenticated: true,
-        isLoading: false,
-        checkAuth: vi.fn().mockResolvedValue(undefined),
-      });
-
-      // Make API call pending
-      vi.mocked(api.get).mockImplementation(
-        () => new Promise(() => {}) // Never resolves
-      );
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        expect(screen.getByText('CLI 상태 확인 중...')).toBeInTheDocument();
-      });
-    });
+    usePreferencesStore.setState({ loaded: false });
+    renderWithRouter();
+    const spinners = screen.getAllByRole('status');
+    expect(spinners.length).toBeGreaterThan(0);
   });
 });

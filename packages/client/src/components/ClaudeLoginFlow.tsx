@@ -1,44 +1,18 @@
 /**
- * ClaudeLoginFlow (Story BS-7)
+ * ClaudeLoginFlow (Story BS-7, refactored BS-9)
  *
- * Shared in-app Claude Code `/login` flow. Drives the server's disposable login PTY over
- * WebSocket (`auth:*` events) and renders each phase: method selection → OAuth URL →
- * code input → completing → done. Used both in Onboarding (as a checklist item) and in
- * Settings › Account (inline, logged-out state). Parent integration is via the
- * `onComplete` / `onError` callback props.
- *
- * The OAuth URL is rendered as a tappable link (mobile-accessible — the server suppresses
- * the CLI's own browser auto-open with BROWSER=none, so the URL must be opened here).
+ * Shared in-app Claude Code `/login` flow. Now backed by the `useClaudeLogin` hook
+ * which manages WebSocket `auth:*` event lifecycle. This component is a UI wrapper
+ * used in Onboarding (legacy, until removed) and Settings › Account.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ExternalLink, Copy, Check, RefreshCw, LogIn, AlertCircle } from 'lucide-react';
 import type { AccountInfo } from '@hammoc/shared';
-import { getSocket } from '../services/socket';
-
-type LoginMethod = 1 | 2 | 3;
-
-type Phase =
-  | 'idle'
-  | 'initializing'
-  | 'method-select'
-  | 'awaiting-auth'
-  | 'code-input'
-  | 'completing'
-  | 'done'
-  | 'error';
-
-interface Props {
-  /** Called when login completes; receives the freshly fetched account (or null on fetch failure). */
-  onComplete?: (account: AccountInfo | null) => void;
-  /** Called when login fails or times out. */
-  onError?: (message: string) => void;
-  /** Start the flow automatically on mount instead of showing the "Sign in" button first. */
-  autoStart?: boolean;
-  className?: string;
-}
+import { useClaudeLogin } from '../hooks/useClaudeLogin';
+import type { LoginMethod } from '../hooks/useClaudeLogin';
 
 const METHODS: Array<{ id: LoginMethod; key: string }> = [
   { id: 1, key: 'subscription' },
@@ -46,73 +20,37 @@ const METHODS: Array<{ id: LoginMethod; key: string }> = [
   { id: 3, key: 'thirdParty' },
 ];
 
+interface Props {
+  onComplete?: (account: AccountInfo | null) => void;
+  onError?: (message: string) => void;
+  autoStart?: boolean;
+  className?: string;
+}
+
 export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: Props) {
   const { t } = useTranslation('auth');
-  const [phase, setPhase] = useState<Phase>(autoStart ? 'initializing' : 'idle');
-  const [url, setUrl] = useState<string | null>(null);
-  const [code, setCode] = useState('');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const start = useCallback(() => {
-    setUrl(null);
-    setCode('');
-    setErrorMsg(null);
-    setPhase('initializing');
-    getSocket().emit('auth:start');
-  }, []);
-
-  // Wire the server → client login events for the duration of the flow.
-  useEffect(() => {
-    const socket = getSocket();
-    const onMethodPrompt = () => setPhase('method-select');
-    const onUrl = (data: { url: string }) => {
-      setUrl(data.url);
-      setPhase('awaiting-auth');
-    };
-    const onCodePrompt = () => setPhase('code-input');
-    const onAuthComplete = (data: { account: AccountInfo | null }) => {
-      setPhase('done');
+  const handleComplete = useCallback(
+    (account: AccountInfo | null) => {
       toast.success(t('loginFlow.completeToast'));
-      onComplete?.(data.account);
-    };
-    const onAuthError = (data: { message: string }) => {
-      setErrorMsg(data.message);
-      setPhase('error');
+      onComplete?.(account);
+    },
+    [t, onComplete]
+  );
+
+  const handleError = useCallback(
+    (message: string) => {
       toast.error(t('loginFlow.errorToast'));
-      onError?.(data.message);
-    };
+      onError?.(message);
+    },
+    [t, onError]
+  );
 
-    socket.on('auth:method-prompt', onMethodPrompt);
-    socket.on('auth:url', onUrl);
-    socket.on('auth:code-prompt', onCodePrompt);
-    socket.on('auth:complete', onAuthComplete);
-    socket.on('auth:error', onAuthError);
-    return () => {
-      socket.off('auth:method-prompt', onMethodPrompt);
-      socket.off('auth:url', onUrl);
-      socket.off('auth:code-prompt', onCodePrompt);
-      socket.off('auth:complete', onAuthComplete);
-      socket.off('auth:error', onAuthError);
-    };
-  }, [t, onComplete, onError]);
-
-  // autoStart: kick off once on mount.
-  useEffect(() => {
-    if (autoStart) getSocket().emit('auth:start');
-  }, [autoStart]);
-
-  const selectMethod = useCallback((method: LoginMethod) => {
-    setPhase('awaiting-auth');
-    getSocket().emit('auth:select-method', { method });
-  }, []);
-
-  const submitCode = useCallback(() => {
-    const clean = code.trim();
-    if (!clean) return;
-    setPhase('completing');
-    getSocket().emit('auth:submit-code', { code: clean });
-  }, [code]);
+  const {
+    phase, url, code, errorMsg, setCode,
+    start, selectMethod, submitCode,
+  } = useClaudeLogin({ onComplete: handleComplete, onError: handleError, autoStart });
 
   const copyUrl = useCallback(async () => {
     if (!url) return;
@@ -148,7 +86,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
 
   return (
     <div className={`space-y-3 ${className ?? ''}`}>
-      {/* Idle: entry button */}
       {phase === 'idle' && (
         <div className="space-y-2">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('loginFlow.startHint')}</p>
@@ -164,7 +101,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
         </div>
       )}
 
-      {/* Progress indicator (AC14) */}
       {phase !== 'idle' && phase !== 'error' && (
         <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
           {busy && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
@@ -172,7 +108,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
         </div>
       )}
 
-      {/* Method selection (AC11) */}
       {phase === 'method-select' && (
         <div className="space-y-2" role="list">
           {METHODS.map((m) => (
@@ -195,7 +130,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
         </div>
       )}
 
-      {/* OAuth URL (AC12) */}
       {(phase === 'awaiting-auth' || phase === 'code-input') && url && (
         <div className="space-y-2">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('loginFlow.url.hint')}</p>
@@ -225,7 +159,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
         </div>
       )}
 
-      {/* Code input (AC13) */}
       {phase === 'code-input' && (
         <div className="space-y-2">
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-200">
@@ -258,7 +191,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
         </div>
       )}
 
-      {/* Error / timeout with retry (AC15) */}
       {phase === 'error' && (
         <div className="space-y-2">
           <div className="flex items-start gap-2 p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">

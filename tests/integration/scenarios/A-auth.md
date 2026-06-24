@@ -35,7 +35,7 @@
 
 **엣지케이스**:
 - E1. 잘못된 비밀번호: 오류 메시지 가시, URL 유지
-- E2. 초기 비밀번호 미설정 상태: 최초 설정 플로우로 진입
+- E2. 초기 비밀번호 미설정 상태: `/onboarding` 위저드로 리디렉션 (비밀번호 설정은 위저드 Password 스텝에서 처리)
 
 **증거**: `A-01-01-loggedin.png`
 
@@ -53,63 +53,95 @@
 
 ---
 
-## A2. 온보딩 체크리스트 `[CORE]`
+## A2. 온보딩 위저드 `[CORE]` `[MOBILE]`
 
-### A-02-01: 온보딩 항목 자동 검증
-**목적**: CLI 설치 · API 키 · MCP 상태가 체크리스트에 반영되는지.
-**선행 조건**: CLI 미인증 & API 키 미설정 상태 (초기 설치 또는 설정 초기화 후).
+> **BS-9 리디자인**: 기존 체크리스트 기반 OnboardingPage를 다단계 위저드 (`/onboarding`)로 교체. 각 스텝은 CSS fade+translateY 애니메이션으로 전환되며, 완료 시 `UserPreferences.onboardingComplete=true`를 저장하고 홈으로 이동.
 
-> **설계 주의**: 설정 완료 환경(`authenticated=true` 또는 `apiKeySet=true`)에서 `/onboarding` 직접 접근 시 `OnboardingPage`가 500ms 후 `/`로 자동 리디렉션 (의도된 설계, [OnboardingPage.tsx:36-41](../../packages/client/src/pages/OnboardingPage.tsx#L36-L41)). 따라서 본 시나리오는 **미설정 상태**에서만 체크리스트 검증이 유효하다.
+### A-02-01: 최초 사용자 전체 위저드 플로우
+**목적**: 비밀번호 미설정 상태에서 위저드가 전체 스텝을 순서대로 표시하는지 검증.
+**선행 조건**: 비밀번호 미설정 (`isPasswordConfigured=false`), 미인증.
 
 **절차**:
-1. 설정 상태 확인: `fetch('/api/cli-status').then(r => r.json())`
-2. `authenticated || apiKeySet` 이면 본 시나리오는 **N/A (설정 완료 환경)** 로 기록하고 A-02-02로 진행
-3. 미설정 상태인 경우에만: `browser_navigate("/onboarding")` → `browser_snapshot` → 체크리스트 항목 상태 수집
+1. `browser_navigate("<TARGET>/onboarding")` → `browser_snapshot`
+2. **Display Name 스텝**: 제목("어떻게 불러드릴까요?" 류) + 텍스트 입력 + "다음" 버튼 + "건너뛰기" 버튼 가시성 확인
+3. "건너뛰기" 클릭 → **Password 스텝** 전환 확인
+4. **Password 스텝**: 비밀번호 + 확인 필드 (setup mode) 가시성 확인
+5. 비밀번호 안전 주입 + 확인 필드 동일 값 → 제출
+6. 인증 성공 → **Auth Method 스텝** 전환: "구독" / "API 키" 두 카드 가시성 확인
+7. **여기서 중단** — auth step 이후 플로우는 외부 서비스(Claude OAuth) 의존으로 A-02-05에서 별도 검증
 
 **기대 결과**:
-- CLI 설치 상태(`claude` 실행 가능 여부) 자동 감지 표시
-- API 키 유효성 표시
-- "시작하기" 버튼은 필수 항목 모두 만족 시 활성
+- 스텝 전환 시 fade 애니메이션 적용 (`.wizard-step-enter` / `.wizard-step-exit` 클래스)
+- 진행 표시 도트(dots)가 현재 스텝 위치 반영
+- 콘솔 오류 없음
 
-**엣지케이스**:
-- E1. CLI 없음: 설치 가이드 링크 표시, "확인" 재클릭 시 재감지
-- E2. API 키 불일치: 경고 표시
+---
 
-### A-02-02: 설정 완료 환경에서 자동 리디렉션
-**목적**: 이미 설정이 완료된 사용자가 `/onboarding` 직접 접근 시 홈으로 자동 이동.
-**선행 조건**: `authenticated=true || apiKeySet=true`.
+### A-02-02: 완전 설정 사용자 — `/onboarding` 직접 접근 시 리디렉션
+**목적**: `onboardingComplete=true`인 사용자가 `/onboarding`에 접근하면 즉시 홈으로 리디렉션.
+**선행 조건**: 로그인 + `onboardingComplete=true` + 프로젝트 ≥1개.
 
 **절차**:
-1. `browser_navigate("/onboarding")`
-2. ~1초 대기 (500ms 리디렉션 타이머 + 여유)
+1. `browser_navigate("<TARGET>/onboarding")`
+2. `browser_wait_for(time=2)` — 리디렉션 대기
 3. 현재 URL 확인
 
-**기대 결과**: URL이 `/`로 자동 전환.
+**기대 결과**: URL이 `/`로 자동 전환. 위저드 UI 미노출.
 
-### A-02-03: 인앱 Claude 로그인 플로우 (UI) `[CORE]`
-**목적**: 미인증 상태에서 온보딩 "계정 인증" 항목 아래 인앱 로그인 플로우(`ClaudeLoginFlow`)가 동작하는지 — 터미널 없이 `/login` OAuth를 UI에서 진행 (Story BS-7).
-**선행 조건**: `authenticated=false` (미인증). 설정 완료 환경에서는 **N/A**로 기록.
+---
 
-> **비파괴 원칙**: 실제 인증 코드를 제출하면 기존 자격증명이 교체된다. 본 시나리오는 **메서드 선택 → OAuth URL 표시 → 코드 입력란 노출**까지만 검증하고, **코드는 제출하지 않는다** (서버 측 로그인 PTY는 소켓 disconnect 시 자동 정리됨).
+### A-02-03: 부분 완료 재개 — 프로젝트 없는 인증 사용자
+**목적**: 인증 완료 + Claude 계정 연결 완료했으나 프로젝트 미생성 상태에서 위저드가 First Project 스텝으로 점프.
+**선행 조건**: 로그인 + `authenticated=true` (CLI 계정 있음) + 프로젝트 0개 + `onboardingComplete=false`.
 
 **절차**:
-1. `fetch('/api/cli-status')` → `authenticated===false` 확인 (아니면 N/A 기록)
-2. `browser_navigate("/onboarding")` → `browser_snapshot`
-3. "계정 인증" 항목 아래 **"Claude 로그인"** 버튼 클릭 → 진행 표시("로그인 시작 중…") 가시
-4. 서버가 `/login` 메뉴를 감지하면 **3개 로그인 방법 카드** 렌더 확인 (구독/Console/서드파티)
-5. 1번(구독) 카드 클릭 → **OAuth URL 링크** + **"인증 페이지 열기"** 버튼 가시 (`a[href^="https://claude.com/cai/oauth/authorize"]` 존재)
-6. **"여기에 코드를 붙여넣으세요"** 코드 입력란 노출 확인
-7. **여기서 중단** — 코드 미제출. 페이지 이탈/탭 종료로 소켓 끊어 서버 로그인 세션 정리
+1. `browser_navigate("<TARGET>/onboarding")`
+2. `browser_snapshot` → 위저드가 First Project 스텝 직접 표시 확인 (display-name, password, auth-method 스텝 건너뜀)
+3. "건너뛰기" 클릭 → Completion 스텝("준비 완료!") 표시 → 자동 홈 이동
 
 **기대 결과**:
-- 로그인 방법 카드 3개 표시 (CLI 메뉴와 일치)
-- OAuth URL이 탭 가능한 링크로 렌더 (모바일 접근 가능 — 브라우저 자동 오픈 의존 없음)
+- 이미 완료된 스텝은 건너뛰고 첫 미완료 스텝부터 표시
+- Completion 스텝 후 `onboardingComplete=true` 저장 + `/`로 이동
+
+---
+
+### A-02-04: AuthGuard 리디렉트 체인 검증
+**목적**: AuthGuard가 사용자 상태에 따라 올바른 리디렉트를 수행하는지.
+**선행 조건**: 로그인 상태에서 시작.
+
+**절차**:
+1. **onboardingComplete=false 상태**: `browser_navigate("<TARGET>/settings")` → `/onboarding`으로 리디렉션 확인
+2. **onboardingComplete=true 상태**: `browser_navigate("<TARGET>/settings")` → 설정 페이지 정상 렌더 확인
+3. 로그아웃 후 `browser_navigate("<TARGET>/settings")` → `/login`으로 리디렉션 확인
+
+**기대 결과**:
+- 우선순위: (1) 비밀번호 미설정 → `/onboarding`, (2) 미인증 → `/login`, (3) onboarding 미완료 → `/onboarding`, (4) 정상 → 자식 렌더
+
+---
+
+### A-02-05: 위저드 내 Claude 로그인 플로우 (UI) `[CORE]`
+**목적**: 위저드의 Auth Method 스텝에서 "구독" 선택 시 Claude OAuth 플로우가 위저드 내에서 동작하는지 검증.
+**선행 조건**: 인증 완료 (password step 통과) + `authenticated=false` (Claude 계정 미연결).
+
+> **비파괴 원칙**: 실제 인증 코드를 제출하면 기존 자격증명이 교체된다. **코드 입력란 노출까지만 검증**하고 코드 미제출 (서버 PTY는 소켓 disconnect 시 자동 정리).
+
+**절차**:
+1. 위저드의 Auth Method 스텝에서 "구독" 카드 클릭
+2. **Claude Login 스텝** 전환: 진행 표시("로그인 시작 중…") → 3개 로그인 방법 카드 렌더 확인
+3. 1번(구독) 카드 클릭 → OAuth URL 링크 + "인증 페이지 열기" 버튼 가시
+4. 코드 입력란 노출 확인
+5. **여기서 중단**
+
+**기대 결과**:
+- 로그인 방법 카드 3개 표시
+- OAuth URL이 탭 가능 링크 (모바일 접근 가능)
 - 코드 입력란 표시
+- 에러 시 "다시 시도" 버튼 가시
 - 콘솔 오류 없음
 
 **엣지케이스**:
-- E1. 타임아웃/실패: 에러 메시지 + "다시 시도" 버튼 가시 (페이지 리로드 없이 재시작)
-- E2. (설정 변형) Settings → "Claude Code 계정" 섹션 — 로그아웃 상태면 동일 인라인 로그인 플로우, 로그인 상태면 계정 정보 + **로그아웃** 버튼 (P-settings 참조)
+- E1. 에러/타임아웃: 에러 메시지 + "다시 시도" 버튼 (페이지 리로드 없이 재시작)
+- E2. Settings 페이지의 Claude 로그인은 동일 `useClaudeLogin` 훅 기반 — P-settings에서 별도 검증
 
 ---
 

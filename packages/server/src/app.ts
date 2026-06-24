@@ -29,6 +29,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import boardRoutes from './routes/board.js';
 import imageRoutes from './routes/images.js';
 import serverRoutes from './routes/server.js';
+import configRoutes from './routes/config.js';
 import harnessRoutes from './routes/harness.js';
 import snippetsRoutes from './routes/snippets.js';
 import systemBrowseRoutes from './routes/systemBrowse.js';
@@ -193,6 +194,9 @@ export async function createApp(): Promise<Express> {
 
   // Server management routes (restart)
   app.use('/api/server', serverRoutes);
+
+  // Config routes (BS-9: API key persistence)
+  app.use('/api/config', configRoutes);
 
   // Debug routes (server-side logging + test helpers) — dev mode or explicit opt-in.
   // Integration test launcher runs in production mode but sets ENABLE_TEST_ENDPOINTS=true

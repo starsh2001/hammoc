@@ -16,7 +16,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { LoginPage } from './pages/LoginPage';
-import { OnboardingPage } from './pages/OnboardingPage';
+import { OnboardingWizardPage } from './pages/OnboardingWizardPage';
 import { ProjectListPage } from './pages/ProjectListPage';
 import { BmadOverview } from './pages/BmadOverview';
 import { ProjectSessionsPage } from './pages/ProjectSessionsPage';
@@ -54,14 +54,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route
-        path="/onboarding"
-        element={
-          <AuthGuard>
-            <OnboardingPage />
-          </AuthGuard>
-        }
-      />
+      <Route path="/onboarding" element={<OnboardingWizardPage />} />
       <Route
         path="/"
         element={
