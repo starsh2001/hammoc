@@ -2461,7 +2461,7 @@ export async function initializeWebSocket(
     });
 
     // Disconnect: detach socket from stream, DON'T abort or deny permissions
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
       const sessionId = socketToSession.get(socket.id);
       if (sessionId) {
         const stream = activeStreams.get(sessionId);
@@ -2544,7 +2544,7 @@ export async function initializeWebSocket(
       }
 
       connectedClients--;
-      log.info(`Client disconnected. Total: ${connectedClients}`);
+      log.info(`Client disconnected (reason=${reason}). Total: ${connectedClients}`);
 
       // Stop polling when no clients connected
       if (connectedClients === 0) {
