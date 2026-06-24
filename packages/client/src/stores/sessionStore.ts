@@ -241,13 +241,23 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const { sessions } = get();
     const idx = sessions.findIndex((s) => s.sessionId === sessionId);
     if (idx === -1) return;
-    const updated = [...sessions];
-    updated[idx] = {
-      ...updated[idx],
+    const session = {
+      ...sessions[idx],
       isStreaming: active || undefined,
       ...(!active && { hasPendingQuestion: undefined }),
     };
-    set({ sessions: updated });
+    if (active && idx > 0) {
+      const updated = [
+        { ...session, modified: new Date().toISOString() },
+        ...sessions.slice(0, idx),
+        ...sessions.slice(idx + 1),
+      ];
+      set({ sessions: updated });
+    } else {
+      const updated = [...sessions];
+      updated[idx] = session;
+      set({ sessions: updated });
+    }
   },
 
   updateSessionWaiting: (sessionId: string, waiting: boolean) => {
