@@ -4,7 +4,82 @@
 
 Read the issue file {arg1} and use it as context.
 
-Use the file `docs/stories/BS-1.global-skills-chipbar-scope.story.md` as the reference template for story format, section structure, and writing style.
+Write the story document using this template structure:
+
+```markdown
+# Story: {title derived from issue}
+
+## Status
+
+Draft
+
+## Story
+
+**As a** {user role},
+**I want** {desired feature/change},
+**So that** {benefit/value}.
+
+## Story Context
+
+| Item | Detail |
+|------|--------|
+| **Integrates with** | {existing modules/services affected} |
+| **Technology** | {tech stack involved} |
+| **Follows pattern** | {existing patterns to follow} |
+| **Touch points** | {data flow: module → module → module} |
+
+## Acceptance Criteria
+
+### {Requirement Group 1}
+
+1. {Specific, testable criterion}
+2. ...
+
+### {Requirement Group 2}
+
+3. ...
+
+## Tasks / Subtasks
+
+- [ ] Task 1: {title} (AC: {linked AC numbers})
+  - {implementation detail with file paths}
+
+## Dev Notes
+
+### Relevant Source Tree
+
+{ASCII tree of affected files}
+
+### {Implementation Section Title}
+
+{Key constraints, current code snippets, migration notes}
+
+## Risk Assessment
+
+| Item | Detail |
+|------|--------|
+| **Primary risk** | {what could go wrong} |
+| **Mitigation** | {how to prevent it} |
+| **Rollback** | {how to undo if needed} |
+
+## Definition of Done
+
+- [ ] {criterion matching each AC group}
+- [ ] All tests pass
+- [ ] No regression in existing functionality
+
+## File List
+
+| File | Action | Description |
+|------|--------|-------------|
+| {path} | {Created/Modified/Deleted} | {what changed} |
+
+## Change Log
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| {today} | 0.1 | Initial draft | {agent} |
+```
 ---
 *doc-out
 
