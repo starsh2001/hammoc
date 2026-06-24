@@ -232,6 +232,12 @@ export const serverController = {
     buildState = { status: 'building' };
     res.json({ message: req.t!('server.info.buildStarted') });
 
+    const debugMode = req.body?.debugMode;
+    if (typeof debugMode === 'boolean') {
+      if (debugMode) process.env.HAMMOC_DEBUG = '1';
+      else delete process.env.HAMMOC_DEBUG;
+    }
+
     console.log('[restart] Spawning new server via npm run prod (build + start)...');
     spawnAndExit('prod');
   },

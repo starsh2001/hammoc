@@ -173,6 +173,10 @@ export function AdvancedSettingsSection() {
       .catch(() => { /* ignore */ });
   }, []);
 
+  // Debug mode toggle — controls whether the restarted server has HAMMOC_DEBUG=1
+  const [debugModeToggle, setDebugModeToggle] = useState(false);
+  useEffect(() => { setDebugModeToggle(isDebugMode); }, [isDebugMode]);
+
   // Build/update progress state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processPhase, setProcessPhase] = useState<'building' | 'restarting'>('building');
@@ -197,9 +201,9 @@ export function AdvancedSettingsSection() {
     setProcessPhase('building');
     setBuildElapsed(0);
     timerRef.current = setInterval(() => setBuildElapsed((prev) => prev + 1), 1000);
-    api.post('/server/restart').catch(() => {});
+    api.post('/server/restart', { debugMode: debugModeToggle }).catch(() => {});
     pollServerHealth(t('toast.buildComplete'), () => setProcessPhase('restarting'));
-  }, []);
+  }, [debugModeToggle]);
 
   const handleCheckUpdate = useCallback(async () => {
     setIsCheckingUpdate(true);
@@ -250,20 +254,41 @@ export function AdvancedSettingsSection() {
           </div>
 
           {isDevMode ? (
-            /* Dev mode: rebuild & restart */
-            <button
-              type="button"
-              onClick={handleServerRestart}
-              disabled={isProcessing}
-              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
-                ${isProcessing
-                  ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-300 cursor-not-allowed'
-                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/40'
-                }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
-              {isProcessing ? t(`advanced.${processPhase}`, { elapsed: buildElapsed }) : t('advanced.serverRebuild')}
-            </button>
+            /* Dev mode: rebuild & restart + debug toggle */
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleServerRestart}
+                  disabled={isProcessing}
+                  className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                    ${isProcessing
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-300 cursor-not-allowed'
+                      : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/40'
+                    }`}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
+                  {isProcessing ? t(`advanced.${processPhase}`, { elapsed: buildElapsed }) : t('advanced.serverRebuild')}
+                </button>
+                {isDebugMode && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                    DEBUG
+                  </span>
+                )}
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={debugModeToggle}
+                  onChange={(e) => setDebugModeToggle(e.target.checked)}
+                  disabled={isProcessing}
+                  className="w-3.5 h-3.5 rounded border-gray-300 dark:border-[#455568] text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  {t('advanced.debugModeToggle')}
+                </span>
+              </label>
+            </div>
           ) : (
             /* User mode: check update & apply */
             <div className="flex items-center gap-2 flex-wrap">

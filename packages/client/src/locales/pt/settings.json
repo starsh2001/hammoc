@@ -166,6 +166,7 @@
         "building": "Compilando... ({{elapsed}}s)",
         "restarting": "Reiniciando... ({{elapsed}}s)",
         "serverRebuild": "Recompilar e reiniciar servidor",
+        "debugModeToggle": "Ativar menu de depuração ao reiniciar",
         "checking": "Verificando...",
         "checkUpdate": "Verificar atualização",
         "updateTo": "Atualizar para v{{version}}",

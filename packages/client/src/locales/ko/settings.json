@@ -169,6 +169,7 @@
         "building": "빌드 중... ({{elapsed}}초)",
         "restarting": "재시작 중... ({{elapsed}}초)",
         "serverRebuild": "서버 재빌드 & 재시작",
+        "debugModeToggle": "디버그 메뉴를 켜고 재시작",
         "checking": "확인 중...",
         "checkUpdate": "업데이트 확인",
         "updateTo": "v{{version}}으로 업데이트",

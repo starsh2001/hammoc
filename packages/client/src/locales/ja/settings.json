@@ -166,6 +166,7 @@
         "building": "ビルド中...（{{elapsed}}秒）",
         "restarting": "再起動中...（{{elapsed}}秒）",
         "serverRebuild": "リビルド＆サーバー再起動",
+        "debugModeToggle": "デバッグメニューを有効にして再起動",
         "checking": "確認中...",
         "checkUpdate": "アップデートを確認",
         "updateTo": "v{{version}}にアップデート",

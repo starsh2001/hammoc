@@ -166,6 +166,7 @@
         "building": "正在构建...（{{elapsed}}秒）",
         "restarting": "正在重启...（{{elapsed}}秒）",
         "serverRebuild": "重新构建并重启服务器",
+        "debugModeToggle": "启用调试菜单并重启",
         "checking": "正在检查...",
         "checkUpdate": "检查更新",
         "updateTo": "更新到 v{{version}}",

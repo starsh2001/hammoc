@@ -169,6 +169,7 @@
         "building": "Building... ({{elapsed}}s)",
         "restarting": "Restarting... ({{elapsed}}s)",
         "serverRebuild": "Rebuild & Restart Server",
+        "debugModeToggle": "Enable debug menu on restart",
         "checking": "Checking...",
         "checkUpdate": "Check for Update",
         "updateTo": "Update to v{{version}}",
