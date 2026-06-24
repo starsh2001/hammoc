@@ -120,17 +120,6 @@ function OnboardingWizardContent() {
     }
   }, [isAuthenticated, currentStep, loading]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && currentStep) {
-        handleBack();
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleBack]);
-
   const goToStep = useCallback((step: WizardStep) => {
     setCurrentStep(step);
   }, []);
@@ -168,6 +157,17 @@ function OnboardingWizardContent() {
     const prev = backMap[currentStep];
     if (prev) setCurrentStep(prev);
   }, [currentStep]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && currentStep) {
+        handleBack();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleBack, currentStep]);
 
   if (loading || !currentStep) {
     return (
