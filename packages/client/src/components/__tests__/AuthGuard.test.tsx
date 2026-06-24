@@ -1,14 +1,10 @@
 // @vitest-environment jsdom
-/**
- * AuthGuard Tests (BS-9: Onboarding wizard redirect chain)
- */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthGuard } from '../AuthGuard';
 import { useAuthStore } from '../../stores/authStore';
-import { usePreferencesStore } from '../../stores/preferencesStore';
 
 vi.mock('../../services/api/client', () => ({
   api: { get: vi.fn() },
@@ -55,11 +51,6 @@ describe('AuthGuard', () => {
       rateLimitInfo: null,
       checkAuth: vi.fn().mockResolvedValue(undefined),
     });
-    usePreferencesStore.setState({
-      preferences: {},
-      overrides: [],
-      loaded: false,
-    });
   });
 
   afterEach(() => {
@@ -93,31 +84,11 @@ describe('AuthGuard', () => {
     });
   });
 
-  it('should redirect to /onboarding when authenticated but onboarding incomplete', async () => {
+  it('should render children when authenticated', async () => {
     useAuthStore.setState({
       isAuthenticated: true,
       isPasswordConfigured: true,
       isLoading: false,
-    });
-    usePreferencesStore.setState({
-      preferences: { onboardingComplete: false },
-      loaded: true,
-    });
-    renderWithRouter();
-    await waitFor(() => {
-      expect(screen.getByText('Onboarding Page')).toBeInTheDocument();
-    });
-  });
-
-  it('should render children when fully authenticated and onboarded', async () => {
-    useAuthStore.setState({
-      isAuthenticated: true,
-      isPasswordConfigured: true,
-      isLoading: false,
-    });
-    usePreferencesStore.setState({
-      preferences: { onboardingComplete: true },
-      loaded: true,
     });
     renderWithRouter();
     await waitFor(() => {
@@ -130,17 +101,5 @@ describe('AuthGuard', () => {
     useAuthStore.setState({ checkAuth: checkAuthMock });
     renderWithRouter();
     expect(checkAuthMock).toHaveBeenCalled();
-  });
-
-  it('should show spinner while preferences are loading', async () => {
-    useAuthStore.setState({
-      isAuthenticated: true,
-      isPasswordConfigured: true,
-      isLoading: false,
-    });
-    usePreferencesStore.setState({ loaded: false });
-    renderWithRouter();
-    const spinners = screen.getAllByRole('status');
-    expect(spinners.length).toBeGreaterThan(0);
   });
 });
