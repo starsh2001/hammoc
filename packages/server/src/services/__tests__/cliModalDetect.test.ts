@@ -100,13 +100,27 @@ describe('cliModalDetect (Story 37.4 — pure grid readers)', () => {
   });
 
   describe('detectRateLimit', () => {
-    it('detects the transient throttle (the phrase + the Rate-limited tag)', () => {
+    it('detects the transient rate-limit throttle', () => {
       expect(detectRateLimit('API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited'))
         .toMatch(/temporarily limiting requests/i);
     });
 
-    it('returns null without the "Rate limited" tag (a stray mention can not trip it)', () => {
+    it('detects a 529 Overloaded error', () => {
+      expect(detectRateLimit('API Error: 529 Overloaded. This is a server-side issue, usually temporary — try again in a moment.'))
+        .toMatch(/529 Overloaded/i);
+    });
+
+    it('detects a generic 3-digit API error', () => {
+      expect(detectRateLimit('API Error: 500 Internal Server Error')).toMatch(/500 Internal Server Error/);
+    });
+
+    it('returns null for a bare keyword mention without the "API Error:" prefix (anti self-reference)', () => {
       expect(detectRateLimit('the server is temporarily limiting requests in this design doc')).toBeNull();
+      expect(detectRateLimit('if (!/Server is temporarily limiting requests/i.test(text)) return null;')).toBeNull();
+    });
+
+    it('returns null when Grep output quotes the detector source code (self-reference false positive)', () => {
+      expect(detectRateLimit('Server is temporarily limiting requests/i.test(text)) return null; Rate limited')).toBeNull();
     });
 
     it('returns null on the usage-cap notice (that is a different path)', () => {

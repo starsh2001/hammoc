@@ -107,18 +107,24 @@ export function detectUsageLimit(text: string): string | null {
 }
 
 /**
- * Detect the transient server-side **rate-limit** error on screen — DISTINCT from the weekly usage cap.
- * claude prints "API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited"
- * ONLY on the PTY (never the JSONL), so without detection the turn hangs on the spinner waiting for an
- * end_turn that never comes. Returns the scraped sentence (else null). No OAuth corroboration needed (this
- * is an explicit error string, not the ambiguous usage-cap prose) — but require BOTH the distinctive phrase
- * AND the "Rate limited" tag so a stray mention can't trip it. Version-fragile like the other screen-state
- * detectors. The caller gates it POST-INJECTION (so a pre-injection repaint can't false-fire).
+ * Detect transient server-side errors on screen — the "API Error: …" line that claude prints ONLY on the
+ * PTY (never the JSONL) when the backend rejects a request. Without detection the turn hangs on the spinner
+ * waiting for an end_turn that never comes. Returns the scraped message (else null).
+ *
+ * Covers:
+ *   - Rate limit: "API Error: Server is temporarily limiting requests …"
+ *   - Overloaded: "API Error: 529 Overloaded …"
+ *   - Generic:     any "API Error: <3-digit status> <Reason>" the CLI may add in the future
+ *
+ * The `API Error:` prefix is REQUIRED — it's the CLI's own framing, never part of assistant prose or
+ * tool output. This prevents the self-reference false positive where a Grep/Read result that QUOTES the
+ * detection keywords (e.g. the source code of this very function) triggers the detector on the same
+ * screen. The old detector only required the bare keyword ("Server is temporarily limiting requests") which
+ * matched a code listing that happened to contain it. Version-fragile like the other screen-state detectors.
+ * The caller gates it POST-INJECTION and scopes to liveFooterText.
  */
 export function detectRateLimit(text: string): string | null {
-  if (!/Server is temporarily limiting requests/i.test(text)) return null;
-  if (!/Rate limited/i.test(text)) return null;
-  const m = text.match(/(?:API Error:\s*)?Server is temporarily limiting requests[^\n]{0,80}/i);
+  const m = text.match(/API Error:\s*(?:\d{3}\s+)?\S[^\n]{0,120}/i);
   return m ? m[0].replace(/\s{2,}/g, ' ').trim().slice(0, 160) : null;
 }
 
