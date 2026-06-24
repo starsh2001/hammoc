@@ -12,13 +12,6 @@ import { toast } from 'sonner';
 import { ExternalLink, Copy, Check, RefreshCw, LogIn, AlertCircle } from 'lucide-react';
 import type { AccountInfo } from '@hammoc/shared';
 import { useClaudeLogin } from '../hooks/useClaudeLogin';
-import type { LoginMethod } from '../hooks/useClaudeLogin';
-
-const METHODS: Array<{ id: LoginMethod; key: string }> = [
-  { id: 1, key: 'subscription' },
-  { id: 2, key: 'console' },
-  { id: 3, key: 'thirdParty' },
-];
 
 interface Props {
   onComplete?: (account: AccountInfo | null) => void;
@@ -49,7 +42,7 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
 
   const {
     phase, url, code, errorMsg, setCode,
-    start, selectMethod, submitCode,
+    start, submitCode,
   } = useClaudeLogin({ onComplete: handleComplete, onError: handleError, autoStart });
 
   const copyUrl = useCallback(async () => {
@@ -67,8 +60,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
     switch (phase) {
       case 'initializing':
         return t('loginFlow.phase.initializing');
-      case 'method-select':
-        return t('loginFlow.phase.methodSelect');
       case 'awaiting-auth':
         return t('loginFlow.phase.awaitingAuth');
       case 'code-input':
@@ -105,28 +96,6 @@ export function ClaudeLoginFlow({ onComplete, onError, autoStart, className }: P
         <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
           {busy && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
           <span>{phaseLabel()}</span>
-        </div>
-      )}
-
-      {phase === 'method-select' && (
-        <div className="space-y-2" role="list">
-          {METHODS.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="listitem"
-              onClick={() => selectMethod(m.id)}
-              className="w-full text-left px-3 py-2.5 rounded-md border border-gray-300 dark:border-[#455568]
-                         hover:bg-gray-50 dark:hover:bg-[#263240] transition-colors"
-            >
-              <div className="text-sm font-medium text-gray-900 dark:text-white">
-                {m.id}. {t(`loginFlow.method.${m.key}.label`)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {t(`loginFlow.method.${m.key}.description`)}
-              </div>
-            </button>
-          ))}
         </div>
       )}
 

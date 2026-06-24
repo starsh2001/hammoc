@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AccountInfo } from '@hammoc/shared';
 import { getSocket } from '../services/socket';
+import { setLoginInProgress } from '../services/loginState';
 
 export type LoginMethod = 1 | 2 | 3;
 
@@ -51,7 +52,16 @@ export function useClaudeLogin({
 
   useEffect(() => {
     const socket = getSocket();
-    const onMethodPrompt = () => setPhase('method-select');
+    // Subscription-only login: when the server detects claude's 3-option method menu, auto-pick
+    // option 1 (Claude account with subscription) rather than surfacing a chooser. Console uses a
+    // different OAuth domain our URL detector doesn't match, and third-party (Bedrock/Vertex) is a
+    // multi-step interactive credential wizard — neither fits this flow. API-billing users have the
+    // onboarding "API key" step instead. The brief method-select phase is skipped straight to
+    // awaiting-auth so no dead chooser flickers on screen.
+    const onMethodPrompt = () => {
+      setPhase('awaiting-auth');
+      socket.emit('auth:select-method', { method: 1 });
+    };
     const onUrl = (data: { url: string }) => {
       setUrl(data.url);
       setPhase('awaiting-auth');
@@ -84,6 +94,15 @@ export function useClaudeLogin({
   useEffect(() => {
     if (autoStart) getSocket().emit('auth:start');
   }, [autoStart]);
+
+  // Flag the login as in-flight for any active phase so app-resume recovery won't force a
+  // socket reconnect (which would kill the server-side login PTY) when the user tab-switches
+  // to the OAuth page and back. Cleared on settle (done/error) and on unmount.
+  useEffect(() => {
+    const active = phase !== 'idle' && phase !== 'done' && phase !== 'error';
+    setLoginInProgress(active);
+  }, [phase]);
+  useEffect(() => () => setLoginInProgress(false), []);
 
   const selectMethod = useCallback((method: LoginMethod) => {
     setPhase('awaiting-auth');

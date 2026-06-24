@@ -283,6 +283,13 @@ export class ClaudeLoginSession {
 
   /** Tear down the login PTY + screen model + timers/watchers. Idempotent. */
   dispose(): void {
+    // Mark settled BEFORE killing the PTY. dispose() is always an INTENTIONAL teardown — the
+    // session was replaced by a new `auth:start` (the user re-picked a method / went back), or
+    // its socket went away, or it already completed/failed. Killing the PTY fires `onExit`, and
+    // without this flag that handler would mistake the intentional kill for a crash and emit a
+    // spurious `claude CLI exited (code 129)` failure into the (now unrelated) UI. Setting
+    // `settled` first makes onExit a no-op. Harmless when complete()/fail() already set it.
+    this.settled = true;
     if (this.handle) {
       cliSessionPool.dispose(this.handle); // runs teardown() via the registered disposer
     } else {

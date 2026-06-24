@@ -3,13 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ExternalLink, Copy, Check, RefreshCw, AlertCircle } from 'lucide-react';
 import { useClaudeLogin } from '../../../hooks/useClaudeLogin';
-import type { LoginMethod } from '../../../hooks/useClaudeLogin';
-
-const METHODS: Array<{ id: LoginMethod; key: string }> = [
-  { id: 1, key: 'subscription' },
-  { id: 2, key: 'console' },
-  { id: 3, key: 'thirdParty' },
-];
 
 interface Props {
   onNext: () => void;
@@ -32,7 +25,7 @@ export function ClaudeLoginStep({ onNext }: Props) {
 
   const {
     phase, url, code, errorMsg, setCode,
-    start, selectMethod, submitCode,
+    start, submitCode,
   } = useClaudeLogin({ onComplete: handleComplete, onError: handleError, autoStart: true });
 
   useEffect(() => {
@@ -57,36 +50,11 @@ export function ClaudeLoginStep({ onNext }: Props) {
           {t('wizard.claudeLogin.title')}
         </h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300">
-          {phase === 'method-select' && t('loginFlow.phase.methodSelect')}
           {(phase === 'awaiting-auth' || phase === 'code-input') && t('loginFlow.phase.awaitingAuth')}
           {busy && t('loginFlow.phase.initializing')}
         </p>
       </div>
 
-      {/* Method selection */}
-      {phase === 'method-select' && (
-        <div className="space-y-3">
-          {METHODS.map((m, i) => (
-            <button
-              key={m.id}
-              ref={i === 0 ? focusRef : undefined}
-              type="button"
-              onClick={() => selectMethod(m.id)}
-              className="w-full text-left p-4 rounded-lg border border-gray-200 dark:border-[#455568]
-                         hover:border-blue-500 dark:hover:border-blue-500
-                         bg-white dark:bg-[#1c2129] transition-colors
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
-            >
-              <div className="text-sm font-medium text-gray-900 dark:text-white">
-                {t(`loginFlow.method.${m.key}.label`)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {t(`loginFlow.method.${m.key}.description`)}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* OAuth URL */}
       {(phase === 'awaiting-auth' || phase === 'code-input') && url && (
@@ -105,11 +73,12 @@ export function ClaudeLoginStep({ onNext }: Props) {
             <button
               type="button"
               onClick={copyUrl}
-              aria-label={t('loginFlow.url.copy')}
-              className="px-3 py-3 rounded-lg border border-gray-300 dark:border-[#455568]
-                         hover:bg-gray-50 dark:hover:bg-[#263240] transition-colors min-h-[44px]"
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-gray-300 dark:border-[#455568]
+                         hover:bg-gray-50 dark:hover:bg-[#263240] transition-colors min-h-[44px]
+                         whitespace-nowrap text-sm text-gray-700 dark:text-gray-200"
             >
               {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-500" />}
+              {t('loginFlow.url.copy')}
             </button>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">

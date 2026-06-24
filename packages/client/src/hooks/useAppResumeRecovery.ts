@@ -12,6 +12,7 @@
 
 import { useEffect, useRef } from 'react';
 import { getSocket, forceReconnect } from '../services/socket';
+import { isLoginInProgress } from '../services/loginState';
 import { useAuthStore } from '../stores/authStore';
 import { useMessageStore } from '../stores/messageStore';
 import { useChatStore } from '../stores/chatStore';
@@ -76,15 +77,22 @@ export function useAppResumeRecovery(): void {
       const socket = getSocket();
 
       if (!socket.connected) {
-        // Socket is disconnected — force clean reconnect to reset backoff timer
+        // Socket is genuinely disconnected — force clean reconnect to reset backoff timer.
+        // We do this even mid-login: the socket is already dead (so the login PTY is gone
+        // anyway), and reviving the socket lets the next flow proceed / surface an error.
         debugLog.reconnect(`${source}: socket disconnected → forceReconnect`, {
           hiddenDuration,
         });
         forceReconnect();
         scheduleResumeFetch();
-      } else if (hiddenDuration > FORCE_RECONNECT_THRESHOLD_MS) {
+      } else if (hiddenDuration > FORCE_RECONNECT_THRESHOLD_MS && !isLoginInProgress()) {
         // Socket claims connected but was hidden for a while — could be half-open.
         // Force reconnect; server's ActiveStream buffer will replay any missed events.
+        // EXCEPTION: while an in-app Claude login is active we must NOT disconnect a still-LIVE
+        // socket. The login PTY is bound to it server-side (a disconnect tears it down, code 129),
+        // and the OAuth flow REQUIRES tabbing away to copy the code — which fires visibilitychange
+        // on return with the socket still healthy. Chat sessions tolerate reconnects (ActiveStream
+        // buffer replays); the login PTY is the one socket-bound flow with no such backstop.
         debugLog.reconnect(`${source}: stale connection → forceReconnect`, {
           hiddenDuration,
         });

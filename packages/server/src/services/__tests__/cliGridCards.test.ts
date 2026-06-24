@@ -375,10 +375,10 @@ describe('flickered-bullet stickiness (Story 37.12 — tool header glyph flicker
     expect(cards[1].text).toBe('좋은 점을 짚으셨습니다.');
   });
 
-  it('does NOT promote prose that merely contains a call (gated on ACTUAL observation, not shape alone)', () => {
+  it('does NOT promote prose that fails both the memory check and the name pattern', () => {
     const recent = collectToolLineKeys(['● Search(q)']); // only Search was ever a tool line
-    // A standalone call-shaped line that was never observed as a tool line stays prose.
-    expect(restoreFlickeredToolBullets(['other(y)', 'call foo(x)'], recent)).toEqual(['other(y)', 'call foo(x)']);
+    // Prose with spaces/lowercase/punctuation doesn't match TOOL_HEADER_RE or BARE_TOOL_RE.
+    expect(restoreFlickeredToolBullets(['some prose here', 'call foo(x)'], recent)).toEqual(['some prose here', 'call foo(x)']);
   });
 
   it('collectToolLineKeys: bullet-only by default, bullet-less included with the flag (scroll-off scope)', () => {
@@ -416,9 +416,12 @@ describe('flickered-bullet stickiness (Story 37.12 — tool header glyph flicker
     expect(collectToolLineKeys(rows, { bulletColors: ['red'] }).size).toBe(1);
   });
 
-  it('is a no-op with empty memory (returns the same array reference — fresh-turn fast path)', () => {
-    const rows = ['Search(x)', 'prose'];
-    expect(restoreFlickeredToolBullets(rows, new Set())).toBe(rows);
+  it('restores a standard tool via name-pattern fallback even with empty memory (first-appearance defense)', () => {
+    // A tool that flickers on its very first frame was never in the memory — the name-pattern
+    // fallback (TOOL_HEADER_RE / BARE_TOOL_RE) catches it so it doesn't fuse into the text above.
+    const restored = restoreFlickeredToolBullets(['Search(x)', 'prose'], new Set());
+    expect(restored[0]).toBe('● Search(x)'); // standard tool shape → restored
+    expect(restored[1]).toBe('prose');        // prose → left alone
   });
 });
 

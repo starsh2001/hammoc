@@ -323,23 +323,29 @@ export function collectToolLineKeys(
 }
 
 /**
- * Restore the `●` on any bullet-less row whose name-prefix was a tool line in a recent frame (`recentKeys`,
- * supplied by the caller and scoped to on-screen lines). Returns a NEW rows array — the parser stays pure.
- * No-op when `recentKeys` is empty. Restoring the glyph makes `parseGridCards` open the row as its own
- * tool card again instead of folding it into the prose above (the fusion the user reported).
+ * Restore the `●` on any bullet-less row that should be a tool card, using TWO layered defenses:
  *
- * `bulletColors` (optional, index-aligned with `rows`) is MUTATED for each restored row: the flickered row
- * carried no bullet this frame so its color slot is null, and `parseGridCards` classifies by COLOR first —
- * a null slot falls through to the name regex, which CANNOT parse MCP's `Name (MCP)(…)` rendering and would
- * mis-read the restored row as text. Stamping the slot a tool-running color ('gray') makes the row
- * re-open as a TOOL by color, independent of name shape; the turn-end reload sets the real status.
+ * 1. **Color-gated memory** (`recentKeys`): the line's body prefix was seen with a tool-colored bullet in
+ *    a recent frame. Works for ALL tools (including MCP `Click (MCP)(…)`) on their 2nd+ appearance.
+ *    Preferred because it's shape-agnostic — the bullet color is the signal, not the name format.
+ *
+ * 2. **Name-pattern fallback** (`TOOL_HEADER_RE` / `BARE_TOOL_RE`): the line LOOKS like a tool header
+ *    (`Name(…)` or bare `Name` / `mcp__…`). Catches a tool whose `●` flickers on its VERY FIRST frame
+ *    (before the memory ever recorded it). Without this, a Read/Grep/etc. that appears and flickers
+ *    simultaneously fuses into the text card above and the memory never learns it existed. The fallback
+ *    can't parse MCP rendering (`Click (MCP)(…)`) — that's why the memory layer covers it.
+ *
+ * Together the two layers cover: MCP tools (memory layer), standard tools on re-appearance (memory),
+ * and standard tools on first appearance (name fallback).
+ *
+ * `bulletColors` (optional, index-aligned with `rows`) is MUTATED for each restored row to stamp a
+ * tool-running color ('gray') so `parseGridCards` classifies it as a tool by color.
  */
 export function restoreFlickeredToolBullets(
   rows: string[],
   recentKeys: ReadonlySet<string>,
   bulletColors?: CliBulletColor[],
 ): string[] {
-  if (recentKeys.size === 0) return rows;
   return rows.map((row, i) => {
     const t = row.trim();
     if (t.length === 0 || t.startsWith(CARD_BULLET)) return row;
@@ -348,7 +354,13 @@ export function restoreFlickeredToolBullets(
     // indent gate, re-introducing the exact misdetection the gate prevents.
     if (row.length - row.trimStart().length > MAX_CARD_INDENT) return row; // deep = tool output, not a header
     const key = toolLineKey(t);
-    if (!key || !recentKeys.has(key)) return row;
+    if (!key) return row;
+    // Layer 1: color-gated cross-frame memory (covers MCP + all previously-seen tools)
+    const memoryHit = recentKeys.has(key);
+    // Layer 2: name-pattern fallback (covers first-appearance flicker of standard tools)
+    const body = clean(t);
+    const patternHit = !memoryHit && (TOOL_HEADER_RE.test(body) || BARE_TOOL_RE.test(body));
+    if (!memoryHit && !patternHit) return row;
     if (bulletColors && i < bulletColors.length && bulletColors[i] == null) bulletColors[i] = 'gray';
     return `${CARD_BULLET} ${t}`;
   });

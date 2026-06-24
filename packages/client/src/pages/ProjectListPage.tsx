@@ -329,9 +329,9 @@ export function ProjectListPage() {
           <div className="flex flex-col items-center justify-center py-24 px-6 animate-in fade-in duration-500">
             <div className="relative mb-8">
               <div className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 rounded-full blur-xl scale-150" />
-              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-500/20 dark:to-blue-600/10 border border-blue-200/60 dark:border-blue-500/20 flex items-center justify-center shadow-sm">
+              <div className="relative w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-500/20 dark:to-blue-600/10 border border-blue-200/60 dark:border-blue-500/20 flex items-center justify-center shadow-sm">
                 <FolderOpen
-                  className="w-9 h-9 text-blue-500 dark:text-blue-400"
+                  className="w-7 h-7 md:w-8 md:h-8 text-blue-500 dark:text-blue-400"
                   aria-hidden="true"
                 />
               </div>

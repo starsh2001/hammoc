@@ -67,7 +67,10 @@ describe('useClaudeLogin', () => {
     const { result } = renderHook(() => useClaudeLogin({ onComplete }));
 
     act(() => { fireEvent('auth:method-prompt'); });
-    expect(result.current.phase).toBe('method-select');
+    // Subscription-only: the method menu auto-selects option 1 and advances straight to
+    // awaiting-auth (no chooser surfaced).
+    expect(result.current.phase).toBe('awaiting-auth');
+    expect(mockSocket.emit).toHaveBeenCalledWith('auth:select-method', { method: 1 });
 
     act(() => { fireEvent('auth:url', { url: 'https://example.com/oauth' }); });
     expect(result.current.phase).toBe('awaiting-auth');
