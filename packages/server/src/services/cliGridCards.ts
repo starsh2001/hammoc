@@ -212,7 +212,7 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
       const body = clean(trimmed.slice(CARD_BULLET.length).trim());
       const bulletColor = bulletColors?.[i];
       const isTool =
-        bulletColor === 'green' || bulletColor === 'gray'
+        bulletColor === 'green' || bulletColor === 'gray' || bulletColor === 'red'
           ? true
           : bulletColor === 'white'
             ? false
@@ -255,61 +255,101 @@ export function parseGridCards(rows: string[], bulletColors?: CliBulletColor[]):
 /**
  * Story 37.12 (flickered-bullet stickiness — the user's "detect across frames, not one frame" insight):
  * `parseGridCards` classifies a row as a TOOL only by its leading `●` glyph, but that glyph FLICKERS while
- * the tool runs — claude repaints the bullet, and the 60ms poll can land on the half-frame where it's
- * momentarily erased. A frame caught with the glyph gone reads the tool row as prose and FUSES it into the
- * block above (실측: the `Search(…)` header glued onto the answer body). These two helpers give the caller a
- * tiny CROSS-FRAME memory: {@link collectToolHeaderKeys} records the tool-header lines it actually saw, and
- * {@link restoreFlickeredToolBullets} re-adds the `●` on a later frame's bullet-less line whose body was
- * recently a tool header. Content-gated on BOTH the tool-header SHAPE and recent observation, so prose that
- * merely contains `foo(x)` is never promoted.
+ * the tool runs — claude repaints the bullet, and the poll can land on the half-frame where it's momentarily
+ * erased (node-pty실측: a running tool's `●` is absent for up to ~20 consecutive 20ms frames, then the tool
+ * settles to a STEADY green/red bullet). A frame caught with the glyph gone reads the tool row as prose and
+ * FUSES it into the block above (실측: the `Search(…)` header glued onto the answer body). These two helpers
+ * give the caller a tiny CROSS-FRAME memory: {@link collectToolLineKeys} records the tool lines it saw, and
+ * {@link restoreFlickeredToolBullets} re-adds the `●` on a later frame's bullet-less line that matches one.
+ *
+ * MCP fix: the memory key is the line's NAME-PREFIX (everything before the first `(`), NOT a
+ * tool-name regex match. The old regex (`Name(` / bare `Name`) could not parse claude's MCP rendering
+ * `Click (MCP)(…)` (a space + `(MCP)` sits between the name and the arg paren), so MCP tools were never
+ * remembered and never restored — their flickered frames fused into prose (the bug the user hit). A bare
+ * prefix has no such blind spot. To keep prose from being remembered as a tool, REMEMBERING is gated on the
+ * bullet COLOR instead of the name shape: only a `●` painted a TOOL color (green/red/gray — done/failed/
+ * running) is recorded; a white text-body bullet never is (node-pty실측: color reads correctly 100% of the
+ * time when the `●` is present, and text bullets don't flicker anyway).
  */
 
-/** The TOOL NAME from a row that stands alone as a tool header (`Tool(…)` or a bare `Tool`/`mcp__…`),
- *  any leading `●` stripped first. Null for prose / results / blanks. Keyed on NAME ONLY (not the full
- *  body) so a running tool whose argument text is truncated differently across repaints still matches. */
-function toolHeaderKey(row: string): string | null {
+/** The line's NAME-PREFIX key: the body (leading `●` stripped, cleaned) identifying the tool, with the
+ *  volatile ARG text excluded so the key is stable across repaints that truncate args differently.
+ *  `Bash(echo hi)` → `Bash`, `mcp__x__y(…)` → `mcp__x__y`, a bare `Read` → `Read`. claude renders an MCP
+ *  tool as `Click (MCP)(args)` — the ` (MCP…)` tag is part of the tool's identity, so it is KEPT in the key
+ *  (`Click (MCP)(target: …)` → `Click (MCP)`); only the arg paren after it is dropped. Null for blanks. Not
+ *  gated on tool shape — the COLLECT step gates on bullet color so prose is never recorded. */
+function toolLineKey(row: string): string | null {
   const body = clean(row.trim().replace(/^●\s*/, ''));
   if (!body) return null;
-  const m = body.match(TOOL_HEADER_RE);
-  if (m) return m[1]; // just the name: "Search", "Read", "PowerShell", etc.
-  return BARE_TOOL_RE.test(body) ? body : null; // bare name already IS the key
+  const mcp = body.match(/^(.*?\(MCP\b[^)]*\))/i); // keep "Name (MCP…)" intact when present
+  const head = mcp ? mcp[1] : (body.includes('(') ? body.slice(0, body.indexOf('(')) : body);
+  const key = head.trim();
+  return key.length > 0 ? key : null;
 }
 
+/** Bullet colors that mark a `●` row as a TOOL (done / failed / running) — used to gate what gets
+ *  remembered, so a white text-body bullet is never recorded as a flicker-restorable tool line. */
+const TOOL_BULLET_COLORS: ReadonlySet<CliBulletColor> = new Set<CliBulletColor>(['green', 'red', 'gray']);
+
 /**
- * The tool-header match keys present in `rows`. With `includeBulletless: false` (default) it counts ONLY
- * rows that actually carry the `●` glyph this frame — the confident set to REMEMBER. With `true` it also
- * counts bullet-less rows whose shape matches — used to scope retention to lines still on screen, so a
- * tool that scrolled off drops out of memory and can't later re-promote unrelated prose.
+ * The tool name-prefix keys present in `rows`. Two modes:
+ *   - REMEMBER (`includeBulletless: false`, default): only rows carrying the `●` glyph THIS frame — the
+ *     confident set. When `bulletColors` (index-aligned with `rows`) is supplied, a `●` row is recorded
+ *     ONLY if its bullet is a TOOL color (green/red/gray); a white text bullet is skipped so prose is never
+ *     remembered. Without colors (pure unit tests) every `●` row is recorded.
+ *   - RETAIN-SCOPE (`includeBulletless: true`): also counts bullet-less rows — used to scope retention to
+ *     lines still on screen, so a tool whose `●` is currently flickering stays remembered (its body is still
+ *     on screen) while a tool that truly scrolled off is forgotten. Color is irrelevant here.
  */
-export function collectToolHeaderKeys(rows: string[], includeBulletless = false): Set<string> {
+export function collectToolLineKeys(
+  rows: string[],
+  opts: { includeBulletless?: boolean; bulletColors?: CliBulletColor[] } = {},
+): Set<string> {
+  const { includeBulletless = false, bulletColors } = opts;
   const out = new Set<string>();
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const t = row.trim();
     if (t.length === 0) continue;
     if (row.length - row.trimStart().length > MAX_CARD_INDENT) continue; // deep = tool output, not a header
-    if (!t.startsWith(CARD_BULLET) && !includeBulletless) continue;
-    const key = toolHeaderKey(t);
+    const hasBullet = t.startsWith(CARD_BULLET);
+    if (!hasBullet && !includeBulletless) continue;
+    // REMEMBER mode with colors: only a tool-colored bullet is a tool line (white text body excluded).
+    if (hasBullet && !includeBulletless && bulletColors && !TOOL_BULLET_COLORS.has(bulletColors[i])) continue;
+    const key = toolLineKey(t);
     if (key) out.add(key);
   }
   return out;
 }
 
 /**
- * Restore the `●` on any bullet-less row whose body was a tool header in a recent frame (`recentKeys`,
+ * Restore the `●` on any bullet-less row whose name-prefix was a tool line in a recent frame (`recentKeys`,
  * supplied by the caller and scoped to on-screen lines). Returns a NEW rows array — the parser stays pure.
  * No-op when `recentKeys` is empty. Restoring the glyph makes `parseGridCards` open the row as its own
  * tool card again instead of folding it into the prose above (the fusion the user reported).
+ *
+ * `bulletColors` (optional, index-aligned with `rows`) is MUTATED for each restored row: the flickered row
+ * carried no bullet this frame so its color slot is null, and `parseGridCards` classifies by COLOR first —
+ * a null slot falls through to the name regex, which CANNOT parse MCP's `Name (MCP)(…)` rendering and would
+ * mis-read the restored row as text. Stamping the slot a tool-running color ('gray') makes the row
+ * re-open as a TOOL by color, independent of name shape; the turn-end reload sets the real status.
  */
-export function restoreFlickeredToolBullets(rows: string[], recentKeys: ReadonlySet<string>): string[] {
+export function restoreFlickeredToolBullets(
+  rows: string[],
+  recentKeys: ReadonlySet<string>,
+  bulletColors?: CliBulletColor[],
+): string[] {
   if (recentKeys.size === 0) return rows;
-  return rows.map((row) => {
+  return rows.map((row, i) => {
     const t = row.trim();
     if (t.length === 0 || t.startsWith(CARD_BULLET)) return row;
     // Story 37.17: don't resurrect a `●` on a DEEPLY indented row — that's a tool's verbose output, not a
     // flickered header. Restoring it would strip the indent (`● ${t}` lands at col 0) and bypass the parser's
     // indent gate, re-introducing the exact misdetection the gate prevents.
     if (row.length - row.trimStart().length > MAX_CARD_INDENT) return row; // deep = tool output, not a header
-    const key = toolHeaderKey(t);
-    return key && recentKeys.has(key) ? `${CARD_BULLET} ${t}` : row;
+    const key = toolLineKey(t);
+    if (!key || !recentKeys.has(key)) return row;
+    if (bulletColors && i < bulletColors.length && bulletColors[i] == null) bulletColors[i] = 'gray';
+    return `${CARD_BULLET} ${t}`;
   });
 }

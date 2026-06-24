@@ -76,13 +76,14 @@ export const CLI_SCREEN_SCROLLBACK = 5000;
  * (cli-real-pty-dump): a COMPLETED tool's bullet is green (78,186,101), an IN-PROGRESS tool's
  * bullet is gray (153,153,153), and an assistant TEXT body bullet is white (255,255,255). The
  * class — not the exact RGB — is the stable signal (claude may retune the shade), so we bucket:
- *   - 'green' : tool COMPLETE  (g clearly dominates r & b)
+ *   - 'green' : tool COMPLETE / success (g clearly dominates r & b — 78,186,101)
+ *   - 'red'   : tool FAILED / error (r clearly dominates g & b — 255,107,128, node-pty실측)
  *   - 'white' : assistant text body bullet (all channels high ≥200)
  *   - 'gray'  : tool RUNNING / dim (the remaining low-saturation case)
  *   - 'other' : a non-RGB / palette / default fg (older TUI or unexpected) — treated as not-green
  *   - null    : the row has no leading `●` glyph
  */
-export type CliBulletColor = 'green' | 'white' | 'gray' | 'other' | null;
+export type CliBulletColor = 'green' | 'white' | 'gray' | 'red' | 'other' | null;
 
 /** The screen model's read/write surface consumed by later stories (37.2~37.4). */
 export interface CliScreenModel {
@@ -164,6 +165,7 @@ function classifyBulletFg(cell: { isFgRGB(): boolean; getFgColor(): number }): C
   const g = (c >> 8) & 0xff;
   const b = c & 0xff;
   if (g - r >= 30 && g - b >= 30) return 'green'; // done — green dominates (78,186,101)
+  if (r - g >= 30 && r - b >= 30) return 'red'; // failed — red dominates (255,107,128, node-pty실측)
   if (r >= 200 && g >= 200 && b >= 200) return 'white'; // assistant text body (255,255,255)
   return 'gray'; // running / dim (153,153,153) and any other low-saturation fg
 }

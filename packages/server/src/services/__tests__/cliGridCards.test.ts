@@ -12,7 +12,8 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
-import { parseGridCards, collectToolHeaderKeys, restoreFlickeredToolBullets } from '../cliGridCards.js';
+import { parseGridCards, collectToolLineKeys, restoreFlickeredToolBullets } from '../cliGridCards.js';
+import type { CliBulletColor } from '../cliScreenModel.js';
 import { createCliScreenModel } from '../cliScreenModel.js';
 import { scrollbackBodyRows } from '../cliGridRegion.js';
 
@@ -245,6 +246,12 @@ describe('parseGridCards — color-primary tool/text split (Story 37.13)', () =>
     ]);
   });
 
+  it('classifies a RED (failed) bullet as a tool, not text (Edit-before-read error, 실측 255,107,128)', () => {
+    expect(parseGridCards(['● Update(README.md)'], ['red'])).toEqual([
+      { kind: 'tool', text: 'Update(README.md)', toolName: 'Update', bulletColor: 'red' },
+    ]);
+  });
+
   it('classifies a WHITE bullet as TEXT even when the body contains call-like parens (foo(bar))', () => {
     expect(parseGridCards(['● 그 함수 foo(bar) 를 호출하면 됩니다.'], ['white'])).toEqual([
       { kind: 'text', text: '그 함수 foo(bar) 를 호출하면 됩니다.', bulletColor: 'white' },
@@ -356,8 +363,8 @@ describe('flickered-bullet stickiness (Story 37.12 — tool header glyph flicker
   });
 
   it('restoreFlickeredToolBullets re-opens the tool when its header was seen in a recent frame', () => {
-    const recent = collectToolHeaderKeys(['● Search(completeStreaming)']); // frame N: glyph present
-    expect(recent.has('Search')).toBe(true); // name-only key
+    const recent = collectToolLineKeys(['● Search(completeStreaming)']); // frame N: glyph present
+    expect(recent.has('Search')).toBe(true); // name-prefix key (before the first arg paren)
     // frame N+1: the tool header's glyph flickered off (claude paints a spacer + the `●` answer body below).
     const flickered = ['Search(completeStreaming)', '', '● 좋은 점을 짚으셨습니다.'];
     expect(parseGridCards(flickered).some((c) => c.kind === 'tool')).toBe(false); // tool lost without memory
@@ -369,21 +376,44 @@ describe('flickered-bullet stickiness (Story 37.12 — tool header glyph flicker
   });
 
   it('does NOT promote prose that merely contains a call (gated on ACTUAL observation, not shape alone)', () => {
-    const recent = collectToolHeaderKeys(['● Search(q)']); // only Search was ever a tool header
-    // A standalone call-shaped line that was never observed as a tool header stays prose.
+    const recent = collectToolLineKeys(['● Search(q)']); // only Search was ever a tool line
+    // A standalone call-shaped line that was never observed as a tool line stays prose.
     expect(restoreFlickeredToolBullets(['other(y)', 'call foo(x)'], recent)).toEqual(['other(y)', 'call foo(x)']);
   });
 
-  it('collectToolHeaderKeys: bullet-only by default, bullet-less included with the flag (scroll-off scope)', () => {
+  it('collectToolLineKeys: bullet-only by default, bullet-less included with the flag (scroll-off scope)', () => {
     const rows = ['● Read(a.ts)', 'Bash(ls)']; // Read carries its bullet; Bash lost its (flickering)
-    expect([...collectToolHeaderKeys(rows)]).toEqual(['Read']); // confident set: name-only keys
-    expect(collectToolHeaderKeys(rows, true).has('Bash')).toBe(true); // on-screen scope also counts it
+    expect([...collectToolLineKeys(rows)]).toEqual(['Read']); // confident set: name-prefix keys
+    expect(collectToolLineKeys(rows, { includeBulletless: true }).has('Bash')).toBe(true); // on-screen scope also counts it
   });
 
   it('restores a BARE tool header (input not painted yet) too', () => {
-    const recent = collectToolHeaderKeys(['● PowerShell']); // bare name, glyph present — key is 'PowerShell'
+    const recent = collectToolLineKeys(['● PowerShell']); // bare name, glyph present — key is 'PowerShell'
     const restored = restoreFlickeredToolBullets(['PowerShell'], recent);
     expect(parseGridCards(restored)).toEqual([{ kind: 'tool', text: 'PowerShell', toolName: 'PowerShell' }]);
+  });
+
+  it('restores a flickered MCP tool header (keeps the `(MCP)` tag the old name-regex could not key)', () => {
+    // claude renders MCP tools as `Click (MCP)(args)` — a space + `(MCP)` between name and arg paren, which
+    // the old `Name(` / bare-`Name` regex could not parse, so MCP tools were never remembered or restored
+    // (their flickered frames fused into prose — the bug the user hit).
+    const recent = collectToolLineKeys(['● Click (MCP)(target: e18)'], { bulletColors: ['gray'] });
+    expect(recent.has('Click (MCP)')).toBe(true); // key keeps the (MCP) tag; arg text dropped
+    const flickered = ['Click (MCP)(target: e18)', '', '● 결과 본문입니다.'];
+    const colors: CliBulletColor[] = [null, null, 'white']; // flickered tool row has no bullet → null color
+    expect(parseGridCards(flickered, colors).some((c) => c.kind === 'tool')).toBe(false); // lost without memory
+    const restored = restoreFlickeredToolBullets(flickered, recent, colors); // mutates colors[0] → 'gray'
+    expect(parseGridCards(restored, colors).map((c) => c.kind)).toEqual(['tool', 'text']); // tool re-opens by color
+    expect(colors[0]).toBe('gray'); // restored row stamped a tool-running color
+  });
+
+  it('the bullet-color gate keeps a WHITE text-body bullet from being remembered as a tool line', () => {
+    const rows = ['● Some prose answer here'];
+    // White (text body) → NOT remembered, so prose can never restore a spurious tool bullet later.
+    expect(collectToolLineKeys(rows, { bulletColors: ['white'] }).size).toBe(0);
+    // A tool-colored bullet (gray/green/red) on the same row IS remembered.
+    expect(collectToolLineKeys(rows, { bulletColors: ['gray'] }).size).toBe(1);
+    expect(collectToolLineKeys(rows, { bulletColors: ['red'] }).size).toBe(1);
   });
 
   it('is a no-op with empty memory (returns the same array reference — fresh-turn fast path)', () => {
@@ -419,7 +449,7 @@ describe('parseGridCards — indented tool-output gate (Story 37.17)', () => {
     expect(restored[1]).toBe('       Bash(x)'); //  col-7 output echo → left alone
   });
 
-  it('collectToolHeaderKeys ignores a deeply-indented glyph row (no recentKeys pollution)', () => {
-    expect([...collectToolHeaderKeys(['● Bash(x)', '       ● Bash(x)'])]).toEqual(['Bash']);
+  it('collectToolLineKeys ignores a deeply-indented glyph row (no recentKeys pollution)', () => {
+    expect([...collectToolLineKeys(['● Bash(x)', '       ● Bash(x)'])]).toEqual(['Bash']);
   });
 });

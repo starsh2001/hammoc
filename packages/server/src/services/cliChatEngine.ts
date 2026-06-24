@@ -109,7 +109,7 @@ import {
   type PreInjectScreen,
 } from './cliModalDetect.js';
 import { liveFooterText, scrollbackBodyRows } from './cliGridRegion.js';
-import { parseGridCards, collectToolHeaderKeys, restoreFlickeredToolBullets, type GridCard, type GridCardKind } from './cliGridCards.js';
+import { parseGridCards, collectToolLineKeys, restoreFlickeredToolBullets, type GridCard, type GridCardKind } from './cliGridCards.js';
 import { rateLimitProbeService } from './rateLimitProbeService.js';
 import { parseJSONLFile, parseTaskNotification } from './historyParser.js';
 import { rewindSessionFiles } from './fileRewind.js';
@@ -1710,7 +1710,7 @@ export class CliChatEngine implements ChatEngine {
           // mid-repaint) BEFORE parsing, so it opens as its own tool card instead of fusing into the prose
           // above. Content-gated on the cross-frame memory, so prose is never promoted. Row count is
           // unchanged (glyph prepended), so `bodyColors` stays index-aligned.
-          cards = parseGridCards(restoreFlickeredToolBullets(bodyRows, recentToolHeaderKeys), bodyColors);
+          cards = parseGridCards(restoreFlickeredToolBullets(bodyRows, recentToolHeaderKeys, bodyColors), bodyColors);
           // Stop once a known block is in view: it is the bounded boundary — everything above it is known.
           if (knownSigs.size === 0 || cards.some((c) => knownSigs.has(cardSig(c)))) break;
           depth += CLI_SCROLLUP_INCREMENT; // no known block yet (a tall block's header is still above) — climb
@@ -1727,16 +1727,17 @@ export class CliChatEngine implements ChatEngine {
           });
         }
 
-        // Story 37.12: refresh the cross-frame tool-header memory from the FINAL (deepest) frame read.
+        // Story 37.12: refresh the cross-frame tool-line memory from the FINAL (deepest) frame read.
         // First drop keys whose line scrolled off — retention is scoped to on-screen text INCLUDING
         // bullet-less rows, so a tool whose glyph is currently flickering stays remembered while a tool that
         // truly scrolled away is forgotten (can't re-promote unrelated prose later). Then add this frame's
-        // glyph-carrying tool headers — the confident observations worth remembering.
-        const onScreenToolKeys = collectToolHeaderKeys(bodyRows, true);
+        // TOOL-COLORED bullet lines (green/red/gray) — the confident observations worth remembering; a white
+        // text-body bullet is excluded by the color gate, so prose is never remembered as a flicker tool.
+        const onScreenToolKeys = collectToolLineKeys(bodyRows, { includeBulletless: true });
         for (const key of [...recentToolHeaderKeys]) {
           if (!onScreenToolKeys.has(key)) recentToolHeaderKeys.delete(key);
         }
-        for (const key of collectToolHeaderKeys(bodyRows, false)) recentToolHeaderKeys.add(key);
+        for (const key of collectToolLineKeys(bodyRows, { bulletColors: bodyColors })) recentToolHeaderKeys.add(key);
 
         // CONTENT-SET dedup (replaces the position/suffix align that re-emitted the whole sequence the
         // moment a card was inserted mid-list or mutated). Walk the visible cards; for each STABLE card:
@@ -1756,28 +1757,32 @@ export class CliChatEngine implements ChatEngine {
         // output; if it scrolled off we still mark complete (the turn-end reload fills the canonical output).
         // Fixes "tool spins forever though the mirror shows a green/done bullet" — the completion row scrolls
         // out of the viewport but the color is enough.
-        const flipDoneIfGreen = (slot: number, bulletColor: string | null | undefined, cardIdx: number): void => {
-          if (bulletColor !== 'green' || slot < 0 || gridResultFlippedSlots.has(slot)) return;
+        const flipToolSettled = (slot: number, bulletColor: string | null | undefined, cardIdx: number): void => {
+          // A tool's bullet SETTLES to green (success) or red (failure) when it finishes — both are terminal
+          // and flip the provisional card running→complete in place. Gray/other = still running → leave pending
+          // (the turn-end reload supplies the canonical result). node-pty실측: red = 255,107,128, steady.
+          if ((bulletColor !== 'green' && bulletColor !== 'red') || slot < 0 || gridResultFlippedSlots.has(slot)) return;
           const sid = provToolSlotIds[slot];
           if (!sid) return;
           const next = cards[cardIdx + 1];
           const output = next && next.kind === 'result' && next.text.trim() ? next.text : '';
+          const success = bulletColor === 'green';
           gridResultFlippedSlots.add(slot);
-          trace(`flip-green slot=${slot} sid=${sid} (screen green → done)`);
-          dlog.server('grid-tool-green-flip', { slot, sid, hasOutput: !!output });
-          callbacks.onToolResult?.(sid, { success: true, output }, true);
+          trace(`flip-settled slot=${slot} sid=${sid} color=${bulletColor} (screen ${bulletColor} → ${success ? 'done' : 'failed'})`);
+          dlog.server('grid-tool-settle-flip', { slot, sid, color: bulletColor, success, hasOutput: !!output });
+          callbacks.onToolResult?.(sid, { success, output }, true);
         };
         for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
           const card = cards[cardIdx];
           if (card.kind === 'result') {
-            // Flip the preceding tool running→complete ONLY when its `●` bullet is GREEN (done). claude
-            // paints `⎿ Waiting…`/`⎿ Running…` under a still-running gray-bullet tool; those are NOT the
-            // result (flipping shows a premature "complete: Waiting…"). Gray/unreadable stays pending →
-            // the turn-end reload supplies the canonical result. Only a grid-provisioned slot.
+            // Flip the preceding tool running→complete when its `●` bullet has SETTLED green (success) or red
+            // (failure). claude paints `⎿ Waiting…`/`⎿ Running…` under a still-running gray-bullet tool; those
+            // are NOT the result (flipping shows a premature "complete: Waiting…"). Gray/unreadable stays
+            // pending → the turn-end reload supplies the canonical result. Only a grid-provisioned slot.
             const sid = lastToolSlot >= 0 ? provToolSlotIds[lastToolSlot] : undefined;
-            if (sid && !gridResultFlippedSlots.has(lastToolSlot) && lastToolColor === 'green' && card.text.trim()) {
+            if (sid && !gridResultFlippedSlots.has(lastToolSlot) && (lastToolColor === 'green' || lastToolColor === 'red') && card.text.trim()) {
               gridResultFlippedSlots.add(lastToolSlot);
-              callbacks.onToolResult?.(sid, { success: true, output: card.text }, true);
+              callbacks.onToolResult?.(sid, { success: lastToolColor === 'green', output: card.text }, true);
             }
             continue;
           }
@@ -1834,7 +1839,7 @@ export class CliChatEngine implements ChatEngine {
             if (h.kind === 'tool') {
               lastToolSlot = h.slot; lastToolColor = card.bulletColor;
               if (card.bulletColor === 'green') h.seenGreen = true;
-              flipDoneIfGreen(h.slot, card.bulletColor, cardIdx);
+              flipToolSettled(h.slot, card.bulletColor, cardIdx);
             }
             continue;
           }
@@ -1880,7 +1885,7 @@ export class CliChatEngine implements ChatEngine {
             });
             lastToolSlot = slot;
             lastToolColor = card.bulletColor;
-            flipDoneIfGreen(slot, card.bulletColor, cardIdx); // a tool already green on first sight = done
+            flipToolSettled(slot, card.bulletColor, cardIdx); // a tool already green/red on first sight = settled
           } else if (card.kind === 'text') {
             const slot = liveTextSlots++;
             heldCards.push({ kind: 'text', sig, text: card.text, slot });
