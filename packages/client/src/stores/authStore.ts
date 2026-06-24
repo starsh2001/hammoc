@@ -7,8 +7,25 @@ import { create } from 'zustand';
 import type { RateLimitInfo } from '@hammoc/shared';
 import { authApi } from '../services/api/auth';
 import { ApiError, setUnauthorizedHandler } from '../services/api/client';
-import { disconnectSocket } from '../services/socket';
+import { disconnectSocket, getSocket } from '../services/socket';
 import i18n from '../i18n';
+
+/**
+ * Re-establish the WebSocket with the now-authenticated session cookie.
+ *
+ * The socket singleton is created eagerly on app load (e.g. by the preferences
+ * multi-device sync) — BEFORE the user has authenticated — so its initial
+ * handshake is rejected by the Socket.io auth middleware (Unauthorized) and it
+ * settles into a failed/backoff state. Logging in or setting up the password
+ * makes the cookie valid but does NOT, by itself, retry that dead socket, so
+ * authenticated-only flows (e.g. the in-app Claude login PTY) never reach the
+ * server. Dropping the stale instance and recreating it forces a fresh
+ * handshake that carries the new cookie.
+ */
+function reconnectWithFreshAuth(): void {
+  disconnectSocket(); // drop the instance handshaken under the unauthenticated cookie
+  getSocket();        // recreate + autoConnect, now with the authenticated cookie
+}
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -52,6 +69,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       await authApi.login({ password, rememberMe });
       set({ isAuthenticated: true, isLoading: false });
+      reconnectWithFreshAuth();
       return true;
     } catch (err) {
       if (err instanceof ApiError) {
@@ -143,6 +161,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       await authApi.setup({ password, confirmPassword });
       set({ isAuthenticated: true, isPasswordConfigured: true, isLoading: false });
+      reconnectWithFreshAuth();
       return true;
     } catch (err) {
       if (err instanceof ApiError) {
