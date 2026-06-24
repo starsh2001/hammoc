@@ -603,26 +603,62 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           const s = segments[i];
           if ((s.type === 'text' || s.type === 'thinking') && !(s as { provisional?: boolean }).provisional) { sectionStart = i + 1; break; }
         }
+        // Defense-in-depth for the same split the append path now prevents: should a provisional text block
+        // ever still arrive as MULTIPLE segments (same messageId), absorb the siblings here so one canonical
+        // replaces the whole block and none is left orphaned. With the append-side repair this is a no-op,
+        // but it keeps the FIFO 1:1 even if a future emit path reintroduces a split.
+        const finalizedMsgId = (segments[idx] as { messageId?: string }).messageId;
         const updated = segments
           .map((s, i) => (i === idx ? { type: 'text' as const, content } : s))
-          .filter((s, i) => !(i >= sectionStart && i < idx && s.type === 'tool' && (s as { provisional?: boolean }).provisional === true));
+          .filter((s, i) => {
+            if (i >= sectionStart && i < idx && s.type === 'tool' && (s as { provisional?: boolean }).provisional === true) return false;
+            if (i !== idx && s.type === 'text' && (s as { provisional?: boolean }).provisional === true
+              && finalizedMsgId !== undefined && (s as { messageId?: string }).messageId === finalizedMsgId) return false;
+            return true;
+          });
         debugLog.cliLog('seg-text-finalize', { idx, len: content.length });
         set({ streamingSegments: updated });
         return;
       }
     }
 
-    const lastSegment = segments[segments.length - 1];
-    const lastId = lastSegment && (lastSegment as { messageId?: string }).messageId;
-    if (lastSegment?.type === 'text' && (!messageId || !lastId || messageId === lastId)) {
+    // Story 37.11 (split repair): a provisional text block can arrive in several chunks (screen-scrape
+    // GROWTH of the same card). The server tags every chunk of ONE logical block with the SAME messageId
+    // (a fresh id is minted only for a genuinely new card), so same messageId ⇒ same block. If a tool /
+    // thinking card is emitted BETWEEN two chunks of that block, the last segment is no longer text and the
+    // naive "append only to the last segment" rule would START A NEW SEGMENT — splitting one block into two
+    // provisional cards. That breaks the 1:1 count the canonical FIFO finalize relies on (the Nth canonical
+    // replaces the Nth provisional): every later canonical then lands one slot early and the trailing
+    // provisional card is orphaned below its own finalized copy. Fix: for a provisional chunk carrying a
+    // messageId, append to the EXISTING provisional segment with that id wherever it sits, not only when
+    // it is the very last segment. Authoritative / id-less streams keep the contiguous-last-segment rule
+    // (no reorder risk — a fresh block always carries a new id).
+    let appendIdx = -1;
+    if (messageId && provisional) {
+      appendIdx = segments.findIndex(
+        (s) => s.type === 'text'
+          && (s as { provisional?: boolean }).provisional === true
+          && (s as { messageId?: string }).messageId === messageId,
+      );
+    }
+    if (appendIdx < 0) {
+      const lastSegment = segments[segments.length - 1];
+      const lastId = lastSegment && (lastSegment as { messageId?: string }).messageId;
+      if (lastSegment?.type === 'text' && (!messageId || !lastId || messageId === lastId)) {
+        appendIdx = segments.length - 1;
+      }
+    }
+
+    if (appendIdx >= 0) {
+      const target = segments[appendIdx];
       const updated = [...segments];
-      updated[updated.length - 1] = {
+      updated[appendIdx] = {
         type: 'text',
-        content: lastSegment.content + content,
+        content: (target.type === 'text' ? target.content : '') + content,
         ...(provisional ? { provisional: true } : {}),
         ...(messageId ? { messageId } : {}),
       };
-      debugLog.cliLog('seg-text-append', { segIdx: segments.length - 1, addedLen: content.length });
+      debugLog.cliLog('seg-text-append', { segIdx: appendIdx, addedLen: content.length });
       set({ streamingSegments: updated });
     } else {
       debugLog.cliLog('seg-text-new', { segIdx: segments.length, len: content.length, provisional: !!provisional, messageId });

@@ -386,6 +386,62 @@ describe('useChatStore', () => {
       expect(useChatStore.getState().streamingSegments).toEqual([{ type: 'thinking', content: 'raw reasoning' }]);
     });
 
+    // Story 37.11 (split repair): regression for the provisional-card-orphaned-below-its-finalized-copy bug.
+    // The screen scraper delivers ONE logical text block in several chunks (same server messageId). If a tool
+    // card lands between two chunks, the block must NOT split into two provisional segments — a split makes the
+    // provisional-text count exceed the canonical count, so the FIFO finalize lands each canonical one slot
+    // early and the trailing live card is left orphaned under its own finalized copy.
+    it('does NOT split one provisional text block (same messageId) into two segments when a tool card interleaves', () => {
+      const { startStreaming, appendStreamingContent, addStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('Checking the console', true, 'cli-prov-text-14');
+      addStreamingToolCall({ id: 'cli-prov-tool-30', name: 'Search', input: {}, provisional: true });
+      // Same messageId arrives AGAIN after the tool — must append to the existing block, not start a new one.
+      appendStreamingContent(' and the network', true, 'cli-prov-text-14');
+
+      const segs = useChatStore.getState().streamingSegments;
+      expect(segs).toHaveLength(2); // [text(block-14), tool] — NOT [text, tool, text]
+      expect(segs[0]).toEqual({ type: 'text', content: 'Checking the console and the network', provisional: true, messageId: 'cli-prov-text-14' });
+      expect(segs[1].type).toBe('tool');
+    });
+
+    it('finalizes a tool-interleaved provisional text block with NO orphaned live card left below', () => {
+      const { startStreaming, appendStreamingContent, addStreamingToolCall } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      appendStreamingContent('Checking the console', true, 'cli-prov-text-14');
+      addStreamingToolCall({ id: 'cli-prov-tool-30', name: 'Search', input: {}, provisional: true });
+      appendStreamingContent(' and the network', true, 'cli-prov-text-14');
+      // Canonical for block-14 (different fin-namespace id, provisional=false) replaces the whole block.
+      appendStreamingContent('Checking the console and the network status.', false);
+
+      const segs = useChatStore.getState().streamingSegments;
+      // Exactly one text segment (finalized, badge dropped) + the tool. No second provisional text card.
+      expect(segs.filter((s) => s.type === 'text')).toHaveLength(1);
+      expect(segs.some((s) => s.type === 'text' && (s as { provisional?: boolean }).provisional === true)).toBe(false);
+      expect(segs[0]).toEqual({ type: 'text', content: 'Checking the console and the network status.' });
+    });
+
+    // Defense-in-depth (Fix ①): even if a split slips through, one canonical must absorb ALL same-messageId
+    // provisional siblings so none is orphaned. Drive the split directly to exercise the finalize-side guard.
+    it('absorbs leftover same-messageId provisional text siblings on finalize (no orphan)', () => {
+      const { startStreaming } = useChatStore.getState();
+      startStreaming('session-1', 'msg-1');
+      // Force a split state directly (two provisional text segments, same messageId, a tool between them).
+      useChatStore.setState({
+        streamingSegments: [
+          { type: 'text', content: 'part one', provisional: true, messageId: 'cli-prov-text-14' },
+          { type: 'tool', toolCall: { id: 'cli-prov-tool-30', name: 'Search', input: {} }, status: 'pending', provisional: true },
+          { type: 'text', content: ' part two', provisional: true, messageId: 'cli-prov-text-14' },
+        ] as never,
+      });
+      useChatStore.getState().appendStreamingContent('canonical full text', false);
+
+      const segs = useChatStore.getState().streamingSegments;
+      expect(segs.filter((s) => s.type === 'text')).toHaveLength(1); // sibling absorbed, not orphaned
+      expect(segs.some((s) => s.type === 'text' && (s as { provisional?: boolean }).provisional === true)).toBe(false);
+      expect(segs.find((s) => s.type === 'text')).toEqual({ type: 'text', content: 'canonical full text' });
+    });
+
     it('FINALIZES the oldest provisional tool card in place on a non-provisional call (id-independent — real name+input, badge dropped)', () => {
       const { startStreaming, addStreamingToolCall } = useChatStore.getState();
       startStreaming('session-1', 'msg-1');
