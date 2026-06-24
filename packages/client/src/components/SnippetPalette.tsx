@@ -106,6 +106,12 @@ export function SnippetPalette({
   const filtered = useMemo(() => filterSnippets(snippets, filter), [snippets, filter]);
   const grouped = useMemo(() => groupSnippets(filtered), [filtered]);
 
+  useEffect(() => {
+    setContentCache(new Map());
+    setErrorKeys(new Set());
+    setExpandedKey(null);
+  }, [snippets]);
+
   // Scroll selected item into view
   useEffect(() => {
     const selectedEl = listRef.current?.querySelector('[aria-selected="true"]');
