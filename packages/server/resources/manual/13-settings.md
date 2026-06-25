@@ -187,12 +187,36 @@ Get notified on your phone when Claude needs attention:
 
 ### 13.14 Claude Account
 
-Shows the Claude Code account that Hammoc is using, plus live subscription usage:
+Shows the Claude Code account that Hammoc is using, plus live subscription usage. Also provides in-app sign-in and multi-account management.
+
+**Active account info:**
 
 - **Account info** — Email, Subscription plan, Provider (e.g., Claude API / Claude.ai), Organization (if applicable), and the timestamp of the last fetch
 - **Usage bars** — Two progress bars showing consumption of the **5-hour window** and **7-day window** quotas, with color thresholds (green / yellow / red at 50% / 80%) and reset times
 - **Refresh** — Manually fetch the latest account info and usage from the API (spinner shown while refreshing). Toast confirms success or failure
+- **Sign out** — Log out of the active Claude account
 - If no data has been fetched yet, a helper line explains that account info fills in automatically after the first chat or after clicking Refresh
+
+**In-app sign-in:**
+
+Sign in to Claude directly from Hammoc — no terminal needed:
+
+1. Click **"Sign in to Claude"** (shown when no account is linked, or when adding an account)
+2. Click **"Open authorization page"** to open the OAuth page in a new browser tab (or use **"Copy link"** to copy the URL)
+3. Approve access on the Claude website, then paste the authorization code into the input field
+4. Click **"Submit code"** to complete sign-in
+
+If an error occurs, a **"Try again"** button restarts the flow. The same sign-in flow is also available during onboarding (see §1.3).
+
+**Multi-account management:**
+
+Store and switch between multiple Claude accounts without re-authenticating each time:
+
+- **Accounts list** — All stored accounts are shown below the active account info. The active account is highlighted with a green border and checkmark
+- **Switch** — Click the **Switch** button on any inactive account to make it the active account. If the session has expired, Hammoc prompts a re-login
+- **Remove** — Click the trash icon on an inactive account to permanently delete its stored credential (with confirmation dialog). The active account cannot be removed — switch to another account first
+- **Add account** — Click **"+ Add account"** at the bottom of the list to sign in to another Claude account using the same OAuth flow. Click **Cancel** to close without adding
+- Account changes sync across all open browser tabs in real-time
 
 ### 13.15 Hammoc User
 

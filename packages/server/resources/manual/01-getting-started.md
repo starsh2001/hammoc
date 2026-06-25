@@ -32,11 +32,17 @@ npm run dev
 
 ### 1.3 First Launch
 
-1. Open http://localhost:3000 in your browser
-2. **Password Setup**: Set an admin password on first visit. This protects your instance from unauthorized access.
-3. **Login**: Enter your password to sign in. **"Stay signed in"** keeps you logged in for 30 days (checked by default). After too many failed attempts, login is temporarily locked with a countdown timer.
-4. **CLI Verification**: The onboarding wizard checks that Claude Code CLI is installed and authenticated. Follow the prompts if any step fails.
-5. **Project Selection**: Choose an existing Claude Code project or create a new one.
+Open http://localhost:3000 in your browser. A multi-step onboarding wizard walks you through initial setup. Steps that are already configured are automatically skipped — returning users go straight to the login screen.
+
+1. **Display Name** — Optionally set a name for the AI to use when addressing you (can also be changed later in Settings, see §13.12). Click **Next** or **Skip**
+2. **Password** — Set an admin password (minimum 4 characters) to protect your instance. On return visits this step becomes a login screen instead. After too many failed attempts, login is temporarily locked with a countdown timer
+3. **Auth Method** — Choose how to connect to Claude:
+   - **Claude subscription** — Sign in with a Pro, Max, Team, or Enterprise account. An OAuth flow opens the authorization page in a new tab; copy the authorization code back into the wizard to complete sign-in
+   - **API key** — Enter an Anthropic API key directly (format: `sk-ant-...`)
+4. **First Project** — Enter a project directory path or click **Browse** to pick a folder visually (see §5.2 for the directory picker). Click **Skip** to add a project later
+5. **All Set** — Confirmation screen with auto-redirect to the home page
+
+Use the **Back** button or `Escape` to return to a previous step at any time.
 
 ### 1.4 Mobile Access
 

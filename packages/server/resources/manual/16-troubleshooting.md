@@ -8,17 +8,14 @@ Claude Code CLI must be installed and in your PATH:
 claude --version
 ```
 
-If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code). The Onboarding page shows CLI installation, authentication, and API key status at a glance.
+If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code). The onboarding wizard checks CLI status automatically on first launch (see §1.3).
 
 ### 16.2 "Authentication required" / `claude login`
 
-If the chat displays an authentication error, Claude Code CLI needs to be logged in:
+If the chat displays an authentication error, Claude Code needs to be logged in. Two options:
 
-```bash
-claude login
-```
-
-The Onboarding page (shown when CLI is not authenticated) displays the current auth status and provides setup commands.
+- **In-app** — Go to **Settings > Claude Account** and click **"Sign in to Claude"** to complete the OAuth flow without leaving Hammoc (see §13.14)
+- **Terminal** — Run `claude login` in a terminal session
 
 ### 16.3 API rate limit exceeded
 

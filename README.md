@@ -49,7 +49,7 @@ npm install -g hammoc
 hammoc
 ```
 
-Open http://localhost:3000 in your browser. First launch guides you through password setup and CLI verification.
+Open http://localhost:3000 in your browser. First launch guides you through a multi-step onboarding wizard (display name, password, Claude sign-in, project selection).
 
 ### CLI Options
 
@@ -247,7 +247,7 @@ Automate repetitive prompt sequences.
 - **Chat timeout** — 1m, 3m, 5m (default), 10m, 30m
 - **Web Push & Telegram notifications** — Get notified on permission requests, completions, and errors
 - **Display name** — Set a preferred name for the agent to use when addressing you
-- **Claude account & usage** — Inspect the linked Claude Code account plus 5h / 7d usage quotas with live refresh
+- **Claude account & usage** — In-app Claude sign-in, multi-account management (add/switch/remove), and live 5h / 7d usage quota monitoring
 - **System prompt editing** — Customize Claude's behavior per project
 - **Advanced** — Server restart, software updates, SDK parameters (thinking tokens, turns, budget — now applied to both chat and queue runs)
 

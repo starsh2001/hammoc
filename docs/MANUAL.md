@@ -57,11 +57,17 @@ npm run dev
 
 ### 1.3 First Launch
 
-1. Open http://localhost:3000 in your browser
-2. **Password Setup**: Set an admin password on first visit. This protects your instance from unauthorized access.
-3. **Login**: Enter your password to sign in. **"Stay signed in"** keeps you logged in for 30 days (checked by default). After too many failed attempts, login is temporarily locked with a countdown timer.
-4. **CLI Verification**: The onboarding wizard checks that Claude Code CLI is installed and authenticated. Follow the prompts if any step fails.
-5. **Project Selection**: Choose an existing Claude Code project or create a new one.
+Open http://localhost:3000 in your browser. A multi-step onboarding wizard walks you through initial setup. Steps that are already configured are automatically skipped — returning users go straight to the login screen.
+
+1. **Display Name** — Optionally set a name for the AI to use when addressing you (can also be changed later in Settings, see §13.12). Click **Next** or **Skip**
+2. **Password** — Set an admin password (minimum 4 characters) to protect your instance. On return visits this step becomes a login screen instead. After too many failed attempts, login is temporarily locked with a countdown timer
+3. **Auth Method** — Choose how to connect to Claude:
+   - **Claude subscription** — Sign in with a Pro, Max, Team, or Enterprise account. An OAuth flow opens the authorization page in a new tab; copy the authorization code back into the wizard to complete sign-in
+   - **API key** — Enter an Anthropic API key directly (format: `sk-ant-...`)
+4. **First Project** — Enter a project directory path or click **Browse** to pick a folder visually (see §5.2 for the directory picker). Click **Skip** to add a project later
+5. **All Set** — Confirmation screen with auto-redirect to the home page
+
+Use the **Back** button or `Escape` to return to a previous step at any time.
 
 ### 1.4 Mobile Access
 
@@ -2065,12 +2071,36 @@ Get notified on your phone when Claude needs attention:
 
 ### 13.14 Claude Account
 
-Shows the Claude Code account that Hammoc is using, plus live subscription usage:
+Shows the Claude Code account that Hammoc is using, plus live subscription usage. Also provides in-app sign-in and multi-account management.
+
+**Active account info:**
 
 - **Account info** — Email, Subscription plan, Provider (e.g., Claude API / Claude.ai), Organization (if applicable), and the timestamp of the last fetch
 - **Usage bars** — Two progress bars showing consumption of the **5-hour window** and **7-day window** quotas, with color thresholds (green / yellow / red at 50% / 80%) and reset times
 - **Refresh** — Manually fetch the latest account info and usage from the API (spinner shown while refreshing). Toast confirms success or failure
+- **Sign out** — Log out of the active Claude account
 - If no data has been fetched yet, a helper line explains that account info fills in automatically after the first chat or after clicking Refresh
+
+**In-app sign-in:**
+
+Sign in to Claude directly from Hammoc — no terminal needed:
+
+1. Click **"Sign in to Claude"** (shown when no account is linked, or when adding an account)
+2. Click **"Open authorization page"** to open the OAuth page in a new browser tab (or use **"Copy link"** to copy the URL)
+3. Approve access on the Claude website, then paste the authorization code into the input field
+4. Click **"Submit code"** to complete sign-in
+
+If an error occurs, a **"Try again"** button restarts the flow. The same sign-in flow is also available during onboarding (see §1.3).
+
+**Multi-account management:**
+
+Store and switch between multiple Claude accounts without re-authenticating each time:
+
+- **Accounts list** — All stored accounts are shown below the active account info. The active account is highlighted with a green border and checkmark
+- **Switch** — Click the **Switch** button on any inactive account to make it the active account. If the session has expired, Hammoc prompts a re-login
+- **Remove** — Click the trash icon on an inactive account to permanently delete its stored credential (with confirmation dialog). The active account cannot be removed — switch to another account first
+- **Add account** — Click **"+ Add account"** at the bottom of the list to sign in to another Claude account using the same OAuth flow. Click **Cancel** to close without adding
+- Account changes sync across all open browser tabs in real-time
 
 ### 13.15 Hammoc User
 
@@ -2281,17 +2311,14 @@ Claude Code CLI must be installed and in your PATH:
 claude --version
 ```
 
-If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code). The Onboarding page shows CLI installation, authentication, and API key status at a glance.
+If not installed, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code). The onboarding wizard checks CLI status automatically on first launch (see §1.3).
 
 ### 16.2 "Authentication required" / `claude login`
 
-If the chat displays an authentication error, Claude Code CLI needs to be logged in:
+If the chat displays an authentication error, Claude Code needs to be logged in. Two options:
 
-```bash
-claude login
-```
-
-The Onboarding page (shown when CLI is not authenticated) displays the current auth status and provides setup commands.
+- **In-app** — Go to **Settings > Claude Account** and click **"Sign in to Claude"** to complete the OAuth flow without leaving Hammoc (see §13.14)
+- **Terminal** — Run `claude login` in a terminal session
 
 ### 16.3 API rate limit exceeded
 
