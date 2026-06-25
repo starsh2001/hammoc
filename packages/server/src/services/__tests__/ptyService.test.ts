@@ -13,7 +13,7 @@ const mockKill = vi.fn();
 const mockOnData = vi.fn();
 const mockOnExit = vi.fn();
 
-vi.mock('node-pty', () => ({
+vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({
   spawn: vi.fn(() => ({
     write: mockWrite,
     resize: mockResize,
@@ -47,7 +47,7 @@ vi.mock('../../utils/logger.js', () => ({
 
 // Import after mocks
 import { ptyService } from '../ptyService.js';
-import * as nodePty from 'node-pty';
+import * as nodePty from '@homebridge/node-pty-prebuilt-multiarch';
 
 describe('PtyService', () => {
   beforeEach(() => {

@@ -4,7 +4,7 @@
  * [Source: Story 17.1 - Task 4]
  */
 
-import * as pty from 'node-pty';
+import * as pty from '@homebridge/node-pty-prebuilt-multiarch';
 import { randomUUID } from 'crypto';
 import { execSync } from 'child_process';
 import { TERMINAL_ERRORS } from '@hammoc/shared';

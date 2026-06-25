@@ -191,7 +191,7 @@ export class ClaudeLoginSession {
   private readonly cb: ClaudeLoginCallbacks;
   private readonly screen = createCliScreenModel();
   private handle: string | null = null;
-  private pty: import('node-pty').IPty | null = null;
+  private pty: import('@homebridge/node-pty-prebuilt-multiarch').IPty | null = null;
   private phase: LoginPhase = 'idle';
   private rawAccum = '';
   private bootBuffer = '';

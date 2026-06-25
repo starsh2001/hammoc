@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const mockKill = vi.fn();
-vi.mock('node-pty', () => ({
+vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({
   spawn: vi.fn(() => ({
     write: vi.fn(),
     resize: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock('../../utils/bundledBinaryModelSupport.js', () => ({
 
 // Import after mocks.
 import { cliSessionPool } from '../cliSessionPool.js';
-import * as nodePty from 'node-pty';
+import * as nodePty from '@homebridge/node-pty-prebuilt-multiarch';
 
 /** The binary string handed to the most recent node-pty spawn. */
 function resolvedBinary(): string {

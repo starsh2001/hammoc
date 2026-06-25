@@ -25,7 +25,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('node-pty', () => ({ spawn: vi.fn() }));
+vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({ spawn: vi.fn() }));
 vi.mock('child_process', () => ({ execSync: vi.fn(() => ''), exec: vi.fn() }));
 vi.mock('../../utils/logger.js', () => ({
   createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), verbose: vi.fn() }),

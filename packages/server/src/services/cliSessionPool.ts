@@ -15,7 +15,7 @@
  * `streamHandler.ts` already use for `extractContextWindow`.
  */
 
-import * as pty from 'node-pty';
+import * as pty from '@homebridge/node-pty-prebuilt-multiarch';
 import { randomUUID } from 'crypto';
 import { execSync } from 'child_process';
 import os from 'os';
