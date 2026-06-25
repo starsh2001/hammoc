@@ -82,6 +82,7 @@ Type `%` in the chat input to open the snippet autocomplete popup:
 
 - **Grouped by source** — Sections labeled "Project", "Global", and "Bundled"
 - **Preview** — Shows the first line of each snippet's content (up to 80 characters)
+- **Expand full content** — Each row has a chevron (▸) toggle on the right; click it to reveal an inline, scrollable preview of the snippet's entire body in monospace, so you can confirm what you're inserting before committing to it. Only one snippet stays expanded at a time, and arrow-key navigation does not auto-expand — you expand on demand. Content is cached after the first load for instant reopen
 - **Real-time filtering** — Type after `%` to filter by name or preview text (case-insensitive)
 - **Keyboard navigation** — ArrowUp/Down to navigate, Enter or Tab to select, Escape to close
 - **Click** to select a snippet

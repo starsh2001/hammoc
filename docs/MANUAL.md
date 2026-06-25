@@ -458,6 +458,7 @@ Access the session list via the sidebar or quick panel:
 - **Pending question indicator** — Cyan pulsing dot with "Awaiting selection" badge when a session has an active `AskUserQuestion` waiting for user input. Appears alongside the session entry so you can spot sessions that need attention without opening each one
 - **Queue badge** — Shown when queue runner is active on the session
 - **Early visibility** — New sessions appear in the list as soon as a message is sent, with no brief delay
+- **Active session promotion** — When a session starts streaming, it jumps to the top of the list so the session you're actively using stays the most visible
 - Empty sessions are hidden by default (toggle with the eye icon)
 
 ### 3.2 Creating a New Session
@@ -577,6 +578,7 @@ Type `%` in the chat input to open the snippet autocomplete popup:
 
 - **Grouped by source** — Sections labeled "Project", "Global", and "Bundled"
 - **Preview** — Shows the first line of each snippet's content (up to 80 characters)
+- **Expand full content** — Each row has a chevron (▸) toggle on the right; click it to reveal an inline, scrollable preview of the snippet's entire body in monospace, so you can confirm what you're inserting before committing to it. Only one snippet stays expanded at a time, and arrow-key navigation does not auto-expand — you expand on demand. Content is cached after the first load for instant reopen
 - **Real-time filtering** — Type after `%` to filter by name or preview text (case-insensitive)
 - **Keyboard navigation** — ArrowUp/Down to navigate, Enter or Tab to select, Escape to close
 - **Click** to select a snippet
@@ -2111,17 +2113,17 @@ Local Hammoc authentication (independent of your Claude Code account):
 
 ### 13.16 System Prompt
 
-Customize Claude's behavior with a fully editable system prompt template:
+Customize Claude's behavior by adding your own instructions on top of Hammoc's maintained base prompt. The editor is split into a read-only **system-managed** area and an editable **additions** area, so you layer your customizations on top instead of replacing the entire prompt:
 
-- **Warning banner** — Displayed at the top, cautioning about the impact of modifications
-- **Editable textarea** — Edit the system prompt with **auto-save**
-- **Character count** — Shown below the editor
-- **"Customized" indicator** — Blue banner when a custom prompt is active
-- **Restore to Default** button — Appears when the prompt has been modified
+- **System-managed sections (read-only)** — A collapsible accordion showing the base prompt Hammoc assembles automatically: a common section (Hammoc identity, code-reference conventions, feature pointers), an engine-specific section (SDK or CLI), and a BMad section when the project is a BMad project. Labeled "Auto-assembled — not editable"; expand it to see exactly what is being sent
+- **Your additions** — An editable textarea (with **auto-save**) where you append your own instructions. These are added to the base prompt rather than overwriting it. A **"Custom additions in use"** badge appears when the area is non-empty
+- **Migration banner** — If you previously customized the prompt in the old single-textarea editor, a one-time notice explains that the prompt was restructured; review your additions, remove anything that now duplicates the managed sections, and dismiss it
+- **Character count** — Total characters shown below the editor; hover to see the **system + you** breakdown
+- **Restore Default** button — Appears once you have additions; clears your additions back to empty (the managed sections are always present and cannot be removed)
 - **Template variables** — Listed below the editor with descriptions (e.g., `{gitBranch}`, `{gitMainBranch}`, `{gitStatus}`); variables are resolved at runtime
-- **Resolved preview** — Toggle to see the fully rendered prompt with variables replaced for the current project
+- **Preview Full Prompt** — Toggle to see the fully assembled prompt (managed sections plus your additions) with variables resolved for the current project
 
-The system prompt applies to both conversation engines (SDK and CLI). The default template focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install.
+The system prompt applies to both conversation engines (SDK and CLI). The managed base focuses Claude on Hammoc-specific features (snippets, queue runner, board, BMAD, permission modes, sessions) and points at the manual + internals docs that Hammoc syncs to `~/.hammoc/docs/` on every server boot, so agents always have current docs even when run from a fresh install.
 
 ### 13.17 Conversation Engine
 
@@ -2151,7 +2153,7 @@ CLI engine settings have moved to **Advanced Settings** (see §13.18) under the 
 Settings in the Advanced tab are organized into three groups: Common (both engines), SDK engine only, and CLI engine only.
 
 **Common (both engines):**
-- **System prompt** — Customizable prompt template that applies to both engines (see §13.16)
+- **System prompt** — Add your own instructions on top of the managed base prompt; applies to both engines (see §13.16)
 - **Server management** — Development mode: "Server Rebuild" button. Production mode: version display, update check, and install
 - **File checkpointing** — Chat sessions (default on, required for code rewind §2.20) and queue runner (default off)
 - **Card entrance animation** — Streaming cards fade/slide in one at a time (default on, both engines)

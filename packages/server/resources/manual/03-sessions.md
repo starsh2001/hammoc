@@ -15,6 +15,7 @@ Access the session list via the sidebar or quick panel:
 - **Pending question indicator** — Cyan pulsing dot with "Awaiting selection" badge when a session has an active `AskUserQuestion` waiting for user input. Appears alongside the session entry so you can spot sessions that need attention without opening each one
 - **Queue badge** — Shown when queue runner is active on the session
 - **Early visibility** — New sessions appear in the list as soon as a message is sent, with no brief delay
+- **Active session promotion** — When a session starts streaming, it jumps to the top of the list so the session you're actively using stays the most visible
 - Empty sessions are hidden by default (toggle with the eye icon)
 
 ### 3.2 Creating a New Session
