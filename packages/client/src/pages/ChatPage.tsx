@@ -1373,7 +1373,7 @@ export function ChatPage() {
                   msg.branchInfo,
                   isBranchViewerMode ? navigateBranch : undefined,
                   isBranchNavigationDisabled || isRewinding || isSummarizing || !!editingMessageUuid,
-                  isOnOldBranch || isBranchViewerMode || (msg.type === 'user' && !msg.parentId) ? undefined : handleEditSubmit,
+                  isOnOldBranch || isBranchViewerMode || isCliMode || (msg.type === 'user' && !msg.parentId) ? undefined : handleEditSubmit,
                   isStreaming,
                   isOnOldBranch || isBranchViewerMode || isCliMode ? undefined : handleRewind,
                   isRewinding,
