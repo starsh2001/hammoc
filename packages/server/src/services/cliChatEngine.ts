@@ -871,6 +871,10 @@ export class CliChatEngine implements ChatEngine {
     // "interactive claude PTY cannot be spawned in this headless shell" assumption was wrong — node-pty
     // drives it fine.) Locked by cliVerboseThinking.realframes.test.ts.
     settingsObj.verbose = true;
+    // Force the classic (non-fullscreen) TUI renderer. The fullscreen/NO_FLICKER renderer
+    // uses an alternate screen buffer whose mid-frame redraws split CJK wide characters
+    // across cell boundaries, corrupting the provisional text the screen scraper reads.
+    settingsObj.tui = 'default';
     args.push('--settings', JSON.stringify(settingsObj));
 
     // Experimental CLI debug instrumentation (HAMMOC_CLI_DEBUG=1). Adds claude's own

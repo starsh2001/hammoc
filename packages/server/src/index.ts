@@ -21,8 +21,15 @@ import path from 'path';
 
 const log = createLogger('server');
 
-// Capture uncaught crashes to log file before process dies
+// Capture uncaught crashes to log file before process dies.
+// EPIPE from a closed PTY pipe is non-fatal — the PTY teardown path already
+// handles the exit; letting the read-side EPIPE bubble up and kill the server
+// is a regression from node-pty 1.0.0 (prebuilt-multiarch absorbed it internally).
 process.on('uncaughtException', (error) => {
+  if ((error as NodeJS.ErrnoException).code === 'EPIPE') {
+    log.warn('Ignored non-fatal EPIPE (closed PTY pipe):', error.message);
+    return;
+  }
   log.error('UNCAUGHT EXCEPTION — process will exit:', error.message);
   log.error('Stack:', error.stack ?? '(no stack)');
   process.exit(1);
