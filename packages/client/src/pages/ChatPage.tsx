@@ -958,6 +958,13 @@ export function ChatPage() {
     });
   }, [workingDirectory, sessionId, sendMessage]);
 
+  // CLI engine mode: fork/rewind/summarize are SDK-only operations — hide their
+  // UI when the project is configured for CLI mode (the buttons stay hidden
+  // regardless of streaming state so the UX is consistent).
+  const engineModeOverride = useChatStore((s) => s.projectSettings?.engineModeOverride);
+  const globalEngineMode = usePreferencesStore((s) => s.preferences.engineMode);
+  const isCliMode = (engineModeOverride ?? globalEngineMode ?? 'sdk') === 'cli';
+
   // Story 25.8: Rewind code — dryRun 2-step flow
   const [rewindMessageUuid, setRewindMessageUuid] = useState<string | null>(null);
 
@@ -1368,15 +1375,15 @@ export function ChatPage() {
                   isBranchNavigationDisabled || isRewinding || isSummarizing || !!editingMessageUuid,
                   isOnOldBranch || isBranchViewerMode || (msg.type === 'user' && !msg.parentId) ? undefined : handleEditSubmit,
                   isStreaming,
-                  isOnOldBranch || isBranchViewerMode ? undefined : handleRewind,
+                  isOnOldBranch || isBranchViewerMode || isCliMode ? undefined : handleRewind,
                   isRewinding,
-                  isOnOldBranch || isBranchViewerMode || (msg.type === 'user' && !msg.parentId) ? undefined : handleSummarize,
+                  isOnOldBranch || isBranchViewerMode || isCliMode || (msg.type === 'user' && !msg.parentId) ? undefined : handleSummarize,
                   isSummarizing,
                   summarizingMessageUuid,
                   summaryResult,
                   clearSummaryResult,
                   actionsLocked,
-                  isOnOldBranch || isBranchViewerMode ? undefined : handleForkClick,
+                  isOnOldBranch || isBranchViewerMode || isCliMode ? undefined : handleForkClick,
                 )}
               </div>
             </Fragment>
