@@ -3000,7 +3000,17 @@ export class CliChatEngine implements ChatEngine {
                       toolUseId: taskNotif.toolUseId,
                     });
                     if (backgroundTracker?.isFullyDone) {
-                      finishTurn();
+                      // The agent may still generate a follow-up response after
+                      // consuming the task-notification. Wait briefly for a new
+                      // assistant line before ending the turn — an immediate
+                      // finishTurn() would kill the turn while the agent is still
+                      // composing its next message.
+                      setTimeout(() => {
+                        if (!settled && backgroundTracker?.isFullyDone) {
+                          log.info('[CLI] background tasks fully done and no new generation — finishing turn');
+                          finishTurn();
+                        }
+                      }, 3000);
                       return;
                     }
                   }
